@@ -188,3 +188,106 @@ test('malformed JSON errors do not echo the request body', async () => {
   assert.equal(response.body.message, 'Invalid JSON request body.');
   assert.equal(JSON.stringify(response.body).includes('do-not-echo-this'), false);
 });
+
+test('daily planning queries and project summaries remain owner-scoped', async () => {
+  const planner = request.agent(app);
+  const registration = await planner
+    .post('/api/auth/register')
+    .set('Origin', origin)
+    .send({
+      name: 'Planner',
+      email: 'planner@example.com',
+      password: 'planner-long-passphrase',
+    })
+    .expect(201);
+  const owner = registration.body.user.id;
+  await Task.insertMany(
+    [
+      ['Overdue', '2026-10-08', 'todo'],
+      ['Today', '2026-10-09', 'todo'],
+      ['Tomorrow', '2026-10-10', 'progress'],
+      ['Seventh day', '2026-10-16', 'todo'],
+      ['Outside week', '2026-10-17', 'todo'],
+      ['Already done', '2026-10-09', 'done'],
+      ['No date', '', 'todo'],
+    ].map(([title, due, status]) => ({ title, due, status, owner, project: 'Review' })),
+  );
+  const today = await planner.get('/api/tasks?view=today&date=2026-10-09').expect(200);
+  assert.deepEqual(
+    today.body.tasks.map((task) => task.title),
+    ['Overdue', 'Today'],
+  );
+  const upcoming = await planner
+    .get('/api/tasks?view=upcoming&date=2026-10-09')
+    .expect(200);
+  assert.deepEqual(
+    upcoming.body.tasks.map((task) => task.title),
+    ['Tomorrow', 'Seventh day'],
+  );
+  const first = await planner
+    .get('/api/tasks?view=today&date=2026-10-09&limit=1')
+    .expect(200);
+  assert.equal(first.body.hasMore, true);
+  await planner.get('/api/tasks?view=today').expect(400);
+  const overview = await planner.get('/api/tasks/overview?date=2026-10-09').expect(200);
+  assert.equal(overview.body.projectSummaries.length, 1);
+  assert.deepEqual(overview.body.projectSummaries[0], {
+    name: 'Review',
+    total: 7,
+    completed: 1,
+    active: 1,
+    overdue: 1,
+    nextDue: '2026-10-08',
+  });
+});
+test('checklist updates persist without resetting task fields or accepting foreign owners', async () => {
+  const planner = request.agent(app);
+  await planner
+    .post('/api/auth/login')
+    .set('Origin', origin)
+    .send({ email: 'planner@example.com', password: 'planner-long-passphrase' })
+    .expect(200);
+  const checklist = [{ id: 'step-1', text: 'Collect notes', done: false }];
+  const result = await planner
+    .post('/api/tasks')
+    .set('Origin', origin)
+    .send({
+      title: 'Checklist task',
+      project: 'Review',
+      priority: 'high',
+      description: 'Keep context',
+      checklist,
+    })
+    .expect(201);
+  const id = result.body.task.id;
+  const updated = await planner
+    .patch('/api/tasks/' + id)
+    .set('Origin', origin)
+    .send({ checklist: [{ ...checklist[0], done: true }] })
+    .expect(200);
+  assert.equal(updated.body.task.checklist[0].done, true);
+  assert.equal(updated.body.task.description, 'Keep context');
+  assert.equal(updated.body.task.priority, 'high');
+  await planner
+    .patch('/api/tasks/' + id)
+    .set('Origin', origin)
+    .send({ checklist: [checklist[0], checklist[0]] })
+    .expect(400);
+  const stranger = request.agent(app);
+  await stranger
+    .post('/api/auth/register')
+    .set('Origin', origin)
+    .send({
+      name: 'Stranger',
+      email: 'stranger@example.com',
+      password: 'stranger-long-passphrase',
+    })
+    .expect(201);
+  await stranger
+    .patch('/api/tasks/' + id)
+    .set('Origin', origin)
+    .send({ checklist: [] })
+    .expect(404);
+  const overview = await stranger.get('/api/tasks/overview?date=2026-10-09').expect(200);
+  assert.deepEqual(overview.body.projectSummaries, []);
+});

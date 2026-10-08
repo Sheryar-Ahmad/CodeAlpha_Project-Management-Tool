@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import mongoose from 'mongoose';
+import { addDays } from '../../shared/planning.js';
 import { Task } from '../models/Task.js';
 import { requireAuth } from '../middleware/auth.js';
 import {
@@ -20,6 +21,11 @@ const serialize = (task) => ({
   status: task.status,
   due: task.due,
   updatedAt: task.updatedAt,
+  checklist: (task.checklist ?? []).map((item) => ({
+    id: item.id,
+    text: item.text,
+    done: item.done,
+  })),
 });
 taskRouter.get('/overview', async (req, res) => {
   const date = typeof req.query.date === 'string' ? req.query.date : '';
@@ -33,7 +39,38 @@ taskRouter.get('/overview', async (req, res) => {
     Task.countDocuments({ owner, status: { $ne: 'done' }, due: { $ne: '', $lt: date } }),
     Task.aggregate([
       { $match: { owner } },
-      { $group: { _id: '$project' } },
+      {
+        $group: {
+          _id: '$project',
+          total: { $sum: 1 },
+          completed: { $sum: { $cond: [{ $eq: ['$status', 'done'] }, 1, 0] } },
+          active: { $sum: { $cond: [{ $eq: ['$status', 'progress'] }, 1, 0] } },
+          overdue: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $ne: ['$status', 'done'] },
+                    { $ne: ['$due', ''] },
+                    { $lt: ['$due', date] },
+                  ],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+          nextDue: {
+            $min: {
+              $cond: [
+                { $and: [{ $ne: ['$status', 'done'] }, { $ne: ['$due', ''] }] },
+                '$due',
+                null,
+              ],
+            },
+          },
+        },
+      },
       { $sort: { _id: 1 } },
       { $limit: 1000 },
     ]),
@@ -44,12 +81,18 @@ taskRouter.get('/overview', async (req, res) => {
     completed,
     overdue,
     projects: projects.map((project) => project._id),
+    projectSummaries: projects.map(({ _id, ...summary }) => ({ name: _id, ...summary })),
   });
 });
 taskRouter.get('/', async (req, res) => {
-  const { page, limit, search, project } = parse(querySchema, req.query);
+  const { page, limit, search, project, view, date } = parse(querySchema, req.query);
   const filter = { owner: req.user._id };
   if (project) filter.project = project;
+  if (view !== 'all') {
+    filter.status = { $ne: 'done' };
+    filter.due =
+      view === 'today' ? { $ne: '', $lte: date } : { $gt: date, $lte: addDays(date, 7) };
+  }
   if (search) {
     const specials = '.*+?^$' + '{}()|[]' + String.fromCharCode(92);
     const safe = [...search]
@@ -60,7 +103,7 @@ taskRouter.get('/', async (req, res) => {
     }));
   }
   const tasks = await Task.find(filter)
-    .sort({ updatedAt: -1, _id: -1 })
+    .sort(view === 'all' ? { updatedAt: -1, _id: -1 } : { due: 1, _id: -1 })
     .skip((page - 1) * limit)
     .limit(limit + 1)
     .lean();

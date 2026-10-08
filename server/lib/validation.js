@@ -13,6 +13,22 @@ export const registerSchema = z
 export const loginSchema = z
   .object({ email, password: z.string().min(1).max(128) })
   .strict();
+const checklistSchema = z
+  .array(
+    z
+      .object({
+        id: z.string().min(1).max(100),
+        text: z.string().trim().min(1).max(160),
+        done: z.boolean(),
+      })
+      .strict(),
+  )
+  .max(20)
+  .refine(
+    (items) => new Set(items.map((item) => item.id)).size === items.length,
+    'Checklist IDs must be unique.',
+  );
+
 export const taskSchema = z
   .object({
     title: z.string().trim().min(1).max(120),
@@ -21,6 +37,7 @@ export const taskSchema = z
     priority: z.enum(['low', 'medium', 'high']).default('medium'),
     status: z.enum(['todo', 'progress', 'done']).default('todo'),
     due: z.string().refine(validDate, 'Enter a valid date.').default(''),
+    checklist: checklistSchema.default([]),
   })
   .strict();
 // PATCH fields must not apply creation defaults to omitted values.
@@ -32,6 +49,7 @@ export const taskUpdateSchema = z
     priority: taskSchema.shape.priority.removeDefault().optional(),
     status: taskSchema.shape.status.removeDefault().optional(),
     due: taskSchema.shape.due.removeDefault().optional(),
+    checklist: checklistSchema.optional(),
   })
   .strict()
   .refine((value) => Object.keys(value).length > 0, 'No changes supplied.');
@@ -41,8 +59,14 @@ export const querySchema = z
     limit: z.coerce.number().int().min(1).max(50).default(30),
     search: z.string().trim().max(120).default(''),
     project: z.string().trim().max(60).default(''),
+    view: z.enum(['all', 'today', 'upcoming']).default('all'),
+    date: z.string().refine(validDate, 'Enter a valid date.').default(''),
   })
-  .strict();
+  .strict()
+  .refine(
+    (value) => value.view === 'all' || value.date !== '',
+    'A date is required for daily planning.',
+  );
 export function parse(schema, value) {
   const result = schema.safeParse(value);
   if (!result.success) {

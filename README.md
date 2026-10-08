@@ -35,6 +35,8 @@ Built by **Sheheryar Ahmad**, a Semester 5 Software Engineering student at **COM
 <details>
 <summary><strong>See project progress, the focus timer, and mobile layouts</strong></summary>
 
+![Task list with project labels, deadlines, and the same status controls](docs/screenshots/tasks-list-desktop.png)
+
 ![Project overview with completion progress and unfinished deadlines](docs/screenshots/projects-desktop.png)
 
 ![Quiet focus timer with pause, reset, and session length controls](docs/screenshots/focus-desktop.png)
@@ -53,6 +55,7 @@ Screenshots are from the working local demo using illustrative sample tasks.
 | ------------------------ | ------------------------------------------------------------------------------------ |
 | Private accounts         | Register, sign in, and return to your personal workspace                             |
 | Task board               | See what is waiting, moving, and finished                                            |
+| List view                | Scan the same tasks in a tidy list without losing filters or pagination              |
 | Task editing             | Create, edit, delete, and update status                                              |
 | Project labels           | Keep tasks organized by project and filter the board                                 |
 | Priorities and deadlines | Make important work and overdue tasks visible                                        |
@@ -209,7 +212,7 @@ npm run build
 npm run format:check
 ```
 
-**Verified locally:** 30 API/input/planning/timer/password/template tests and Chromium browser flows covering demo CRUD, storage persistence, search, filters, safe text rendering, mobile overflow, dialog Escape, checklists, task duplication, template previews and replacement protection, blockers, daily views, overnight date changes, project progress, focus pause/refresh/completion, registration, database-backed task persistence, logout, and login.
+**Verified locally:** 30 API/input/planning/timer/password/template tests and Chromium browser flows covering demo CRUD, storage persistence, search, filters, safe text rendering, mobile overflow, dialog Escape, checklists, task duplication, template previews and replacement protection, list actions and pagination, blockers, daily views, overnight date changes, project progress, focus pause/refresh/completion, registration, database-backed task persistence, logout, and login.
 
 For browser checks:
 

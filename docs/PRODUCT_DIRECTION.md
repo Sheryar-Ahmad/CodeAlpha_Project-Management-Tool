@@ -20,7 +20,7 @@ Important distinctions:
 
 ## Compact additions worth prioritizing
 
-These are the ordered extension milestones. Task notes/resource links, blocker reasons, and curated task templates are now implemented; the remaining items below are pending.
+These are the ordered extension milestones. Task notes/resource links, blocker reasons, curated task templates, and the list view are now implemented; the remaining items below are pending.
 
 | Addition                      | Genuine problem                                    | Bounded first version                                                                            |
 | ----------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
@@ -32,7 +32,7 @@ These are the ordered extension milestones. Task notes/resource links, blocker r
 | Recurring tasks               | “Weekly work is easy to forget.”                   | Choose explicit recurrence rules, preserve completion history, and prevent duplicate occurrences |
 | Backup/export                 | “I want a copy of my own work.”                    | Export owned data first; validate imports separately before allowing writes                      |
 
-Next implementation milestone: **list view**. Finish account recovery, deletion, and operational launch requirements before promoting broad public adoption.
+Next implementation milestone: **archive and recovery**. Finish account recovery, deletion, and operational launch requirements before promoting broad public adoption.
 
 Recurring scheduling needs decisions about timezone, missed runs, end-of-month dates, and idempotency. It should not merely erase a completed task and reset its history.
 
@@ -85,7 +85,7 @@ The full proposal is authorized for incremental implementation after the saved b
 | Proposal area                                                          | Current delivery status                                                                      |
 | ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
 | 1. Workspaces, projects, tasks, ownership, subtasks, context, recovery | Personal task foundation and context implemented; team/project entities and recovery pending |
-| 2. Multiple views / My Work                                            | Board, Today, Upcoming implemented; list/calendar/timeline pending                           |
+| 2. Multiple views / My Work                                            | Board, list, Today, Upcoming implemented; calendar/timeline pending                          |
 | 3. Dependencies                                                        | Pending                                                                                      |
 | 4. Milestones                                                          | Pending                                                                                      |
 | 5. Useful dashboard                                                    | Personal overview implemented; team reporting pending                                        |

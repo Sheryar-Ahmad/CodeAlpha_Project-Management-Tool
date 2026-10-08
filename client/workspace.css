@@ -830,3 +830,100 @@ textarea:disabled {
     flex-direction: column;
   }
 }
+
+/* The list reuses task cards and actions; only their arrangement changes. */
+.view-switch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 0 0 18px;
+}
+.view-switch button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  padding: 9px 12px;
+  min-height: 40px;
+  color: var(--muted);
+  cursor: pointer;
+}
+.view-switch button[aria-pressed='true'] {
+  background: #eeebff;
+  border-color: #cec5fa;
+  color: var(--purple);
+  font-weight: 600;
+}
+.view-switch > span {
+  margin-left: auto;
+}
+.task-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+.task-list > li {
+  min-width: 0;
+}
+.workspace .task-list .task-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 310px;
+  gap: 28px;
+  margin: 0;
+}
+.task-list .task-information,
+.task-list .task-meta {
+  min-width: 0;
+}
+.task-list .card-top {
+  justify-content: flex-start;
+  gap: 12px;
+}
+.task-list .task-title {
+  margin-bottom: 8px;
+}
+.task-list .task-description {
+  margin-bottom: 0;
+}
+.workspace .task-list .task-date {
+  border: 0;
+  margin-top: 0;
+  padding-top: 0;
+  margin-bottom: 12px;
+}
+.list-empty {
+  padding: 35px;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+.list-empty h3 {
+  font-size: 16px;
+  margin: 0;
+}
+.list-skeleton {
+  display: grid;
+  gap: 12px;
+}
+.list-skeleton .skeleton-card {
+  height: 150px;
+}
+@media (max-width: 900px) {
+  .workspace .task-list .task-card {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .workspace .task-list .task-date {
+    border-top: 1px solid var(--line);
+    padding-top: 12px;
+  }
+  .view-switch > span {
+    flex-basis: 100%;
+    margin-left: 0;
+  }
+}

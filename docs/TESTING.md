@@ -82,3 +82,10 @@ Automated browser coverage verifies the primary flows above; exhaustive accessib
 - Type a title or add steps first: applying a template asks before replacing the title, description, and checklist. Dismiss must preserve the draft.
 - Cancel must create nothing; save and refresh must retain edits. Existing task forms do not show the template picker.
 - Check the picker, preview, and buttons on a narrow mobile screen and with a keyboard.
+
+## List presentation
+
+- Switch between Board view and List view. The same tasks, project filter, search, and selected page must remain.
+- Edit, duplicate, change status, block/unblock, and check steps from the list. They use the same actions as the board.
+- Try Today, Upcoming, and Blockers while in the list. Date views keep their server-side deadline order.
+- Use a missing search and a project with no results: show a clear empty state. Check narrow mobile layouts and keyboard access to both view buttons.

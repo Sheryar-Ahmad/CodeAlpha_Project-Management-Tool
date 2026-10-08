@@ -9,6 +9,7 @@ import {
   CirclePause,
   Clock3,
   LayoutDashboard,
+  List,
   LogOut,
   Plus,
   Search,
@@ -61,6 +62,7 @@ const workspaceViews = {
 function Workspace({ mode, user, onExit, onExpired }) {
   const workspace = useWorkspace(mode, onExpired);
   const [dialog, setDialog] = useState(null);
+  const [layout, setLayout] = useState('board');
   const [actionError, setActionError] = useState('');
   const [signingOut, setSigningOut] = useState(false);
   const planning = ['today', 'upcoming'].includes(workspace.view);
@@ -112,6 +114,46 @@ function Workspace({ mode, user, onExit, onExpired }) {
     } finally {
       setSigningOut(false);
     }
+  }
+  // Board and list share every action, so their behavior cannot drift apart.
+  function renderTask(task) {
+    return (
+      <TaskCard
+        key={task.id}
+        task={task}
+        busy={workspace.busy}
+        onEdit={(task) => setDialog({ task })}
+        onStatus={(task, status) =>
+          status === 'blocked'
+            ? setDialog({ task: { ...task, status: 'blocked' } })
+            : act(() => workspace.updateStatus(task, status))
+        }
+        onChecklist={(task, checklist) =>
+          act(() => workspace.updateChecklist(task, checklist))
+        }
+        onDuplicate={(task) =>
+          setDialog({
+            task: {
+              ...task,
+              id: undefined,
+              title: task.title.slice(0, 113) + ' (copy)',
+              status: 'todo',
+              blockerReason: '',
+              due: '',
+              checklist: (task.checklist ?? []).map((step) => ({
+                ...step,
+                id: crypto.randomUUID(),
+                done: false,
+              })),
+            },
+          })
+        }
+        onDelete={(task) => {
+          if (window.confirm('Delete “' + task.title + '”? This cannot be undone.'))
+            act(() => workspace.remove(task));
+        }}
+      />
+    );
   }
   return (
     <div className={'workspace' + (workspace.view === 'focus' ? ' focus-workspace' : '')}>
@@ -282,7 +324,9 @@ function Workspace({ mode, user, onExit, onExpired }) {
                       ? 'Upcoming deadlines'
                       : workspace.view === 'blocked'
                         ? 'Work that needs unblocking'
-                        : 'Your task board'}
+                        : layout === 'list'
+                          ? 'Your task list'
+                          : 'Your task board'}
                 </h2>
                 <span className="small muted">
                   Page {workspace.page} · {workspace.tasks.length} tasks shown
@@ -322,112 +366,122 @@ function Workspace({ mode, user, onExit, onExpired }) {
                 </label>
               </div>
             </div>
-            <div
-              className={
-                'board' +
-                (planning ? ' planning-board' : '') +
-                (visibleStatuses.length === 4 ? ' expanded-board' : '') +
-                (workspace.view === 'blocked' ? ' blocked-board' : '')
-              }
-              style={{ '--board-columns': visibleStatuses.length }}
-            >
-              {visibleStatuses.map(([status, label]) => {
-                const tasks = workspace.tasks.filter((task) => task.status === status);
-                return (
-                  <section
-                    className="column"
-                    key={status}
-                    aria-labelledby={'column-' + status}
-                  >
-                    <h3 className="column-heading" id={'column-' + status}>
-                      <span
-                        className={
-                          'dot ' +
-                          (status === 'progress'
-                            ? 'progress-dot'
-                            : status === 'done'
-                              ? 'done-dot'
-                              : status === 'blocked'
-                                ? 'blocked-dot'
-                                : '')
-                        }
-                      />
-                      {label}
-                      <span className="count">{tasks.length}</span>
-                    </h3>
-                    {workspace.loading ? (
-                      <div className="skeleton-stack" aria-label="Loading tasks">
-                        <div className="skeleton-card" />
-                        <div className="skeleton-card" />
-                      </div>
-                    ) : (
-                      tasks.map((task) => (
-                        <TaskCard
-                          key={task.id}
-                          task={task}
-                          busy={workspace.busy}
-                          onEdit={(task) => setDialog({ task })}
-                          onStatus={(task, status) =>
-                            status === 'blocked'
-                              ? setDialog({ task: { ...task, status: 'blocked' } })
-                              : act(() => workspace.updateStatus(task, status))
-                          }
-                          onChecklist={(task, checklist) =>
-                            act(() => workspace.updateChecklist(task, checklist))
-                          }
-                          onDuplicate={(task) =>
-                            setDialog({
-                              task: {
-                                ...task,
-                                id: undefined,
-                                title: task.title.slice(0, 113) + ' (copy)',
-                                status: 'todo',
-                                blockerReason: '',
-                                due: '',
-                                checklist: (task.checklist ?? []).map((step) => ({
-                                  ...step,
-                                  id: crypto.randomUUID(),
-                                  done: false,
-                                })),
-                              },
-                            })
-                          }
-                          onDelete={(task) => {
-                            if (
-                              window.confirm(
-                                'Delete “' + task.title + '”? This cannot be undone.',
-                              )
-                            )
-                              act(() => workspace.remove(task));
-                          }}
-                        />
-                      ))
-                    )}
-                    {!workspace.loading && !tasks.length && (
-                      <div className="board-empty">
-                        <span aria-hidden="true">＋</span>
-                        <p>
-                          {workspace.search || workspace.project
-                            ? 'No matching tasks on this page.'
-                            : status === 'todo'
-                              ? 'Nothing waiting here.'
-                              : status === 'progress'
-                                ? 'No tasks in progress here.'
-                                : status === 'blocked'
-                                  ? 'Nothing is blocked here.'
-                                  : 'Completed work will appear here.'}
-                        </p>
-                        {status === 'todo' && (
-                          <button className="text-button" onClick={openNewTask}>
-                            Create a task
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </section>
-                );
-              })}
+            <div className="view-switch" role="group" aria-label="Task layout">
+              <button
+                type="button"
+                aria-pressed={layout === 'board'}
+                onClick={() => setLayout('board')}
+              >
+                <LayoutDashboard size={15} aria-hidden="true" /> Board view
+              </button>
+              <button
+                type="button"
+                aria-pressed={layout === 'list'}
+                onClick={() => setLayout('list')}
+              >
+                <List size={15} aria-hidden="true" /> List view
+              </button>
+              <span className="small muted">Same tasks. A different perspective.</span>
             </div>
+            {layout === 'list' ? (
+              workspace.loading ? (
+                <div className="list-skeleton" role="status" aria-label="Loading tasks">
+                  <div className="skeleton-card" />
+                  <div className="skeleton-card" />
+                </div>
+              ) : workspace.tasks.length ? (
+                <ul className="task-list" aria-label="Tasks on this page">
+                  {workspace.tasks.map((task) => (
+                    <li key={task.id}>{renderTask(task)}</li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="board-empty list-empty">
+                  <h3>
+                    {workspace.search || workspace.project
+                      ? 'No matching tasks on this page'
+                      : workspace.view === 'blocked'
+                        ? 'Nothing is blocked here'
+                        : 'A little space for your next step'}
+                  </h3>
+                  <p>
+                    {workspace.search || workspace.project
+                      ? 'Try a different search or project filter.'
+                      : 'Create a task when you are ready.'}
+                  </p>
+                  <button type="button" className="text-button" onClick={openNewTask}>
+                    Create a task
+                  </button>
+                </div>
+              )
+            ) : (
+              <div
+                className={
+                  'board' +
+                  (planning ? ' planning-board' : '') +
+                  (visibleStatuses.length === 4 ? ' expanded-board' : '') +
+                  (workspace.view === 'blocked' ? ' blocked-board' : '')
+                }
+                style={{ '--board-columns': visibleStatuses.length }}
+              >
+                {visibleStatuses.map(([status, label]) => {
+                  const tasks = workspace.tasks.filter((task) => task.status === status);
+                  return (
+                    <section
+                      className="column"
+                      key={status}
+                      aria-labelledby={'column-' + status}
+                    >
+                      <h3 className="column-heading" id={'column-' + status}>
+                        <span
+                          className={
+                            'dot ' +
+                            (status === 'progress'
+                              ? 'progress-dot'
+                              : status === 'done'
+                                ? 'done-dot'
+                                : status === 'blocked'
+                                  ? 'blocked-dot'
+                                  : '')
+                          }
+                        />
+                        {label}
+                        <span className="count">{tasks.length}</span>
+                      </h3>
+                      {workspace.loading ? (
+                        <div className="skeleton-stack" aria-label="Loading tasks">
+                          <div className="skeleton-card" />
+                          <div className="skeleton-card" />
+                        </div>
+                      ) : (
+                        tasks.map(renderTask)
+                      )}
+                      {!workspace.loading && !tasks.length && (
+                        <div className="board-empty">
+                          <span aria-hidden="true">＋</span>
+                          <p>
+                            {workspace.search || workspace.project
+                              ? 'No matching tasks on this page.'
+                              : status === 'todo'
+                                ? 'Nothing waiting here.'
+                                : status === 'progress'
+                                  ? 'No tasks in progress here.'
+                                  : status === 'blocked'
+                                    ? 'Nothing is blocked here.'
+                                    : 'Completed work will appear here.'}
+                          </p>
+                          {status === 'todo' && (
+                            <button className="text-button" onClick={openNewTask}>
+                              Create a task
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </section>
+                  );
+                })}
+              </div>
+            )}
             {(workspace.page > 1 || workspace.hasMore) && (
               <nav className="pagination" aria-label="Task pages">
                 <button

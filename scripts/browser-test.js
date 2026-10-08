@@ -65,6 +65,13 @@ try {
     path: 'docs/screenshots/workspace-desktop.png',
     fullPage: true,
   });
+  await page.getByRole('button', { name: 'List view', exact: true }).click();
+  await page.getByRole('list', { name: 'Tasks on this page', exact: true }).waitFor();
+  await page.screenshot({
+    path: 'docs/screenshots/tasks-list-desktop.png',
+    fullPage: true,
+  });
+  await page.getByRole('button', { name: 'Board view', exact: true }).click();
   console.log('Step: new task');
   await page.getByRole('button', { name: 'New task', exact: true }).click();
   await page.getByLabel('Task title', { exact: true }).fill('Browser test task');
@@ -419,7 +426,59 @@ try {
     await templatePage.getByLabel('Checklist step 4', { exact: true }).inputValue(),
     'Check that the next steps are understood',
   );
+  await templatePage.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await templatePage.getByRole('button', { name: 'List view', exact: true }).click();
+  await templatePage
+    .getByRole('list', { name: 'Tasks on this page', exact: true })
+    .waitFor();
+  assert.equal(await templatePage.locator('.task-list > li').count(), 7);
+  assert.equal(
+    await templatePage.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+    true,
+  );
+  await templatePage
+    .getByLabel('Filter by project', { exact: true })
+    .selectOption('Follow-ups');
+  await templatePage
+    .getByRole('heading', { name: 'Follow up on the meeting', exact: true })
+    .waitFor();
+  assert.equal(await templatePage.locator('.task-list > li').count(), 1);
+  await templatePage.getByText('0/4 steps complete', { exact: true }).click();
+  await templatePage
+    .getByLabel('Complete Write down the key decisions for Follow up on the meeting', {
+      exact: true,
+    })
+    .check();
+  await templatePage.getByText('1/4 steps complete', { exact: true }).waitFor();
+  await templatePage
+    .getByLabel('Status for Follow up on the meeting', { exact: true })
+    .selectOption('blocked');
+  await templatePage
+    .getByLabel('Blocker reason', { exact: true })
+    .fill('Waiting for the shared notes');
+  await templatePage.getByRole('button', { name: 'Save task', exact: true }).click();
+  await templatePage.getByText('Waiting for the shared notes', { exact: true }).waitFor();
+  await templatePage
+    .locator('.sidebar')
+    .getByRole('button', { name: /^Blockers/ })
+    .click();
+  await templatePage
+    .getByRole('list', { name: 'Tasks on this page', exact: true })
+    .waitFor();
+  await templatePage
+    .getByRole('searchbox', { name: 'Search tasks' })
+    .fill('Missing task');
+  await templatePage
+    .getByRole('heading', { name: 'No matching tasks on this page', exact: true })
+    .waitFor();
+  await templatePage.getByRole('searchbox', { name: 'Search tasks' }).fill('');
+  await templatePage
+    .getByRole('heading', { name: 'Follow up on the meeting', exact: true })
+    .waitFor();
   await templatePage.close();
+  console.log(
+    'PASS: list mobile layout, filtering, checklists, blockers, and empty search results.',
+  );
   console.log(
     'PASS: template previews, mobile layout, replacement confirmation, cancellation, and saved checklists.',
   );
@@ -450,6 +509,7 @@ try {
   await paginationPage
     .getByRole('heading', { name: 'Pagination task 0', exact: true })
     .waitFor();
+  await paginationPage.getByRole('button', { name: 'List view', exact: true }).click();
   await paginationPage.getByRole('button', { name: 'Next', exact: true }).click();
   await paginationPage
     .getByRole('heading', { name: 'Pagination task 30', exact: true })
@@ -457,6 +517,13 @@ try {
   // The initial empty search used to schedule a page reset after 250ms.
   await paginationPage.waitForTimeout(350);
   assert.equal(await paginationPage.locator('.task-card').count(), 1);
+  assert.ok(
+    await paginationPage
+      .getByRole('heading', { name: 'Pagination task 30', exact: true })
+      .isVisible(),
+  );
+  assert.equal(await paginationPage.locator('.task-list > li').count(), 1);
+  await paginationPage.getByRole('button', { name: 'Board view', exact: true }).click();
   assert.ok(
     await paginationPage
       .getByRole('heading', { name: 'Pagination task 30', exact: true })

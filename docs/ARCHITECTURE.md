@@ -31,6 +31,18 @@ The local demo uses a different adapter. It never sends demo tasks to the accoun
 
 **SEO:** the marketing pages stay static and discoverable. The private workspace uses noindex, while API authorization protects the actual data.
 
+## Planning and checklist patterns
+
+**Calendar views:** Today includes unfinished work due today or overdue. Upcoming includes tomorrow through seven days ahead. The browser supplies its local calendar date; shared date helpers keep boundary calculations consistent without shifting a chosen deadline across timezones. A minute check and visibility event refresh the views after midnight.
+
+**Stored steps, derived progress:** checklist steps are embedded within their task, capped at 20, with unique IDs. The API validates the full replacement array and owner-scopes updates. Counts and percentages are derived from current records, avoiding separate progress values that can drift out of sync.
+
+**Project overview:** MongoDB groups only the owner's tasks by project label. Summary cards include account-wide counts and the earliest unfinished due date. The UI paginates project cards; overview and focus views avoid fetching a task page they do not display.
+
+**Duplicate task:** copying opens an editable new-task form. The copy starts To do, with no deadline, fresh step IDs, and unchecked steps. Saving creates a new owned record; the original is unchanged.
+
+**Focus timer:** a running session stores a deadline rather than decrementing a counter. Remaining time derives from the wall clock, so delayed browser callbacks do not accumulate drift. Timer state is local and separated by demo/account ID, survives refresh, and ends quietly. It is not cross-device synchronization or work-time reporting; the written goal is not persisted.
+
 ## Current scope
 
 Projects are task group labels, not separate project entities. There are no memberships, invitations, roles, shared boards, or real-time synchronization in this milestone. Those require separate authorization rules and tests.

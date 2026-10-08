@@ -2,8 +2,8 @@
 
 ## Automated checks
 
-- npm run test:unit: dates, field limits, injection rejection, partial updates, pagination, and password hashing.
-- npm test: real temporary MongoDB tests for safe account responses, cookies, authorization, literal search, pagination, expiry, and logout.
+- npm run test:unit: dates, field limits, injection rejection, partial updates, pagination, checklist constraints, planning boundaries, timer calculations, and password hashing.
+- npm test: real temporary MongoDB tests for safe account responses, cookies, authorization, literal search, pagination, expiry, logout, planning queries, owner-scoped project summaries, and checklist persistence.
 - npm run test:browser: Chromium demo and database-backed account flows, screenshots, mobile overflow, and uncaught errors.
 - npm run build: compile the multipage public site and React workspace.
 - npm run format:check: consistent formatting.
@@ -25,6 +25,19 @@ Temporary databases and downloaded tools stay in the ignored project cache. Inte
 - Block browser storage: demo saves must fail visibly.
 - Reset demo requires confirmation and does not alter account tasks.
 
+## Planning, reuse, and focus
+
+- Give four unfinished tasks dates of yesterday, today, tomorrow, and eight days ahead. Today includes the first two; Upcoming includes only tomorrow. Completed and undated tasks are excluded from both.
+- Leave a tab open across midnight or return to it the next day. The calendar views must update without reloading.
+- Add, edit, remove, and complete checklist steps. Refresh and confirm progress is saved. Empty text and duplicate step IDs must be rejected; the limit is 20.
+- Completing all steps must not silently change task status.
+- Duplicate a completed task with a date and completed steps. The new form must keep the content but start To do with no date and unchecked steps. Cancel must create nothing; save must keep the original intact.
+- Confirm project totals, task completion percentage, overdue counts, and earliest unfinished deadlines. Completed/undated tasks must not provide that deadline.
+- Open a project card: the task board must select its exact label. Test project search and pagination with many labels.
+- Start, pause, resume, reset, and finish a focus session. Switch views and refresh while running: remaining time should reflect the original deadline.
+- Check focus and break modes, blocked local storage, narrow mobile layout, and keyboard controls. No alarm or popup should interrupt work.
+- Sign in with a second account: timer state must not carry across accounts. The demo has its own timer state.
+
 ## Account checks
 
 - Register, refresh, sign out, and sign in.
@@ -40,6 +53,8 @@ Temporary databases and downloaded tools stay in the ignored project cache. Inte
 - Inspect widths of 375, 768, and 1440 pixels, and 200% zoom.
 - Verify contrast and reduced-motion preferences.
 - Check console errors and missing assets.
+
+Automated browser coverage verifies the primary flows above; exhaustive accessibility, multi-browser behavior, and large-account load checks still require review.
 
 ## Deployment checks still required
 

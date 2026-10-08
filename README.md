@@ -4,7 +4,7 @@
 
 ### A clearer place for projects to move forward.
 
-A MERN project management tool with private accounts, a focused task board, and a no-signup demo.
+A MERN project management tool for deadlines, clear next steps, and calmer daily work.
 
 ![MongoDB](https://img.shields.io/badge/MongoDB-Database-137767?style=flat-square)
 ![Express](https://img.shields.io/badge/Express-API-202b49?style=flat-square)
@@ -26,14 +26,18 @@ A project starts with an idea. Then come the messages, scattered notes, and dead
 
 Built by **Sheheryar Ahmad**, a Semester 5 Software Engineering student at **COMSATS University Islamabad**.
 
-> **Current release: 0.2.0.** Personal task workspaces with MERN persistence and a separate local demo. Shared team projects, invitations, and live collaboration are future milestones. No production deployment is claimed.
+> **Current release: 0.3.0.** Personal workspaces with daily planning, checklists, project progress, a focus timer, MERN persistence, and a separate local demo. Shared team projects, invitations, and live collaboration are future milestones. No production deployment is claimed.
 
 ## A look inside
 
 ![Orbit React task board showing project tasks, priorities, status columns, and progress counters](docs/screenshots/workspace-desktop.png)
 
 <details>
-<summary><strong>See the landing page and mobile workspace</strong></summary>
+<summary><strong>See project progress, the focus timer, and mobile layouts</strong></summary>
+
+![Project overview with completion progress and unfinished deadlines](docs/screenshots/projects-desktop.png)
+
+![Quiet focus timer with pause, reset, and session length controls](docs/screenshots/focus-desktop.png)
 
 ![Orbit landing page introducing the project management tool](docs/screenshots/landing-desktop.png)
 
@@ -52,6 +56,11 @@ Screenshots are from the working local demo using illustrative sample tasks.
 | Task editing             | Create, edit, delete, and update status                            |
 | Project labels           | Keep tasks organized by project and filter the board               |
 | Priorities and deadlines | Make important work and overdue tasks visible                      |
+| Today and Upcoming       | Find overdue work, today’s tasks, and the next seven days          |
+| Checklists               | Break a task into up to 20 steps and track completion              |
+| Project overview         | See completion progress and the earliest unfinished deadline       |
+| Duplicate task           | Reuse a task with fresh steps and a cleared deadline               |
+| Focus timer              | Work in quiet sessions with pause, break, and refresh recovery     |
 | Search                   | Find tasks by title, description, or project label                 |
 | Account-wide overview    | Track total, active, completed, and overdue work                   |
 | Bounded pagination       | Browse 30 tasks per page instead of loading everything             |
@@ -61,6 +70,14 @@ Screenshots are from the working local demo using illustrative sample tasks.
 | Public pages             | Static marketing content and an honest privacy notice              |
 
 **Scope clarification:** projects currently are labels on tasks. They are not shared project entities with members or permissions.
+
+## Small problems, practical workflows
+
+- **A student with several assignments:** check Today, split a submission into research/draft/review steps, then see the week's deadlines in Upcoming.
+- **A freelancer preparing a delivery:** group tasks under the client project, see unfinished deadlines, and duplicate a reusable delivery checklist.
+- **Someone organizing a personal project:** keep the next steps visible and use a quiet focus session to make progress.
+
+Checklist completion and task status are separate: finishing the steps leaves you in control of when the whole task is done. Project percentages count completed tasks, not checklist steps. The timer stays in the same browser and does not send your written focus goal to the server.
 
 ## Getting started
 
@@ -132,9 +149,9 @@ Read [the architecture notes](docs/ARCHITECTURE.md) for the reasoning behind com
 ├── api/                   # Vercel function entry point
 ├── assets/                # Favicon and README artwork
 ├── client/
-│   ├── components/        # Auth screen, task card, task form
+│   ├── components/        # Auth, task forms, projects, focus timer
 │   ├── hooks/             # Workspace loading and mutations
-│   ├── lib/               # API client and isolated demo adapter
+│   ├── lib/               # API client, demo adapter, timer helpers
 │   ├── App.jsx
 │   ├── main.jsx
 │   └── workspace.css
@@ -150,7 +167,7 @@ Read [the architecture notes](docs/ARCHITECTURE.md) for the reasoning behind com
 │   ├── routes/            # Auth and task endpoints
 │   ├── app.js
 │   └── index.js
-├── shared/                # Calendar validation used by client and server
+├── shared/                # Calendar validation and planning rules
 ├── tests/                 # Validation and MongoDB API integration tests
 ├── app.html               # React workspace entry point; noindex
 ├── index.html             # Crawlable public landing page
@@ -189,7 +206,7 @@ npm run build
 npm run format:check
 ```
 
-**Verified locally:** 17 API/input/password tests and Chromium browser flows covering demo CRUD, storage persistence, search, filters, safe text rendering, mobile overflow, dialog Escape, registration, database-backed task persistence, logout, and login.
+**Verified locally:** 25 API/input/planning/timer/password tests and Chromium browser flows covering demo CRUD, storage persistence, search, filters, safe text rendering, mobile overflow, dialog Escape, checklists, task duplication, daily views, overnight date changes, project progress, focus pause/refresh/completion, registration, database-backed task persistence, logout, and login.
 
 For browser checks:
 
@@ -235,8 +252,15 @@ When SITE_URL is configured, the build generates:
 
 No fabricated reviews, keyword stuffing, or unsupported ranking claims. A README improves repository understanding and discoverability; website ranking also depends on deployed content, indexing, usefulness, and real performance. See [the SEO launch checklist](docs/SEO.md).
 
+## Monetization
+
+No ads are installed in this release. The proposed approach keeps the workspace ad-free and considers a clearly labelled unit on useful public planning content after deployment and AdSense approval. SEO does not guarantee approval or income. Read [the monetization plan](docs/MONETIZATION.md).
+
 ## Next milestones
 
+- [ ] Recurring tasks with explicit scheduling rules
+- [ ] Task notes and useful resource links
+- [ ] Export and validated import for personal backups
 - [ ] Separate project entities and shared workspace memberships
 - [ ] Invitations and role-based authorization
 - [ ] Email verification, password reset, and account deletion
@@ -244,7 +268,9 @@ No fabricated reviews, keyword stuffing, or unsupported ranking claims. A README
 - [ ] Accessibility audit and measured production performance
 - [ ] Live deployment link and LinkedIn walkthrough
 
-Once the core is stable, the strongest optional additions are **activity history**, **real-time shared boards**, and **a polished dark theme**.
+The next compact additions to choose from are **recurring tasks**, **task notes and resource links**, and **export/import**. Each should solve a practical need before expanding into shared team workflows.
+
+For a short video, use [the 90-second demo outline](docs/DEMO.md).
 
 ## Author and license
 

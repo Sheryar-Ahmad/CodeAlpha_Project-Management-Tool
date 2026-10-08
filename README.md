@@ -134,4 +134,4 @@ Follow [the manual test checklist](docs/TESTING.md) before sharing or deploying.
 Software Engineering · COMSATS University Islamabad  
 CodeAlpha Full Stack Development Intern · October 2026
 
-Copyright (c) 2026 Sheheryar Ahmad. All rights reserved. See [NOTICE](NOTICE). No general reuse license is granted. Public source code can still be copied technically; attribution notices establish provenance rather than prevent copying.
+Copyright (c) 2026 Sheheryar Ahmad. Licensed under the [MIT License](LICENSE). See [NOTICE](NOTICE) for attribution. Copies or substantial portions must retain the copyright and permission notice.

@@ -290,6 +290,54 @@ try {
     'PASS: desktop/mobile demo, CRUD, persistence, filters, safe text rendering, dialog Escape.',
   );
 
+  // Use a separate browser profile so large-board checks do not change demo screenshots.
+  const paginationPage = await browser.newPage({
+    viewport: { width: 1440, height: 1000 },
+  });
+  paginationPage.on('pageerror', (error) => errors.push(error.message));
+  await paginationPage.goto(origin + '/app.html?demo=1');
+  await paginationPage
+    .getByRole('heading', { name: 'Build the homepage', exact: true })
+    .waitFor();
+  await paginationPage.evaluate(() => {
+    const tasks = Array.from({ length: 31 }, (_, index) => ({
+      id: crypto.randomUUID(),
+      title: 'Pagination task ' + index,
+      project: 'Pagination QA',
+      description: '',
+      priority: 'medium',
+      status: 'todo',
+      due: '',
+      checklist: [],
+    }));
+    localStorage.setItem('orbit.tasks.v1', JSON.stringify(tasks));
+  });
+  await paginationPage.reload();
+  await paginationPage
+    .getByRole('heading', { name: 'Pagination task 0', exact: true })
+    .waitFor();
+  await paginationPage.getByRole('button', { name: 'Next', exact: true }).click();
+  await paginationPage
+    .getByRole('heading', { name: 'Pagination task 30', exact: true })
+    .waitFor();
+  // The initial empty search used to schedule a page reset after 250ms.
+  await paginationPage.waitForTimeout(350);
+  assert.equal(await paginationPage.locator('.task-card').count(), 1);
+  assert.ok(
+    await paginationPage
+      .getByRole('heading', { name: 'Pagination task 30', exact: true })
+      .isVisible(),
+  );
+  await paginationPage.getByRole('button', { name: 'Previous', exact: true }).click();
+  await paginationPage
+    .getByRole('heading', { name: 'Pagination task 0', exact: true })
+    .waitFor();
+  assert.equal(await paginationPage.locator('.task-card').count(), 30);
+  await paginationPage.close();
+  console.log(
+    'PASS: next and previous pages remain stable after the initial search debounce.',
+  );
+
   if (!demoOnly) {
     await page
       .locator('.sidebar')

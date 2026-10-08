@@ -38,12 +38,15 @@ export default function useWorkspace(mode, onExpired) {
   }, []);
   const mutationLock = useRef(false);
   useEffect(() => {
+    const query = search.trim();
+    // An unchanged query must not reset a page selected during the debounce window.
+    if (query === debounced) return;
     const timeout = setTimeout(() => {
-      setDebounced(search.trim());
+      setDebounced(query);
       setPage(1);
     }, 250);
     return () => clearTimeout(timeout);
-  }, [search]);
+  }, [search, debounced]);
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true);

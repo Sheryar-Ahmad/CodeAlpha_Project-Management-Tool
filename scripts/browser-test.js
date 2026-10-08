@@ -73,10 +73,19 @@ try {
     .getByLabel('Description', { exact: true })
     .fill('<img src=x onerror=alert(1)> displayed as text');
   await page.getByLabel('Due date', { exact: true }).fill('2020-01-01');
+  await page.getByRole('button', { name: 'Add a step', exact: true }).click();
+  await page.getByLabel('Checklist step 1', { exact: true }).fill('Prepare notes');
+  await page.getByRole('button', { name: 'Add a step', exact: true }).click();
+  await page.getByLabel('Checklist step 2', { exact: true }).fill('Review the draft');
   console.log('Step: save task');
   await page.getByRole('button', { name: 'Save task', exact: true }).click();
   await page.getByRole('heading', { name: 'Browser test task', exact: true }).waitFor();
   assert.equal(await page.locator('.task-card img').count(), 0);
+  await page.getByText('0/2 steps complete', { exact: true }).click();
+  await page
+    .getByLabel('Complete Prepare notes for Browser test task', { exact: true })
+    .check();
+  await page.getByText('1/2 steps complete', { exact: true }).waitFor();
   console.log('Step: change status');
   await page
     .getByLabel('Status for Browser test task', { exact: true })
@@ -89,6 +98,7 @@ try {
     await page.getByLabel('Status for Browser test task', { exact: true }).inputValue(),
     'done',
   );
+  await page.getByText('1/2 steps complete', { exact: true }).waitFor();
   await page.getByRole('button', { name: 'Edit Browser test task', exact: true }).click();
   await page.getByLabel('Task title', { exact: true }).fill('Renamed browser task');
   await page.getByRole('button', { name: 'Save task', exact: true }).click();
@@ -105,6 +115,31 @@ try {
   await page.getByLabel('Filter by project', { exact: true }).selectOption('QA project');
   await page.waitForTimeout(150);
   assert.equal(await page.locator('.task-card').count(), 1);
+  await page
+    .getByRole('button', { name: 'Duplicate Renamed browser task', exact: true })
+    .click();
+  assert.equal(await page.getByLabel('Due date', { exact: true }).inputValue(), '');
+  assert.equal(await page.getByLabel('Status', { exact: true }).inputValue(), 'todo');
+  assert.equal(
+    await page.getByLabel('Mark step 1 complete', { exact: true }).isChecked(),
+    false,
+  );
+  assert.equal(
+    await page.getByLabel('Checklist step 1', { exact: true }).inputValue(),
+    'Prepare notes',
+  );
+  await page.getByLabel('Task title', { exact: true }).fill('Reusable copy');
+  await page.getByRole('button', { name: 'Save task', exact: true }).click();
+  await page.getByRole('heading', { name: 'Reusable copy', exact: true }).waitFor();
+  const copyCard = page
+    .locator('.task-card')
+    .filter({ has: page.getByRole('heading', { name: 'Reusable copy', exact: true }) });
+  await copyCard.getByText('0/2 steps complete', { exact: true }).waitFor();
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.getByRole('button', { name: 'Delete Reusable copy', exact: true }).click();
+  await page
+    .getByRole('heading', { name: 'Reusable copy', exact: true })
+    .waitFor({ state: 'detached' });
   page.once('dialog', (dialog) => dialog.accept());
   await page
     .getByRole('button', { name: 'Delete Renamed browser task', exact: true })
@@ -115,6 +150,116 @@ try {
   page.once('dialog', (dialog) => dialog.accept());
   await page.getByRole('button', { name: 'Reset demo', exact: true }).click();
   await page.getByRole('heading', { name: 'Build the homepage', exact: true }).waitFor();
+  await page
+    .locator('.sidebar')
+    .getByRole('button', { name: 'Today', exact: true })
+    .click();
+  await page.waitForFunction(() => document.querySelectorAll('.task-card').length === 2);
+  assert.ok(
+    await page
+      .getByRole('heading', { name: 'Build the homepage', exact: true })
+      .isVisible(),
+  );
+  await page
+    .locator('.sidebar')
+    .getByRole('button', { name: 'Upcoming', exact: true })
+    .click();
+  await page.waitForFunction(() => document.querySelectorAll('.task-card').length === 2);
+  assert.ok(
+    await page
+      .getByRole('heading', { name: 'Review accessibility', exact: true })
+      .isVisible(),
+  );
+  const realNow = Date.now();
+  await page.clock.setSystemTime(new Date(realNow + 8 * 86400000));
+  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+  await page.waitForFunction(() => document.querySelectorAll('.task-card').length === 0);
+  await page
+    .locator('.sidebar')
+    .getByRole('button', { name: 'Today', exact: true })
+    .click();
+  await page.waitForFunction(() => document.querySelectorAll('.task-card').length === 4);
+  await page.clock.setSystemTime(new Date(realNow));
+  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+  await page.waitForFunction(() => document.querySelectorAll('.task-card').length === 2);
+  console.log('PASS: planning views refresh after the calendar day changes.');
+  await page
+    .locator('.sidebar')
+    .getByRole('button', { name: 'Projects', exact: true })
+    .click();
+  await page.getByRole('heading', { name: 'Your projects', exact: true }).waitFor();
+  await page.waitForFunction(
+    () => document.querySelectorAll('.project-card').length === 2,
+  );
+  await page.screenshot({
+    path: 'docs/screenshots/projects-desktop.png',
+    fullPage: true,
+  });
+  await page
+    .getByRole('button', { name: 'Open tasks for Website launch', exact: true })
+    .click();
+  await page.waitForFunction(() => document.querySelectorAll('.task-card').length === 3);
+  assert.equal(
+    await page.getByLabel('Filter by project', { exact: true }).inputValue(),
+    'Website launch',
+  );
+  await page
+    .locator('.sidebar')
+    .getByRole('button', { name: 'Task board', exact: true })
+    .click();
+  await page.waitForFunction(() => document.querySelectorAll('.task-card').length === 6);
+  console.log(
+    'PASS: planning navigation, project progress, checklists, and safe task duplication.',
+  );
+  await page
+    .locator('.sidebar')
+    .getByRole('button', { name: 'Focus timer', exact: true })
+    .click();
+  await page
+    .getByRole('heading', { name: 'Make space to focus.', exact: true })
+    .waitFor();
+  await page.getByLabel('Session length', { exact: true }).selectOption('1');
+  await page.getByRole('button', { name: 'Start session', exact: true }).click();
+  await page.getByRole('button', { name: 'Pause', exact: true }).waitFor();
+  await page.waitForTimeout(1100);
+  await page.getByRole('button', { name: 'Pause', exact: true }).click();
+  await page.getByRole('button', { name: 'Resume', exact: true }).waitFor();
+  await page.reload();
+  await page
+    .locator('.sidebar')
+    .getByRole('button', { name: 'Focus timer', exact: true })
+    .click();
+  await page.getByRole('button', { name: 'Resume', exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Reset', exact: true }).click();
+  await page.getByRole('timer').filter({ hasText: '01:00' }).waitFor();
+  await page.getByRole('button', { name: 'Start session', exact: true }).click();
+  await page.evaluate(() => {
+    const key = 'orbit.focus.v1.demo';
+    const timer = JSON.parse(localStorage.getItem(key));
+    timer.deadline = Date.now() - 1000;
+    localStorage.setItem(key, JSON.stringify(timer));
+  });
+  await page
+    .locator('.sidebar')
+    .getByRole('button', { name: 'Task board', exact: true })
+    .click();
+  await page
+    .locator('.sidebar')
+    .getByRole('button', { name: 'Focus timer', exact: true })
+    .click();
+  await page
+    .getByText('Focus session complete. Take a well-earned break.', { exact: true })
+    .waitFor();
+  await page.getByRole('button', { name: 'Reset', exact: true }).click();
+  await page.getByLabel('Session length', { exact: true }).selectOption('25');
+  await page.screenshot({ path: 'docs/screenshots/focus-desktop.png', fullPage: true });
+  await page
+    .locator('.sidebar')
+    .getByRole('button', { name: 'Task board', exact: true })
+    .click();
+  await page.waitForFunction(() => document.querySelectorAll('.task-card').length === 6);
+  console.log('PASS: focus timer pause, refresh, reset, and deadline completion.');
+
   await page.setViewportSize({ width: 375, height: 812 });
   await page.screenshot({
     path: 'docs/screenshots/workspace-mobile.png',

@@ -164,12 +164,11 @@ try {
     .locator('.sidebar')
     .getByRole('button', { name: 'Upcoming', exact: true })
     .click();
+  // Both calendar views contain two samples; wait for the new view's content first.
+  await page
+    .getByRole('heading', { name: 'Review accessibility', exact: true })
+    .waitFor();
   await page.waitForFunction(() => document.querySelectorAll('.task-card').length === 2);
-  assert.ok(
-    await page
-      .getByRole('heading', { name: 'Review accessibility', exact: true })
-      .isVisible(),
-  );
   const realNow = Date.now();
   await page.clock.setSystemTime(new Date(realNow + 8 * 86400000));
   await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));

@@ -328,6 +328,14 @@ try {
   }
   assert.deepEqual(errors, []);
   console.log('PASS: no uncaught browser errors.');
+} catch (failure) {
+  // Publish actionable CI diagnostics without needing authenticated log downloads.
+  const message = failure.message
+    .replaceAll('%', '%25')
+    .replaceAll('\r', '%0D')
+    .replaceAll('\n', '%0A');
+  console.error('::error title=Browser regression::' + message);
+  throw failure;
 } finally {
   await browser?.close();
   await vite?.close();

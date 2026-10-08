@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   ArrowUpRight,
+  CalendarDays,
+  CalendarRange,
+  FolderOpen,
   CheckCheck,
   CircleDot,
   Clock3,
@@ -15,8 +18,11 @@ import {
 import AuthScreen from './components/AuthScreen.jsx';
 import TaskCard, { statuses } from './components/TaskCard.jsx';
 import TaskDialog from './components/TaskDialog.jsx';
+import ProjectOverview from './components/ProjectOverview.jsx';
+import FocusTimer from './components/FocusTimer.jsx';
 import useWorkspace from './hooks/useWorkspace.js';
-import { request } from './lib/api.js';
+import { request, today } from './lib/api.js';
+import { addDays } from '../shared/planning.js';
 
 function Workspace({ mode, user, onExit, onExpired }) {
   const workspace = useWorkspace(mode, onExpired);
@@ -80,9 +86,24 @@ function Workspace({ mode, user, onExit, onExpired }) {
           </div>
         </div>
         <nav aria-label="Workspace">
-          <a className="nav-active" href="/app.html" aria-current="page">
-            <LayoutDashboard size={16} /> Task board
-          </a>
+          {[
+            ['all', 'Task board', LayoutDashboard],
+            ['today', 'Today', CalendarDays],
+            ['upcoming', 'Upcoming', CalendarRange],
+            ['projects', 'Projects', FolderOpen],
+            ['focus', 'Focus timer', Clock3],
+          ].map(([value, label, Icon]) => (
+            <button
+              type="button"
+              key={value}
+              className={workspace.view === value ? 'nav-active' : ''}
+              aria-pressed={workspace.view === value}
+              disabled={workspace.busy}
+              onClick={() => workspace.setView(value)}
+            >
+              <Icon size={16} /> {label}
+            </button>
+          ))}
           <a href="/#features">
             <ArrowUpRight size={16} /> About Orbit
           </a>
@@ -133,14 +154,43 @@ function Workspace({ mode, user, onExit, onExpired }) {
           <div>
             <p className="eyebrow">YOUR WORK, IN FOCUS</p>
             <h1>
-              Let’s move things forward<span className="brand-dot">.</span>
+              {workspace.view === 'today'
+                ? 'Make today count'
+                : workspace.view === 'upcoming'
+                  ? 'Stay one step ahead'
+                  : workspace.view === 'projects'
+                    ? 'Every project, in perspective'
+                    : 'Let’s move things forward'}
+              <span className="brand-dot">.</span>
             </h1>
-            <p className="muted">A little clarity for your next big thing.</p>
+            <p className="muted">
+              {workspace.view === 'today'
+                ? 'Unfinished tasks due today or overdue. Start with what matters.'
+                : workspace.view === 'upcoming'
+                  ? 'Unfinished deadlines in the next seven days, starting tomorrow.'
+                  : workspace.view === 'projects'
+                    ? 'See progress and unfinished deadlines across your project groups.'
+                    : 'A little clarity for your next big thing.'}
+            </p>
           </div>
           <button
             className="button"
             disabled={workspace.busy}
-            onClick={() => setDialog({ task: null })}
+            onClick={() =>
+              setDialog({
+                task:
+                  workspace.view === 'today'
+                    ? { due: today(), project: workspace.project || undefined }
+                    : workspace.view === 'upcoming'
+                      ? {
+                          due: addDays(today(), 1),
+                          project: workspace.project || undefined,
+                        }
+                      : workspace.project
+                        ? { project: workspace.project }
+                        : null,
+              })
+            }
           >
             <Plus size={17} /> New task
           </button>
@@ -176,137 +226,172 @@ function Workspace({ mode, user, onExit, onExpired }) {
             </button>
           </div>
         )}
-        <section aria-labelledby="board-heading" aria-busy={workspace.loading}>
-          <div className="board-toolbar">
-            <div>
-              <h2 id="board-heading">Your task board</h2>
-              <span className="small muted">
-                Page {workspace.page} · {workspace.tasks.length} tasks shown
-              </span>
+        {workspace.view === 'focus' ? (
+          <FocusTimer storageScope={mode === 'demo' ? 'demo' : user.id} />
+        ) : workspace.view === 'projects' ? (
+          <ProjectOverview
+            projects={workspace.overview.projectSummaries ?? []}
+            loading={workspace.loading}
+            onOpen={workspace.openProject}
+          />
+        ) : (
+          <section aria-labelledby="board-heading" aria-busy={workspace.loading}>
+            <div className="board-toolbar">
+              <div>
+                <h2 id="board-heading">
+                  {workspace.view === 'today'
+                    ? 'Today’s priorities'
+                    : workspace.view === 'upcoming'
+                      ? 'Upcoming deadlines'
+                      : 'Your task board'}
+                </h2>
+                <span className="small muted">
+                  Page {workspace.page} · {workspace.tasks.length} tasks shown
+                </span>
+              </div>
+              <div className="filters">
+                <label className="search-field">
+                  <Search size={15} aria-hidden="true" />
+                  <span className="sr-only">Search tasks</span>
+                  <input
+                    type="search"
+                    maxLength={120}
+                    placeholder="Search your tasks…"
+                    value={workspace.search}
+                    onChange={(event) => workspace.setSearch(event.target.value)}
+                  />
+                </label>
+                <label>
+                  <span className="sr-only">Filter by project</span>
+                  <select
+                    aria-label="Filter by project"
+                    value={workspace.project}
+                    onChange={(event) => workspace.setProject(event.target.value)}
+                  >
+                    <option value="">All projects</option>
+                    {[
+                      ...new Set([
+                        ...workspace.overview.projects,
+                        ...(workspace.project ? [workspace.project] : []),
+                      ]),
+                    ].map((project) => (
+                      <option value={project} key={project}>
+                        {project}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
             </div>
-            <div className="filters">
-              <label className="search-field">
-                <Search size={15} aria-hidden="true" />
-                <span className="sr-only">Search tasks</span>
-                <input
-                  type="search"
-                  maxLength={120}
-                  placeholder="Search your tasks…"
-                  value={workspace.search}
-                  onChange={(event) => workspace.setSearch(event.target.value)}
-                />
-              </label>
-              <label>
-                <span className="sr-only">Filter by project</span>
-                <select
-                  aria-label="Filter by project"
-                  value={workspace.project}
-                  onChange={(event) => workspace.setProject(event.target.value)}
-                >
-                  <option value="">All projects</option>
-                  {[
-                    ...new Set([
-                      ...workspace.overview.projects,
-                      ...(workspace.project ? [workspace.project] : []),
-                    ]),
-                  ].map((project) => (
-                    <option value={project} key={project}>
-                      {project}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-          </div>
-          <div className="board">
-            {Object.entries(statuses).map(([status, label]) => {
-              const tasks = workspace.tasks.filter((task) => task.status === status);
-              return (
-                <section
-                  className="column"
-                  key={status}
-                  aria-labelledby={'column-' + status}
-                >
-                  <h3 className="column-heading" id={'column-' + status}>
-                    <span
-                      className={
-                        'dot ' +
-                        (status === 'progress'
-                          ? 'progress-dot'
-                          : status === 'done'
-                            ? 'done-dot'
-                            : '')
-                      }
-                    />
-                    {label}
-                    <span className="count">{tasks.length}</span>
-                  </h3>
-                  {workspace.loading ? (
-                    <div className="skeleton-stack" aria-label="Loading tasks">
-                      <div className="skeleton-card" />
-                      <div className="skeleton-card" />
-                    </div>
-                  ) : (
-                    tasks.map((task) => (
-                      <TaskCard
-                        key={task.id}
-                        task={task}
-                        busy={workspace.busy}
-                        onEdit={(task) => setDialog({ task })}
-                        onStatus={(task, status) =>
-                          act(() => workspace.updateStatus(task, status))
+            <div className="board">
+              {Object.entries(statuses).map(([status, label]) => {
+                const tasks = workspace.tasks.filter((task) => task.status === status);
+                return (
+                  <section
+                    className="column"
+                    key={status}
+                    aria-labelledby={'column-' + status}
+                  >
+                    <h3 className="column-heading" id={'column-' + status}>
+                      <span
+                        className={
+                          'dot ' +
+                          (status === 'progress'
+                            ? 'progress-dot'
+                            : status === 'done'
+                              ? 'done-dot'
+                              : '')
                         }
-                        onDelete={(task) => {
-                          if (
-                            window.confirm(
-                              'Delete “' + task.title + '”? This cannot be undone.',
-                            )
-                          )
-                            act(() => workspace.remove(task));
-                        }}
                       />
-                    ))
-                  )}
-                  {!workspace.loading && !tasks.length && (
-                    <div className="board-empty">
-                      <span aria-hidden="true">＋</span>
-                      <p>
-                        {workspace.search || workspace.project
-                          ? 'No matching tasks on this page.'
-                          : 'Room for your next step.'}
-                      </p>
-                      {status === 'todo' && (
-                        <button
-                          className="text-button"
-                          onClick={() => setDialog({ task: null })}
-                        >
-                          Create a task
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </section>
-              );
-            })}
-          </div>
-          <nav className="pagination" aria-label="Task pages">
-            <button
-              className="secondary"
-              disabled={workspace.page === 1 || workspace.loading || workspace.busy}
-              onClick={() => workspace.setPage(workspace.page - 1)}
-            >
-              Previous
-            </button>
-            <span>Page {workspace.page}</span>
-            <button
-              className="secondary"
-              disabled={!workspace.hasMore || workspace.loading || workspace.busy}
-              onClick={() => workspace.setPage(workspace.page + 1)}
-            >
-              Next
-            </button>
-          </nav>
-        </section>
+                      {label}
+                      <span className="count">{tasks.length}</span>
+                    </h3>
+                    {workspace.loading ? (
+                      <div className="skeleton-stack" aria-label="Loading tasks">
+                        <div className="skeleton-card" />
+                        <div className="skeleton-card" />
+                      </div>
+                    ) : (
+                      tasks.map((task) => (
+                        <TaskCard
+                          key={task.id}
+                          task={task}
+                          busy={workspace.busy}
+                          onEdit={(task) => setDialog({ task })}
+                          onStatus={(task, status) =>
+                            act(() => workspace.updateStatus(task, status))
+                          }
+                          onChecklist={(task, checklist) =>
+                            act(() => workspace.updateChecklist(task, checklist))
+                          }
+                          onDuplicate={(task) =>
+                            setDialog({
+                              task: {
+                                ...task,
+                                id: undefined,
+                                title: task.title.slice(0, 113) + ' (copy)',
+                                status: 'todo',
+                                due: '',
+                                checklist: (task.checklist ?? []).map((step) => ({
+                                  ...step,
+                                  id: crypto.randomUUID(),
+                                  done: false,
+                                })),
+                              },
+                            })
+                          }
+                          onDelete={(task) => {
+                            if (
+                              window.confirm(
+                                'Delete “' + task.title + '”? This cannot be undone.',
+                              )
+                            )
+                              act(() => workspace.remove(task));
+                          }}
+                        />
+                      ))
+                    )}
+                    {!workspace.loading && !tasks.length && (
+                      <div className="board-empty">
+                        <span aria-hidden="true">＋</span>
+                        <p>
+                          {workspace.search || workspace.project
+                            ? 'No matching tasks on this page.'
+                            : 'Room for your next step.'}
+                        </p>
+                        {status === 'todo' && (
+                          <button
+                            className="text-button"
+                            onClick={() => setDialog({ task: null })}
+                          >
+                            Create a task
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </section>
+                );
+              })}
+            </div>
+            <nav className="pagination" aria-label="Task pages">
+              <button
+                className="secondary"
+                disabled={workspace.page === 1 || workspace.loading || workspace.busy}
+                onClick={() => workspace.setPage(workspace.page - 1)}
+              >
+                Previous
+              </button>
+              <span>Page {workspace.page}</span>
+              <button
+                className="secondary"
+                disabled={!workspace.hasMore || workspace.loading || workspace.busy}
+                onClick={() => workspace.setPage(workspace.page + 1)}
+              >
+                Next
+              </button>
+            </nav>
+          </section>
+        )}
         <footer className="dashboard-footer">
           <span>
             {mode === 'demo'

@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { X } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 import { statuses } from './TaskCard.jsx';
 
 export default function TaskDialog({ task, onClose, onSave }) {
   const ref = useRef(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [steps, setSteps] = useState(task?.checklist ?? []);
   useEffect(() => {
     const trigger = document.activeElement;
     ref.current.showModal();
@@ -19,6 +20,11 @@ export default function TaskDialog({ task, onClose, onSave }) {
     data.description = data.description.trim();
     if (!data.title || !data.project) {
       setError('Enter a task title and project.');
+      return;
+    }
+    data.checklist = steps.map((step) => ({ ...step, text: step.text.trim() }));
+    if (data.checklist.some((step) => !step.text)) {
+      setError('Fill in every checklist step, or remove the empty ones.');
       return;
     }
     setBusy(true);
@@ -43,7 +49,7 @@ export default function TaskDialog({ task, onClose, onSave }) {
     >
       <form onSubmit={submit}>
         <div className="dialog-heading">
-          <h2 id="dialog-title">{task ? 'Edit task' : 'New task'}</h2>
+          <h2 id="dialog-title">{task?.id ? 'Edit task' : 'New task'}</h2>
           <button
             className="icon-button"
             type="button"
@@ -129,6 +135,61 @@ export default function TaskDialog({ task, onClose, onSave }) {
             ))}
           </select>
         </label>
+        <fieldset className="checklist-editor" disabled={busy}>
+          <legend>
+            Checklist <span className="muted small">Optional · up to 20 steps</span>
+          </legend>
+          {steps.map((step, index) => (
+            <div className="step-editor" key={step.id}>
+              <input
+                type="checkbox"
+                aria-label={'Mark step ' + (index + 1) + ' complete'}
+                checked={step.done}
+                onChange={(event) =>
+                  setSteps(
+                    steps.map((item) =>
+                      item.id === step.id
+                        ? { ...item, done: event.target.checked }
+                        : item,
+                    ),
+                  )
+                }
+              />
+              <input
+                aria-label={'Checklist step ' + (index + 1)}
+                maxLength={160}
+                required
+                value={step.text}
+                placeholder="A small, clear next step"
+                onChange={(event) =>
+                  setSteps(
+                    steps.map((item) =>
+                      item.id === step.id ? { ...item, text: event.target.value } : item,
+                    ),
+                  )
+                }
+              />
+              <button
+                type="button"
+                className="card-icon"
+                aria-label={'Remove checklist step ' + (index + 1)}
+                onClick={() => setSteps(steps.filter((item) => item.id !== step.id))}
+              >
+                <X size={14} />
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            className="text-button add-step"
+            disabled={steps.length >= 20}
+            onClick={() =>
+              setSteps([...steps, { id: crypto.randomUUID(), text: '', done: false }])
+            }
+          >
+            <Plus size={14} /> Add a step
+          </button>
+        </fieldset>
         {error && (
           <p className="form-error" role="alert">
             {error}

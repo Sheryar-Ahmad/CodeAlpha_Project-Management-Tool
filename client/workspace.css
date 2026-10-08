@@ -288,3 +288,258 @@ textarea:disabled {
   background: #efedff;
   border-color: var(--purple);
 }
+
+.sidebar nav button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  padding: 10px 12px;
+  color: var(--muted);
+  font-size: 13px;
+  border-radius: 8px;
+}
+.sidebar nav button.nav-active {
+  background: #efedff;
+  color: var(--purple);
+  font-weight: 600;
+}
+.sidebar nav button:hover:not(:disabled) {
+  background: #f4f2fc;
+}
+.checklist-editor {
+  margin: 20px 0 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.checklist-editor legend {
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+.checklist-editor legend span {
+  margin-left: 6px;
+  font-weight: 400;
+}
+.step-editor {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.step-editor input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  margin: 0;
+  accent-color: var(--purple);
+}
+.step-editor input:not([type='checkbox']) {
+  min-width: 0;
+  margin: 0;
+  flex: 1;
+}
+.step-editor button {
+  flex: 0 0 30px;
+}
+.add-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.task-checklist {
+  font-size: 11px;
+  margin: 12px 0 16px;
+  color: var(--muted);
+}
+.task-checklist summary {
+  cursor: pointer;
+  color: var(--purple);
+}
+.task-checklist ul {
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.task-checklist label {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin: 8px 0;
+}
+.task-checklist input {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  margin: 3px 0 0;
+  accent-color: var(--purple);
+}
+.task-checklist span {
+  overflow-wrap: anywhere;
+}
+.step-done {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+.card-icon {
+  flex-shrink: 0;
+}
+.project-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+.project-card {
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 24px;
+}
+.project-card h3 {
+  overflow-wrap: anywhere;
+  margin-bottom: 8px;
+}
+.project-card .feature-icon {
+  display: grid;
+  place-items: center;
+  height: 44px;
+}
+.project-progress {
+  height: 7px;
+  background: #eceff5;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.project-progress span {
+  display: block;
+  height: 100%;
+  background: var(--teal);
+}
+.project-metrics {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.project-deadline {
+  font-size: 12px;
+  margin: 18px 0 8px;
+}
+.project-warning {
+  font-size: 11px;
+  color: #a33426;
+}
+.project-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+@media (max-width: 1100px) {
+  .project-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .project-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.focus-panel {
+  max-width: 640px;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  margin: 0 auto;
+  padding: 32px;
+}
+.focus-intro {
+  text-align: center;
+}
+.focus-intro .feature-icon {
+  display: grid;
+  place-items: center;
+  height: 44px;
+  margin: 0 auto 18px;
+}
+.focus-intro h2 {
+  font-size: 27px;
+}
+.focus-intro p {
+  font-size: 13px;
+}
+.focus-goal {
+  display: block;
+  margin: 24px 0;
+  font-size: 12px;
+  font-weight: 600;
+}
+.focus-goal input {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+}
+.focus-modes {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+.focus-modes button {
+  border: 1px solid var(--line);
+  background: white;
+  color: var(--muted);
+  border-radius: 8px;
+  padding: 7px 20px;
+  font-size: 12px;
+}
+.focus-modes .selected {
+  color: var(--purple);
+  border-color: #bcb1f3;
+  background: #efedff;
+}
+.focus-clock {
+  text-align: center;
+  font-size: clamp(56px, 8vw, 86px);
+  font-weight: 650;
+  letter-spacing: -4px;
+  color: var(--ink);
+  margin: 22px 0 15px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.focus-duration {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.focus-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin: 24px 0;
+}
+.focus-message {
+  text-align: center;
+  color: var(--teal);
+  font-size: 13px;
+  min-height: 24px;
+  overflow-wrap: anywhere;
+}
+.focus-panel > .small {
+  text-align: center;
+  margin-bottom: 0;
+}
+@media (max-width: 600px) {
+  .focus-panel {
+    padding: 24px 18px;
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "name": "orbit-project-management",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "scripts": {
+    "dev": "concurrently -k \"npm:dev:server\" \"npm:dev:client\"",
+    "dev:server": "node --watch server/index.js",
+    "dev:client": "vite --host 127.0.0.1",
+    "build": "vite build && node scripts/seo.js",
+    "preview": "vite preview --host 127.0.0.1",
+    "start": "node server/index.js",
+    "test": "node scripts/test-runner.js",
+    "format": "prettier --write client server shared api tests scripts vite.config.js package.json app.html index.html privacy.html css docs README.md",
+    "format:check": "prettier --check client server shared api tests scripts vite.config.js package.json app.html index.html privacy.html css docs README.md",
+    "test:unit": "node --test tests/validation.test.js",
+    "test:browser": "node scripts/test-runner.js browser"
+  },
+  "dependencies": {
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^17.0.0",
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.0.0",
+    "helmet": "^8.1.0",
+    "lucide-react": "^0.468.0",
+    "mongoose": "^9.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^5.0.0",
+    "concurrently": "^9.0.0",
+    "mongodb-memory-server": "^10.0.0",
+    "playwright": "^1.55.0",
+    "prettier": "^3.6.0",
+    "supertest": "^7.0.0",
+    "vite": "^7.0.0"
+  }
+}

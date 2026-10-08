@@ -1,35 +1,45 @@
 # SEO launch checklist
-The supplied SEO notes are a project checklist, not a reason to add irrelevant markup or fictitious trust claims.
 
-## Implemented in the prototype
-- Public pages have static, crawlable content and actual anchor links.
-- Landing and privacy pages have distinct titles and descriptions.
-- Semantic landmarks and responsive content support mobile use.
-- Workspace uses noindex,follow; it remains crawlable so the directive can be read.
-- Search and filters do not create parameter URL combinations.
-- No fabricated ratings, testimonials, business contact information, or schema claims.
-- Lightweight CSS, JavaScript, and a vector favicon; no external font dependency.
+Orbit’s public landing and privacy pages are static HTML. The React workspace is marked noindex; authentication protects account data.
 
-## Required once the production domain is known
-- Add self-referencing absolute canonicals for the landing and privacy pages.
-- Add sitemap.xml with only those canonical public URLs; omit app.html.
-- Add the absolute sitemap location to robots.txt.
-- Use lastmod only when actual meaningful edits can be established, or omit it.
-- Add og:url, site-name WebSite structured data, and a real social preview image with dimensions.
-- Confirm the same HTTPS hostname across links, sitemap, canonicals, and redirects.
-- Protect staging from indexing separately from the production site.
-- Verify 200 for public pages and 404 for nonexistent paths; avoid catch-all rewrites.
-- Inspect titles, descriptions, rendered HTML, and indexing directives.
-- Submit the sitemap to Google Search Console and inspect Google's selected canonical.
+## Implemented
+
+- Distinct public titles and descriptions, semantic landmarks, and crawlable anchor links.
+- Responsive layouts with the same essential public information on mobile.
+- Filters and search do not generate public URL combinations.
+- No invented testimonials, ratings, contact information, or keyword stuffing.
+- A lightweight vector icon with no external font dependency.
+- The build generates canonical URLs, Open Graph URLs, WebSite structured data, sitemap.xml, and a robots sitemap reference when SITE_URL is configured.
+- Only the landing page and privacy page enter the sitemap. No fake lastmod dates.
+
+## Production configuration
+
+Set SITE_URL to the clean HTTPS production origin, without a subpath, query, or fragment. Example: https://your-project.vercel.app. The same origin should match APP_ORIGIN, internal navigation, and hosting redirects.
+
+Without SITE_URL, the build intentionally omits domain-dependent metadata and the sitemap. Never submit a sitemap generated with an example domain.
+
+## Checks after deployment
+
+- Public canonical pages return 200; nonexistent paths return 404.
+- The selected HTTPS hostname is consistent across redirects, canonicals, sitemap, and social metadata.
+- Verify robots directives in source and rendered content.
+- Confirm private task and account responses are not cached or publicly exposed.
+- Inspect structured data and the actual generated sitemap.
+- Add a real social preview image and complete Open Graph/Twitter image metadata.
+- Verify preview deployments stay outside the public index.
+- Submit the sitemap and inspect Google’s selected canonical in Search Console.
 - Measure mobile Lighthouse and real-user Core Web Vitals once traffic exists.
-- Add screenshots with truthful captions, useful alt text, explicit dimensions, and compression.
-- Keep the privacy notice consistent with actual authentication, hosting, and data collection.
-- Add a real contact method once supplied by the author.
+- Keep privacy statements accurate as data collection and account features change.
+- Add a real support contact once the author provides it.
 
-## Requirements that depend on later scope
-Breadcrumbs apply when public page hierarchy grows. Hreflang applies only to actual translated pages. Pagination and duplicate-URL controls apply to future public collections. Server-log analysis and template audits become useful as the deployed application grows. Private workspace content should remain outside the public index and must be protected by authorization, not robots directives.
+## Scope-dependent requirements
+
+Breadcrumbs apply if the public hierarchy grows. Hreflang applies only to real translated pages. Large public collections may need pagination, duplicate-URL controls, and template audits. Server-log analysis requires access to production crawl logs.
+
+The supplied SEO checklist is tracked here; inapplicable features should not be manufactured simply to add markup.
 
 ## Sources
-- https://developers.google.com/search/docs/fundamentals/seo-starter-guide
-- https://developers.google.com/search/docs/crawling-indexing/consolidate-duplicate-urls
-- https://developers.google.com/search/docs/crawling-indexing/sitemaps/build-sitemap
+
+- [Google SEO starter guide](https://developers.google.com/search/docs/fundamentals/seo-starter-guide)
+- [Canonical URL guidance](https://developers.google.com/search/docs/crawling-indexing/consolidate-duplicate-urls)
+- [Sitemap guidance](https://developers.google.com/search/docs/crawling-indexing/sitemaps/build-sitemap)

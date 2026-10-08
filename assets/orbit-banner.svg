@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="300" viewBox="0 0 1200 300" role="img" aria-labelledby="title desc">
+<title id="title">Orbit — Big ideas. Clear next steps.</title><desc id="desc">A navy banner with an indigo Orbit symbol and a small three-column task board.</desc>
+<rect width="1200" height="300" rx="24" fill="#202b49"/>
+<circle cx="1090" cy="80" r="170" fill="none" stroke="#35415f" stroke-width="1"/>
+<circle cx="1090" cy="80" r="110" fill="none" stroke="#35415f" stroke-width="1"/>
+<rect x="55" y="60" width="58" height="58" rx="15" fill="#7564ec"/>
+<path d="m84 72 17 17-17 17-17-17Z" stroke="white" stroke-width="3" fill="none"/>
+<circle cx="84" cy="89" r="4" fill="white"/>
+<text x="130" y="107" fill="white" font-family="Arial, sans-serif" font-size="52" font-weight="700">orbit.</text>
+<text x="55" y="185" fill="white" font-family="Arial, sans-serif" font-size="35" font-weight="700">Big ideas. Clear next steps.</text>
+<text x="55" y="228" fill="#c1c8db" font-family="Arial, sans-serif" font-size="17">A focused MERN workspace for meaningful progress.</text>
+<rect x="760" y="70" width="360" height="170" rx="16" fill="#2d3956"/>
+<g font-family="Arial, sans-serif" font-size="12" fill="#c1c8db"><text x="780" y="99">TO DO</text><text x="895" y="99">IN PROGRESS</text><text x="1010" y="99">DONE</text></g>
+<g fill="#46516d"><rect x="778" y="114" width="102" height="46" rx="7"/><rect x="778" y="169" width="102" height="46" rx="7"/></g>
+<rect x="892" y="114" width="102" height="70" rx="7" fill="#7564ec"/>
+<rect x="1006" y="114" width="96" height="46" rx="7" fill="#278f7f"/>
+<path d="m1040 136 6 6 12-12" fill="none" stroke="white" stroke-width="3"/>
+<g stroke="#c1c8db" stroke-width="3" stroke-linecap="round"><path d="M790 130h45m-45 13h65m-65 43h45m-45 13h65"/><path d="M905 130h45m-45 14h65m-65 14h35"/></g>
+</svg>

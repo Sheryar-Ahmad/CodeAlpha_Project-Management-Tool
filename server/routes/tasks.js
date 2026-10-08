@@ -9,11 +9,15 @@ import {
   taskUpdateSchema,
   querySchema,
   validDate,
+  lifecycleSchema,
 } from '../lib/validation.js';
 export const taskRouter = Router();
 taskRouter.use(requireAuth);
+// Missing lifecycle fields are older active records; no destructive migration is needed.
+const activeRecords = { lifecycle: { $in: ['active', null] } };
 const serialize = (task) => ({
   id: String(task._id),
+  lifecycle: task.lifecycle ?? 'active',
   title: task.title,
   project: task.project,
   description: task.description,
@@ -35,64 +39,81 @@ taskRouter.get('/overview', async (req, res) => {
   if (!date || !validDate(date))
     return res.status(400).json({ message: 'A valid local date is required.' });
   const owner = req.user._id;
-  const [total, active, completed, overdue, blocked, projects] = await Promise.all([
-    Task.countDocuments({ owner }),
-    Task.countDocuments({ owner, status: 'progress' }),
-    Task.countDocuments({ owner, status: 'done' }),
-    Task.countDocuments({ owner, status: { $ne: 'done' }, due: { $ne: '', $lt: date } }),
-    Task.countDocuments({ owner, status: 'blocked' }),
-    Task.aggregate([
-      { $match: { owner } },
-      {
-        $group: {
-          _id: '$project',
-          total: { $sum: 1 },
-          completed: { $sum: { $cond: [{ $eq: ['$status', 'done'] }, 1, 0] } },
-          active: { $sum: { $cond: [{ $eq: ['$status', 'progress'] }, 1, 0] } },
-          blocked: { $sum: { $cond: [{ $eq: ['$status', 'blocked'] }, 1, 0] } },
-          overdue: {
-            $sum: {
-              $cond: [
-                {
-                  $and: [
-                    { $ne: ['$status', 'done'] },
-                    { $ne: ['$due', ''] },
-                    { $lt: ['$due', date] },
-                  ],
-                },
-                1,
-                0,
-              ],
+  const [total, active, completed, overdue, blocked, archived, trashed, projects] =
+    await Promise.all([
+      Task.countDocuments({ owner, ...activeRecords }),
+      Task.countDocuments({ owner, ...activeRecords, status: 'progress' }),
+      Task.countDocuments({ owner, ...activeRecords, status: 'done' }),
+      Task.countDocuments({
+        owner,
+        ...activeRecords,
+        status: { $ne: 'done' },
+        due: { $ne: '', $lt: date },
+      }),
+      Task.countDocuments({ owner, ...activeRecords, status: 'blocked' }),
+      Task.countDocuments({ owner, lifecycle: 'archived' }),
+      Task.countDocuments({ owner, lifecycle: 'trashed' }),
+      Task.aggregate([
+        { $match: { owner, ...activeRecords } },
+        {
+          $group: {
+            _id: '$project',
+            total: { $sum: 1 },
+            completed: { $sum: { $cond: [{ $eq: ['$status', 'done'] }, 1, 0] } },
+            active: { $sum: { $cond: [{ $eq: ['$status', 'progress'] }, 1, 0] } },
+            blocked: { $sum: { $cond: [{ $eq: ['$status', 'blocked'] }, 1, 0] } },
+            overdue: {
+              $sum: {
+                $cond: [
+                  {
+                    $and: [
+                      { $ne: ['$status', 'done'] },
+                      { $ne: ['$due', ''] },
+                      { $lt: ['$due', date] },
+                    ],
+                  },
+                  1,
+                  0,
+                ],
+              },
             },
-          },
-          nextDue: {
-            $min: {
-              $cond: [
-                { $and: [{ $ne: ['$status', 'done'] }, { $ne: ['$due', ''] }] },
-                '$due',
-                null,
-              ],
+            nextDue: {
+              $min: {
+                $cond: [
+                  { $and: [{ $ne: ['$status', 'done'] }, { $ne: ['$due', ''] }] },
+                  '$due',
+                  null,
+                ],
+              },
             },
           },
         },
-      },
-      { $sort: { _id: 1 } },
-      { $limit: 1000 },
-    ]),
-  ]);
+        { $sort: { _id: 1 } },
+        { $limit: 1000 },
+      ]),
+    ]);
   res.json({
     total,
     active,
     completed,
     overdue,
     blocked,
+    archived,
+    trashed,
     projects: projects.map((project) => project._id),
     projectSummaries: projects.map(({ _id, ...summary }) => ({ name: _id, ...summary })),
   });
 });
 taskRouter.get('/', async (req, res) => {
   const { page, limit, search, project, view, date } = parse(querySchema, req.query);
-  const filter = { owner: req.user._id };
+  const filter = {
+    owner: req.user._id,
+    ...(view === 'archived'
+      ? { lifecycle: 'archived' }
+      : view === 'trash'
+        ? { lifecycle: 'trashed' }
+        : activeRecords),
+  };
   if (project) filter.project = project;
   if (view === 'blocked') filter.status = 'blocked';
   else if (['today', 'upcoming'].includes(view)) {
@@ -143,15 +164,50 @@ taskRouter.patch('/:id', async (req, res) => {
   if (data.status && data.status !== 'blocked') data.blockerReason = '';
   // Include ownership in the query; never trust a client-supplied owner.
   const task = await Task.findOneAndUpdate(
-    { _id: req.params.id, owner: req.user._id },
+    { _id: req.params.id, owner: req.user._id, ...activeRecords },
     { $set: data },
     { returnDocument: 'after', runValidators: true },
   ).lean();
   if (!task) return res.status(404).json({ message: 'Task not found.' });
   res.json({ task: serialize(task) });
 });
+// State transitions include the expected old state, keeping racing requests safe.
+taskRouter.patch('/:id/lifecycle', async (req, res) => {
+  const { action } = parse(lifecycleSchema, req.body);
+  const from =
+    action === 'archive'
+      ? activeRecords
+      : { lifecycle: action === 'unarchive' ? 'archived' : 'trashed' };
+  const task = await Task.findOneAndUpdate(
+    { _id: req.params.id, owner: req.user._id, ...from },
+    { $set: { lifecycle: action === 'archive' ? 'archived' : 'active' } },
+    { returnDocument: 'after', runValidators: true },
+  ).lean();
+  if (!task) return res.status(404).json({ message: 'Task not found in that state.' });
+  res.json({ task: serialize(task) });
+});
+
 taskRouter.delete('/:id', async (req, res) => {
-  const result = await Task.deleteOne({ _id: req.params.id, owner: req.user._id });
-  if (!result.deletedCount) return res.status(404).json({ message: 'Task not found.' });
+  const task = await Task.findOneAndUpdate(
+    {
+      _id: req.params.id,
+      owner: req.user._id,
+      lifecycle: { $in: ['active', 'archived', null] },
+    },
+    { $set: { lifecycle: 'trashed' } },
+    { returnDocument: 'after' },
+  );
+  if (!task) return res.status(404).json({ message: 'Task not found.' });
+  res.status(204).end();
+});
+
+taskRouter.delete('/:id/permanent', async (req, res) => {
+  const result = await Task.deleteOne({
+    _id: req.params.id,
+    owner: req.user._id,
+    lifecycle: 'trashed',
+  });
+  if (!result.deletedCount)
+    return res.status(404).json({ message: 'Task not found in Trash.' });
   res.status(204).end();
 });

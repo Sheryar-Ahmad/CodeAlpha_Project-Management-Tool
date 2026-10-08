@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
+  Archive,
+  Trash2,
   ArrowUpRight,
   CalendarDays,
   CalendarRange,
@@ -52,6 +54,18 @@ const workspaceViews = {
     title: 'Clear the way forward',
     description: 'See what is waiting on input, decisions, or access.',
   },
+  archived: {
+    label: 'Archive',
+    title: 'Keep the progress, clear the space',
+    description:
+      'Archived tasks stay saved without appearing in active work. Return them to the board whenever you need them.',
+  },
+  trash: {
+    label: 'Trash',
+    title: 'A second chance for your work',
+    description:
+      'Restore a task to the board or permanently delete it. Nothing is automatically removed from Trash.',
+  },
   focus: {
     label: 'Focus timer',
     title: 'A little room to focus',
@@ -65,8 +79,17 @@ function Workspace({ mode, user, onExit, onExpired }) {
   const [layout, setLayout] = useState('board');
   const [actionError, setActionError] = useState('');
   const [signingOut, setSigningOut] = useState(false);
+  const recovery = ['archived', 'trash'].includes(workspace.view);
   const planning = ['today', 'upcoming'].includes(workspace.view);
   const pageCopy = workspaceViews[workspace.view];
+  const taskHeading =
+    {
+      today: 'Today’s priorities',
+      upcoming: 'Upcoming deadlines',
+      blocked: 'Work that needs unblocking',
+      archived: 'Archived tasks',
+      trash: 'Tasks in Trash',
+    }[workspace.view] || (layout === 'list' ? 'Your task list' : 'Your task board');
   const visibleStatuses = Object.entries(statuses).filter(([status]) => {
     if (workspace.view === 'blocked') return status === 'blocked';
     if (planning && status === 'done') return false;
@@ -148,8 +171,22 @@ function Workspace({ mode, user, onExit, onExpired }) {
             },
           })
         }
+        onArchive={(task) => act(() => workspace.archive(task))}
+        onRestore={(task) => act(() => workspace.restore(task))}
+        onPermanentDelete={(task) => {
+          if (
+            window.confirm(
+              'Permanently delete “' + task.title + '”? This cannot be undone.',
+            )
+          )
+            act(() => workspace.purge(task));
+        }}
         onDelete={(task) => {
-          if (window.confirm('Delete “' + task.title + '”? This cannot be undone.'))
+          if (
+            window.confirm(
+              'Move “' + task.title + '” to Trash? You can restore it later.',
+            )
+          )
             act(() => workspace.remove(task));
         }}
       />
@@ -193,6 +230,8 @@ function Workspace({ mode, user, onExit, onExpired }) {
             ['projects', 'Projects', FolderOpen],
             ['blocked', 'Blockers', CirclePause],
             ['focus', 'Focus timer', Clock3],
+            ['archived', 'Archive', Archive],
+            ['trash', 'Trash', Trash2],
           ].map(([value, label, Icon]) => (
             <button
               type="button"
@@ -203,9 +242,12 @@ function Workspace({ mode, user, onExit, onExpired }) {
               onClick={() => workspace.setView(value)}
             >
               <Icon size={16} /> {label}
-              {value === 'blocked' && workspace.overview.blocked > 0 && (
-                <span className="nav-count">{workspace.overview.blocked}</span>
-              )}
+              {['blocked', 'archived', 'trash'].includes(value) &&
+                workspace.overview[value === 'trash' ? 'trashed' : value] > 0 && (
+                  <span className="nav-count">
+                    {workspace.overview[value === 'trash' ? 'trashed' : value]}
+                  </span>
+                )}
             </button>
           ))}
           <a href="/#features">
@@ -263,7 +305,7 @@ function Workspace({ mode, user, onExit, onExpired }) {
             </h1>
             <p className="muted">{pageCopy.description}</p>
           </div>
-          {workspace.view !== 'focus' && (
+          {workspace.view !== 'focus' && !recovery && (
             <button className="button" disabled={workspace.busy} onClick={openNewTask}>
               <Plus size={17} /> New task
             </button>
@@ -274,7 +316,7 @@ function Workspace({ mode, user, onExit, onExpired }) {
         </div>
         {workspace.view !== 'focus' && (
           <section className="workspace-summary" aria-label="All tasks summary">
-            <p className="summary-heading">Across your workspace</p>
+            <p className="summary-heading">Across your active workspace</p>
             <div className="stats">
               {stats.map(([label, value, caption, Icon]) => (
                 <article key={label}>
@@ -317,17 +359,7 @@ function Workspace({ mode, user, onExit, onExpired }) {
           <section aria-labelledby="board-heading" aria-busy={workspace.loading}>
             <div className="board-toolbar">
               <div>
-                <h2 id="board-heading">
-                  {workspace.view === 'today'
-                    ? 'Today’s priorities'
-                    : workspace.view === 'upcoming'
-                      ? 'Upcoming deadlines'
-                      : workspace.view === 'blocked'
-                        ? 'Work that needs unblocking'
-                        : layout === 'list'
-                          ? 'Your task list'
-                          : 'Your task board'}
-                </h2>
+                <h2 id="board-heading">{taskHeading}</h2>
                 <span className="small muted">
                   Page {workspace.page} · {workspace.tasks.length} tasks shown
                 </span>
@@ -344,46 +376,50 @@ function Workspace({ mode, user, onExit, onExpired }) {
                     onChange={(event) => workspace.setSearch(event.target.value)}
                   />
                 </label>
-                <label>
-                  <span className="sr-only">Filter by project</span>
-                  <select
-                    aria-label="Filter by project"
-                    value={workspace.project}
-                    onChange={(event) => workspace.setProject(event.target.value)}
-                  >
-                    <option value="">All projects</option>
-                    {[
-                      ...new Set([
-                        ...workspace.overview.projects,
-                        ...(workspace.project ? [workspace.project] : []),
-                      ]),
-                    ].map((project) => (
-                      <option value={project} key={project}>
-                        {project}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                {!recovery && (
+                  <label>
+                    <span className="sr-only">Filter by project</span>
+                    <select
+                      aria-label="Filter by project"
+                      value={workspace.project}
+                      onChange={(event) => workspace.setProject(event.target.value)}
+                    >
+                      <option value="">All projects</option>
+                      {[
+                        ...new Set([
+                          ...workspace.overview.projects,
+                          ...(workspace.project ? [workspace.project] : []),
+                        ]),
+                      ].map((project) => (
+                        <option value={project} key={project}>
+                          {project}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
               </div>
             </div>
-            <div className="view-switch" role="group" aria-label="Task layout">
-              <button
-                type="button"
-                aria-pressed={layout === 'board'}
-                onClick={() => setLayout('board')}
-              >
-                <LayoutDashboard size={15} aria-hidden="true" /> Board view
-              </button>
-              <button
-                type="button"
-                aria-pressed={layout === 'list'}
-                onClick={() => setLayout('list')}
-              >
-                <List size={15} aria-hidden="true" /> List view
-              </button>
-              <span className="small muted">Same tasks. A different perspective.</span>
-            </div>
-            {layout === 'list' ? (
+            {!recovery && (
+              <div className="view-switch" role="group" aria-label="Task layout">
+                <button
+                  type="button"
+                  aria-pressed={layout === 'board'}
+                  onClick={() => setLayout('board')}
+                >
+                  <LayoutDashboard size={15} aria-hidden="true" /> Board view
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={layout === 'list'}
+                  onClick={() => setLayout('list')}
+                >
+                  <List size={15} aria-hidden="true" /> List view
+                </button>
+                <span className="small muted">Same tasks. A different perspective.</span>
+              </div>
+            )}
+            {layout === 'list' || recovery ? (
               workspace.loading ? (
                 <div className="list-skeleton" role="status" aria-label="Loading tasks">
                   <div className="skeleton-card" />
@@ -400,18 +436,26 @@ function Workspace({ mode, user, onExit, onExpired }) {
                   <h3>
                     {workspace.search || workspace.project
                       ? 'No matching tasks on this page'
-                      : workspace.view === 'blocked'
-                        ? 'Nothing is blocked here'
-                        : 'A little space for your next step'}
+                      : recovery
+                        ? workspace.view === 'trash'
+                          ? 'Trash is empty'
+                          : 'No archived tasks yet'
+                        : workspace.view === 'blocked'
+                          ? 'Nothing is blocked here'
+                          : 'A little space for your next step'}
                   </h3>
                   <p>
                     {workspace.search || workspace.project
                       ? 'Try a different search or project filter.'
-                      : 'Create a task when you are ready.'}
+                      : recovery
+                        ? 'Your active tasks are still on the board.'
+                        : 'Create a task when you are ready.'}
                   </p>
-                  <button type="button" className="text-button" onClick={openNewTask}>
-                    Create a task
-                  </button>
+                  {!recovery && (
+                    <button type="button" className="text-button" onClick={openNewTask}>
+                      Create a task
+                    </button>
+                  )}
                 </div>
               )
             ) : (

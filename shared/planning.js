@@ -5,6 +5,9 @@ export function addDays(date, days) {
   return value.toISOString().slice(0, 10);
 }
 export function matchesPlanningView(task, view, date) {
+  if (view === 'archived') return task.lifecycle === 'archived';
+  if (view === 'trash') return task.lifecycle === 'trashed';
+  if (task.lifecycle && task.lifecycle !== 'active') return false;
   if (view === 'all' || view === 'projects' || view === 'focus') return true;
   if (view === 'blocked') return task.status === 'blocked';
   if (task.status === 'done' || !task.due) return false;

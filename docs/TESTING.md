@@ -89,3 +89,13 @@ Automated browser coverage verifies the primary flows above; exhaustive accessib
 - Edit, duplicate, change status, block/unblock, and check steps from the list. They use the same actions as the board.
 - Try Today, Upcoming, and Blockers while in the list. Date views keep their server-side deadline order.
 - Use a missing search and a project with no results: show a clear empty state. Check narrow mobile layouts and keyboard access to both view buttons.
+
+## Archive and recovery
+
+- Archive a task, including one that is blocked. It leaves active views/counts and remains in Archive with its original context and status.
+- Return it to the board. Its dates, notes, links, blocker reason, and checklist progress must survive.
+- Delete active and archived tasks: they move to Trash. Restore returns them to active work.
+- Archived/trashed tasks cannot be edited; checklist controls are disabled. Duplicate is available for archived work.
+- Permanent deletion appears only in Trash. Cancel confirmation preserves the task; confirm removes it. Check empty recovery views and refresh.
+- Test with two accounts: neither can list, transition, or permanently delete the other's records.
+- Existing demo/database records without lifecycle must still appear as active. No automatic Trash purge occurs.

@@ -7,12 +7,14 @@ import {
   taskUpdateSchema,
   querySchema,
   registerSchema,
+  lifecycleSchema,
 } from '../server/lib/validation.js';
 import { hashPassword, verifyPassword } from '../server/lib/password.js';
 
 import { addDays, matchesPlanningView, summarizeProjects } from '../shared/planning.js';
 import { initialTimer, remainingSeconds, validTimer } from '../client/lib/focus.js';
 import { taskTemplates, createTemplateDraft } from '../client/lib/templates.js';
+import { demoOverview } from '../client/lib/demo.js';
 
 test('dates reject impossible dates and accept leap days', () => {
   assert.equal(validDate('2026-02-30'), false);
@@ -181,4 +183,30 @@ test('template drafts satisfy task rules and do not share checklist state', () =
     assert.equal(createTemplateDraft(template.id).checklist[0].done, false);
   }
   assert.equal(createTemplateDraft('unknown'), null);
+});
+
+test('archive and trash are distinct from progress and excluded from active planning', () => {
+  const tasks = [
+    { project: 'Active', status: 'todo', due: '2026-01-01' },
+    { project: 'Archived', status: 'progress', lifecycle: 'archived', due: '2026-01-01' },
+    { project: 'Deleted', status: 'blocked', lifecycle: 'trashed', due: '2026-01-01' },
+  ];
+  assert.equal(matchesPlanningView(tasks[0], 'all', '2026-10-09'), true);
+  for (const task of tasks.slice(1)) {
+    for (const view of ['all', 'today', 'upcoming', 'blocked'])
+      assert.equal(matchesPlanningView(task, view, '2026-10-09'), false);
+  }
+  assert.equal(matchesPlanningView(tasks[1], 'archived', '2026-10-09'), true);
+  assert.equal(matchesPlanningView(tasks[2], 'trash', '2026-10-09'), true);
+  const overview = demoOverview(tasks, '2026-10-09');
+  assert.equal(overview.total, 1);
+  assert.equal(overview.overdue, 1);
+  assert.equal(overview.archived, 1);
+  assert.equal(overview.trashed, 1);
+  assert.deepEqual(overview.projects, ['Active']);
+  assert.throws(() =>
+    parse(taskSchema, { title: 'Injected', project: 'Project', lifecycle: 'trashed' }),
+  );
+  assert.throws(() => parse(lifecycleSchema, { action: 'purge' }));
+  assert.throws(() => parse(lifecycleSchema, { action: 'restore', owner: 'other' }));
 });

@@ -27,6 +27,11 @@ const resource = new mongoose.Schema(
 const schema = new mongoose.Schema(
   {
     owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    lifecycle: {
+      type: String,
+      enum: ['active', 'archived', 'trashed'],
+      default: 'active',
+    },
     title: { type: String, required: true, trim: true, maxlength: 120 },
     project: { type: String, required: true, trim: true, maxlength: 60 },
     description: { type: String, default: '', maxlength: 1000 },
@@ -58,6 +63,7 @@ const schema = new mongoose.Schema(
   { timestamps: true, versionKey: false },
 );
 schema.index({ owner: 1, updatedAt: -1, _id: -1 });
+schema.index({ owner: 1, lifecycle: 1, updatedAt: -1, _id: -1 });
 schema.index({ owner: 1, project: 1 });
 schema.index({ owner: 1, status: 1, due: 1 });
 schema.index({ owner: 1, due: 1, _id: -1 });

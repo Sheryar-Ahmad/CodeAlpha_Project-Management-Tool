@@ -62,6 +62,8 @@ const samples = [
 function isTask(task) {
   return (
     task &&
+    (task.lifecycle === undefined ||
+      ['active', 'archived', 'trashed'].includes(task.lifecycle)) &&
     typeof task.id === 'string' &&
     typeof task.title === 'string' &&
     task.title.trim() &&
@@ -114,6 +116,7 @@ function seedTasks() {
   const date = today();
   return structuredClone(samples).map((task) => ({
     ...task,
+    lifecycle: 'active',
     blockerReason: '',
     notes: '',
     links: [],
@@ -150,6 +153,7 @@ export function readDemo() {
     throw new Error('Local demo data is invalid. Reset the demo to recover.');
   return tasks.map((task) => ({
     ...task,
+    lifecycle: task.lifecycle ?? 'active',
     checklist: task.checklist ?? [],
     notes: task.notes ?? '',
     blockerReason: task.blockerReason ?? '',
@@ -169,8 +173,11 @@ export function saveDemo(tasks) {
 export function resetDemo() {
   saveDemo(seedTasks());
 }
-export function demoOverview(tasks, date) {
+export function demoOverview(all, date) {
+  const tasks = all.filter((task) => !task.lifecycle || task.lifecycle === 'active');
   return {
+    archived: all.filter((task) => task.lifecycle === 'archived').length,
+    trashed: all.filter((task) => task.lifecycle === 'trashed').length,
     total: tasks.length,
     active: tasks.filter((task) => task.status === 'progress').length,
     blocked: tasks.filter((task) => task.status === 'blocked').length,

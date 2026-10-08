@@ -927,3 +927,17 @@ textarea:disabled {
     margin-left: 0;
   }
 }
+
+.restore-task {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+@media (max-width: 480px) {
+  .workspace .task-actions {
+    flex-wrap: wrap;
+  }
+  .workspace .task-actions select {
+    flex-basis: 100%;
+  }
+}

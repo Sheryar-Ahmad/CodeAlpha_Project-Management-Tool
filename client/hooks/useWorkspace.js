@@ -3,11 +3,18 @@ import { request, today } from '../lib/api.js';
 import { matchesPlanningView } from '../../shared/planning.js';
 import { readDemo, saveDemo, demoOverview, resetDemo } from '../lib/demo.js';
 
+const lifecycleActions = {
+  archive: { from: 'active', to: 'archived' },
+  unarchive: { from: 'archived', to: 'active' },
+  restore: { from: 'trashed', to: 'active' },
+};
 const emptyOverview = {
   total: 0,
   active: 0,
   completed: 0,
   blocked: 0,
+  archived: 0,
+  trashed: 0,
   overdue: 0,
   projects: [],
   projectSummaries: [],
@@ -124,19 +131,47 @@ export default function useWorkspace(mode, onExpired) {
     setBusy(true);
     setNotice('');
     try {
+      const transition = lifecycleActions[action];
       if (mode === 'demo') {
         const all = readDemo();
+        const current = all.find((task) => task.id === id);
+        if (
+          action !== 'create' &&
+          (!current ||
+            (transition && current.lifecycle !== transition.from) ||
+            (action === 'update' && current.lifecycle !== 'active') ||
+            (action === 'delete' && current.lifecycle === 'trashed') ||
+            (action === 'permanent' && current.lifecycle !== 'trashed'))
+        ) {
+          throw new Error('This task has changed. Refresh and try again.');
+        }
+        const changes = transition
+          ? { lifecycle: transition.to }
+          : action === 'delete'
+            ? { lifecycle: 'trashed' }
+            : data;
         const next =
           action === 'create'
-            ? [{ ...data, id: crypto.randomUUID() }, ...all]
-            : action === 'delete'
+            ? [{ ...data, lifecycle: 'active', id: crypto.randomUUID() }, ...all]
+            : action === 'permanent'
               ? all.filter((task) => task.id !== id)
-              : all.map((task) => (task.id === id ? { ...task, ...data } : task));
+              : all.map((task) => (task.id === id ? { ...task, ...changes } : task));
         saveDemo(next);
       } else {
-        await request('/tasks' + (id ? '/' + id : ''), {
-          method: action === 'create' ? 'POST' : action === 'delete' ? 'DELETE' : 'PATCH',
-          ...(data ? { body: JSON.stringify(data) } : {}),
+        const suffix = transition
+          ? '/lifecycle'
+          : action === 'permanent'
+            ? '/permanent'
+            : '';
+        const body = transition ? { action } : data;
+        await request('/tasks' + (id ? '/' + id : '') + suffix, {
+          method:
+            action === 'create'
+              ? 'POST'
+              : ['delete', 'permanent'].includes(action)
+                ? 'DELETE'
+                : 'PATCH',
+          ...(body ? { body: JSON.stringify(body) } : {}),
         });
       }
       setRevision((value) => value + 1);
@@ -185,6 +220,10 @@ export default function useWorkspace(mode, onExpired) {
       mutate('update', task.id, { status, blockerReason: '' }),
     updateChecklist: (task, checklist) => mutate('update', task.id, { checklist }),
     remove: (task) => mutate('delete', task.id),
+    archive: (task) => mutate('archive', task.id),
+    restore: (task) =>
+      mutate(task.lifecycle === 'archived' ? 'unarchive' : 'restore', task.id),
+    purge: (task) => mutate('permanent', task.id),
     reset: () => {
       resetDemo();
       setPage(1);

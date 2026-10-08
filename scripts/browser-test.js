@@ -212,6 +212,104 @@ try {
   await page
     .getByRole('heading', { name: 'Renamed browser task', exact: true })
     .waitFor({ state: 'detached' });
+  await page
+    .locator('.sidebar')
+    .getByRole('button', { name: /^Trash/ })
+    .click();
+  await page
+    .getByRole('heading', { name: 'Renamed browser task', exact: true })
+    .waitFor();
+  assert.equal(
+    await page
+      .getByRole('button', { name: 'Edit Renamed browser task', exact: true })
+      .count(),
+    0,
+  );
+  await page.getByText('1/2 steps complete', { exact: true }).click();
+  assert.equal(
+    await page
+      .getByLabel('Complete Prepare notes for Renamed browser task', { exact: true })
+      .isDisabled(),
+    true,
+  );
+  await page
+    .getByRole('button', { name: 'Restore Renamed browser task', exact: true })
+    .click();
+  await page
+    .getByRole('heading', { name: 'Renamed browser task', exact: true })
+    .waitFor({ state: 'detached' });
+  await page
+    .locator('.sidebar')
+    .getByRole('button', { name: 'Task board', exact: true })
+    .click();
+  await page
+    .getByRole('heading', { name: 'Renamed browser task', exact: true })
+    .waitFor();
+  await page
+    .getByRole('button', { name: 'Archive Renamed browser task', exact: true })
+    .click();
+  await page
+    .getByRole('heading', { name: 'Renamed browser task', exact: true })
+    .waitFor({ state: 'detached' });
+  await page
+    .locator('.sidebar')
+    .getByRole('button', { name: /^Archive/ })
+    .click();
+  await page
+    .getByRole('heading', { name: 'Renamed browser task', exact: true })
+    .waitFor();
+  assert.equal(
+    await page.getByLabel('Status for Renamed browser task', { exact: true }).count(),
+    0,
+  );
+  page.once('dialog', (dialog) => dialog.accept());
+  await page
+    .getByRole('button', { name: 'Delete Renamed browser task', exact: true })
+    .click();
+  await page
+    .getByRole('heading', { name: 'No archived tasks yet', exact: true })
+    .waitFor();
+  assert.equal(
+    await page.getByRole('button', { name: 'New task', exact: true }).count(),
+    0,
+  );
+  await page
+    .locator('.sidebar')
+    .getByRole('button', { name: /^Trash/ })
+    .click();
+  await page
+    .getByRole('heading', { name: 'Renamed browser task', exact: true })
+    .waitFor();
+  page.once('dialog', (dialog) => dialog.dismiss());
+  await page
+    .getByRole('button', { name: 'Permanently delete Renamed browser task', exact: true })
+    .click();
+  assert.ok(
+    await page
+      .getByRole('heading', { name: 'Renamed browser task', exact: true })
+      .isVisible(),
+  );
+  page.once('dialog', (dialog) => dialog.accept());
+  await page
+    .getByRole('button', { name: 'Permanently delete Renamed browser task', exact: true })
+    .click();
+  await page
+    .getByRole('heading', { name: 'Renamed browser task', exact: true })
+    .waitFor({ state: 'detached' });
+  await page.getByRole('button', { name: 'Restore Reusable copy', exact: true }).click();
+  await page.getByRole('heading', { name: 'Trash is empty', exact: true }).waitFor();
+  assert.equal(
+    await page.getByRole('button', { name: 'Create a task', exact: true }).count(),
+    0,
+  );
+  await page
+    .locator('.sidebar')
+    .getByRole('button', { name: 'Task board', exact: true })
+    .click();
+  await page.getByRole('heading', { name: 'Reusable copy', exact: true }).waitFor();
+  console.log(
+    'PASS: demo archive, read-only recovery views, restore, and guarded permanent deletion.',
+  );
   page.once('dialog', (dialog) => dialog.accept());
   await page.getByRole('button', { name: 'Reset demo', exact: true }).click();
   await page.getByRole('heading', { name: 'Build the homepage', exact: true }).waitFor();
@@ -570,6 +668,34 @@ try {
     await page
       .getByRole('heading', { name: 'MongoDB saved task', exact: true })
       .waitFor();
+    await page
+      .getByRole('button', { name: 'Archive MongoDB saved task', exact: true })
+      .click();
+    await page
+      .getByRole('heading', { name: 'MongoDB saved task', exact: true })
+      .waitFor({ state: 'detached' });
+    await page.reload();
+    await page
+      .locator('.sidebar')
+      .getByRole('button', { name: /^Archive/ })
+      .click();
+    await page
+      .getByRole('heading', { name: 'MongoDB saved task', exact: true })
+      .waitFor();
+    await page
+      .getByRole('button', { name: 'Restore MongoDB saved task', exact: true })
+      .click();
+    await page
+      .getByRole('heading', { name: 'No archived tasks yet', exact: true })
+      .waitFor();
+    await page
+      .locator('.sidebar')
+      .getByRole('button', { name: 'Task board', exact: true })
+      .click();
+    await page
+      .getByRole('heading', { name: 'MongoDB saved task', exact: true })
+      .waitFor();
+    console.log('PASS: account archive and restoration persist in MongoDB.');
     console.log(
       'PASS: account registration, MongoDB task persistence, logout, and login.',
     );

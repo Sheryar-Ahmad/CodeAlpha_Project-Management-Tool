@@ -36,8 +36,8 @@
         Account mode stores your name, email address, a salted password hash, and your
         tasks in MongoDB. Plaintext passwords are not stored. Task data includes titles,
         project labels, descriptions, priorities, statuses, blocker reasons, due dates,
-        checklist steps and their completion states, notes, resource link labels/URLs, and
-        timestamps.
+        checklist steps and their completion states, notes, resource link labels/URLs,
+        archive/trash state, and timestamps.
       </p>
       <h2>Focus timer</h2>
       <p>
@@ -56,10 +56,11 @@
       </p>
       <h2>Deleting data</h2>
       <p>
-        You can delete individual account tasks from the board. Self-service account
-        deletion and password recovery are not implemented yet. Clearing browser data does
-        not delete account records from MongoDB. Do not use this prototype for
-        confidential or regulated information.
+        Archiving keeps a task saved outside active work. Delete moves a task to Trash,
+        where you can restore it to the board or permanently delete it. Trash is not
+        automatically emptied. Self-service account deletion and password recovery are not
+        implemented yet. Clearing browser data does not delete account records from
+        MongoDB. Do not use this prototype for confidential or regulated information.
       </p>
       <h2>Hosting and external services</h2>
       <p>

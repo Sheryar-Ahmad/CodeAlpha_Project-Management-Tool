@@ -99,7 +99,9 @@ export const querySchema = z
     limit: z.coerce.number().int().min(1).max(50).default(30),
     search: z.string().trim().max(120).default(''),
     project: z.string().trim().max(60).default(''),
-    view: z.enum(['all', 'today', 'upcoming', 'blocked']).default('all'),
+    view: z
+      .enum(['all', 'today', 'upcoming', 'blocked', 'archived', 'trash'])
+      .default('all'),
     date: z.string().refine(validDate, 'Enter a valid date.').default(''),
   })
   .strict()
@@ -107,6 +109,10 @@ export const querySchema = z
     (value) => !['today', 'upcoming'].includes(value.view) || value.date !== '',
     'A date is required for daily planning.',
   );
+export const lifecycleSchema = z
+  .object({ action: z.enum(['archive', 'unarchive', 'restore']) })
+  .strict();
+
 export function parse(schema, value) {
   const result = schema.safeParse(value);
   if (!result.success) {

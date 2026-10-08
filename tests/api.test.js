@@ -423,3 +423,169 @@ test('blockers enforce reasons, remain owner-scoped, and clear on unblocking', a
     name: 'ValidationError',
   });
 });
+
+test('archive, trash, and restoration preserve content and remain owner-scoped', async () => {
+  const owner = request.agent(app);
+  const outsider = request.agent(app);
+  for (const [agent, name] of [
+    [owner, 'Recovery Owner'],
+    [outsider, 'Recovery Outsider'],
+  ]) {
+    await agent
+      .post('/api/auth/register')
+      .set('Origin', origin)
+      .send({
+        name,
+        email: name.replaceAll(' ', '').toLowerCase() + '@example.com',
+        password: 'recovery-test-passphrase',
+      })
+      .expect(201);
+  }
+  const created = await owner
+    .post('/api/tasks')
+    .set('Origin', origin)
+    .send({
+      title: 'Recoverable task',
+      project: 'Recovery',
+      notes: 'Keep this decision',
+      due: '2026-01-01',
+      status: 'blocked',
+      blockerReason: 'Waiting for a reply',
+      checklist: [{ id: 'keep-step', text: 'Preserve progress', done: true }],
+    })
+    .expect(201);
+  const id = created.body.task.id;
+  await owner
+    .delete('/api/tasks/' + id + '/permanent')
+    .set('Origin', origin)
+    .expect(404);
+  await outsider
+    .patch('/api/tasks/' + id + '/lifecycle')
+    .set('Origin', origin)
+    .send({ action: 'archive' })
+    .expect(404);
+  const archived = await owner
+    .patch('/api/tasks/' + id + '/lifecycle')
+    .set('Origin', origin)
+    .send({ action: 'archive' })
+    .expect(200);
+  assert.equal(archived.body.task.lifecycle, 'archived');
+  assert.equal((await owner.get('/api/tasks').expect(200)).body.tasks.length, 0);
+  assert.equal(
+    (await owner.get('/api/tasks?view=blocked').expect(200)).body.tasks.length,
+    0,
+  );
+  const summary = (await owner.get('/api/tasks/overview?date=2026-10-09').expect(200))
+    .body;
+  assert.equal(summary.total, 0);
+  assert.equal(summary.blocked, 0);
+  assert.equal(summary.overdue, 0);
+  assert.equal(summary.archived, 1);
+  assert.deepEqual(summary.projectSummaries, []);
+  assert.equal(
+    (await outsider.get('/api/tasks?view=archived').expect(200)).body.tasks.length,
+    0,
+  );
+  await owner
+    .patch('/api/tasks/' + id)
+    .set('Origin', origin)
+    .send({ title: 'Not editable while archived' })
+    .expect(404);
+  await owner
+    .patch('/api/tasks/' + id + '/lifecycle')
+    .set('Origin', origin)
+    .send({ action: 'archive' })
+    .expect(404);
+  await owner
+    .patch('/api/tasks/' + id + '/lifecycle')
+    .set('Origin', origin)
+    .send({ action: 'unarchive' })
+    .expect(200);
+  await owner
+    .delete('/api/tasks/' + id)
+    .set('Origin', origin)
+    .expect(204);
+  const trash = (await owner.get('/api/tasks?view=trash').expect(200)).body.tasks;
+  assert.equal(trash.length, 1);
+  assert.equal(trash[0].notes, 'Keep this decision');
+  assert.equal(trash[0].checklist[0].done, true);
+  assert.equal(
+    (await outsider.get('/api/tasks?view=trash').expect(200)).body.tasks.length,
+    0,
+  );
+  await outsider
+    .patch('/api/tasks/' + id + '/lifecycle')
+    .set('Origin', origin)
+    .send({ action: 'restore' })
+    .expect(404);
+  await outsider
+    .delete('/api/tasks/' + id + '/permanent')
+    .set('Origin', origin)
+    .expect(404);
+  await owner
+    .patch('/api/tasks/' + id)
+    .set('Origin', origin)
+    .send({ notes: 'Not editable in Trash' })
+    .expect(404);
+  const restored = await owner
+    .patch('/api/tasks/' + id + '/lifecycle')
+    .set('Origin', origin)
+    .send({ action: 'restore' })
+    .expect(200);
+  assert.equal(restored.body.task.status, 'blocked');
+  assert.equal(restored.body.task.blockerReason, 'Waiting for a reply');
+  await owner
+    .patch('/api/tasks/' + id + '/lifecycle')
+    .set('Origin', origin)
+    .send({ action: 'archive' })
+    .expect(200);
+  await owner
+    .delete('/api/tasks/' + id)
+    .set('Origin', origin)
+    .expect(204);
+  await owner
+    .delete('/api/tasks/' + id + '/permanent')
+    .set('Origin', origin)
+    .expect(204);
+  assert.equal(await Task.countDocuments({ _id: id }), 0);
+  await owner
+    .patch('/api/tasks/' + id + '/lifecycle')
+    .set('Origin', origin)
+    .send({ action: 'restore' })
+    .expect(404);
+});
+
+test('legacy tasks without lifecycle remain active and competing transitions cannot both win', async () => {
+  const owner = request.agent(app);
+  const registration = await owner
+    .post('/api/auth/register')
+    .set('Origin', origin)
+    .send({
+      name: 'Legacy',
+      email: 'legacy@example.com',
+      password: 'legacy-test-passphrase',
+    })
+    .expect(201);
+  const record = await Task.create({
+    owner: registration.body.user.id,
+    title: 'Legacy task',
+    project: 'Legacy project',
+  });
+  await Task.collection.updateOne({ _id: record._id }, { $unset: { lifecycle: '' } });
+  const listed = (await owner.get('/api/tasks').expect(200)).body.tasks;
+  assert.equal(listed.length, 1);
+  assert.equal(listed[0].lifecycle, 'active');
+  assert.equal(
+    (await owner.get('/api/tasks/overview?date=2026-10-09').expect(200)).body.total,
+    1,
+  );
+  const results = await Promise.all(
+    [0, 1].map(() =>
+      owner
+        .patch('/api/tasks/' + record._id + '/lifecycle')
+        .set('Origin', origin)
+        .send({ action: 'archive' }),
+    ),
+  );
+  assert.deepEqual(results.map((result) => result.status).sort(), [200, 404]);
+});

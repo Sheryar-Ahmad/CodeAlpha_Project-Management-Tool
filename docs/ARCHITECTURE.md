@@ -46,3 +46,9 @@ The local demo uses a different adapter. It never sends demo tasks to the accoun
 ## Current scope
 
 Projects are task group labels, not separate project entities. There are no memberships, invitations, roles, shared boards, or real-time synchronization in this milestone. Those require separate authorization rules and tests.
+
+## Task lifecycle
+
+Lifecycle is separate from progress status: a completed task can be active, archived, or trashed without losing what happened. Archive/Trash views reuse the list and task context, while editing is disabled until restoration.
+
+Transitions use one owner-scoped conditional update that includes the expected source state. This prevents two competing transitions from both succeeding. Old records with a missing lifecycle field match active queries; no startup migration rewrites the user's database. The demo adapter follows the same source-state rules. Trash retains records until the owner explicitly permanently deletes them.

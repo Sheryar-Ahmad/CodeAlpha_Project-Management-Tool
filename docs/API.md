@@ -25,7 +25,8 @@ All mutations require an Origin header exactly equal to APP_ORIGIN.
 - notes: plain text up to 3,000 characters
 - links: up to 8 resources, each with a label (1–100 characters) and HTTP/HTTPS URL (up to 2,048 characters); embedded credentials are rejected
 - priority: low, medium, high
-- status: todo, progress, done
+- status: todo, progress, blocked, done
+- blockerReason: trimmed plain text up to 500 characters; required when blocked
 - due: empty string or real calendar date between 2000 and 2100
 - checklist: optional array, default empty, up to 20 steps
 
@@ -35,12 +36,13 @@ Ownership and timestamps are managed by the server. Sending owner or other unrec
 
 ## Listing and planning
 
-List parameters: page (1–10,000), limit (1–50), search (up to 120 characters), project (up to 60), view (all, today, upcoming), date (YYYY-MM-DD).
+List parameters: page (1–10,000), limit (1–50), search (up to 120 characters), project (up to 60), view (all, today, upcoming, blocked), date (YYYY-MM-DD).
 
 - `view=all` is the default; date is optional.
 - `view=today` requires date and returns unfinished tasks due on or before that date.
 - `view=upcoming` requires date and returns unfinished tasks due after that date and within seven calendar days.
-- Undated and completed tasks appear only in the all view.
+- Daily views exclude undated and completed work. The Blockers view includes blocked tasks even without a deadline.
+- `view=blocked` does not require date; its results sort by latest update.
 - Search includes title, project, description, and notes. Search and exact project filters can combine with either planning view.
 - Planning lists sort by due date, then ID. The all view sorts by latest update, then ID.
 
@@ -52,9 +54,11 @@ Response contains tasks, hasMore, and page. Dates represent calendar days in the
 
 The overview requires a valid date and returns total, active (in progress), completed, overdue, projects (label names), and projectSummaries. Each project summary contains name, total, active, completed, overdue, and nextDue (earliest unfinished deadline or null).
 
-Counts include the whole account, independently of task pagination and current filters. Project labels and summaries are capped at 1,000, sorted by label. They describe task groups, not shared project entities.
+Overview and project summaries also expose blocked counts. Counts include the whole account, independently of task pagination and current filters. Project labels and summaries are capped at 1,000, sorted by label. They describe task groups, not shared project entities.
 
 Request JSON is capped at 32 KiB. The server stores links as references and does not fetch their contents. Updates replace only supplied fields; omitted notes/resources remain intact.
+
+When creating a blocked task or changing status to blocked, send a nonempty blockerReason. Changing blockerReason requires an explicit status in the same PATCH. Leaving blocked clears the old reason in that write.
 
 ## Errors
 

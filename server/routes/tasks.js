@@ -21,6 +21,7 @@ const serialize = (task) => ({
   links: (task.links ?? []).map(({ label, url }) => ({ label, url })),
   priority: task.priority,
   status: task.status,
+  blockerReason: task.blockerReason ?? '',
   due: task.due,
   updatedAt: task.updatedAt,
   checklist: (task.checklist ?? []).map((item) => ({
@@ -34,11 +35,12 @@ taskRouter.get('/overview', async (req, res) => {
   if (!date || !validDate(date))
     return res.status(400).json({ message: 'A valid local date is required.' });
   const owner = req.user._id;
-  const [total, active, completed, overdue, projects] = await Promise.all([
+  const [total, active, completed, overdue, blocked, projects] = await Promise.all([
     Task.countDocuments({ owner }),
     Task.countDocuments({ owner, status: 'progress' }),
     Task.countDocuments({ owner, status: 'done' }),
     Task.countDocuments({ owner, status: { $ne: 'done' }, due: { $ne: '', $lt: date } }),
+    Task.countDocuments({ owner, status: 'blocked' }),
     Task.aggregate([
       { $match: { owner } },
       {
@@ -47,6 +49,7 @@ taskRouter.get('/overview', async (req, res) => {
           total: { $sum: 1 },
           completed: { $sum: { $cond: [{ $eq: ['$status', 'done'] }, 1, 0] } },
           active: { $sum: { $cond: [{ $eq: ['$status', 'progress'] }, 1, 0] } },
+          blocked: { $sum: { $cond: [{ $eq: ['$status', 'blocked'] }, 1, 0] } },
           overdue: {
             $sum: {
               $cond: [
@@ -82,6 +85,7 @@ taskRouter.get('/overview', async (req, res) => {
     active,
     completed,
     overdue,
+    blocked,
     projects: projects.map((project) => project._id),
     projectSummaries: projects.map(({ _id, ...summary }) => ({ name: _id, ...summary })),
   });
@@ -90,7 +94,8 @@ taskRouter.get('/', async (req, res) => {
   const { page, limit, search, project, view, date } = parse(querySchema, req.query);
   const filter = { owner: req.user._id };
   if (project) filter.project = project;
-  if (view !== 'all') {
+  if (view === 'blocked') filter.status = 'blocked';
+  else if (['today', 'upcoming'].includes(view)) {
     filter.status = { $ne: 'done' };
     filter.due =
       view === 'today' ? { $ne: '', $lte: date } : { $gt: date, $lte: addDays(date, 7) };
@@ -100,12 +105,18 @@ taskRouter.get('/', async (req, res) => {
     const safe = [...search]
       .map((char) => (specials.includes(char) ? String.fromCharCode(92) + char : char))
       .join('');
-    filter.$or = ['title', 'project', 'description', 'notes'].map((field) => ({
-      [field]: { $regex: safe, $options: 'i' },
-    }));
+    filter.$or = ['title', 'project', 'description', 'notes', 'blockerReason'].map(
+      (field) => ({
+        [field]: { $regex: safe, $options: 'i' },
+      }),
+    );
   }
   const tasks = await Task.find(filter)
-    .sort(view === 'all' ? { updatedAt: -1, _id: -1 } : { due: 1, _id: -1 })
+    .sort(
+      ['today', 'upcoming'].includes(view)
+        ? { due: 1, _id: -1 }
+        : { updatedAt: -1, _id: -1 },
+    )
     .skip((page - 1) * limit)
     .limit(limit + 1)
     .lean();
@@ -117,6 +128,7 @@ taskRouter.get('/', async (req, res) => {
 });
 taskRouter.post('/', async (req, res) => {
   const data = parse(taskSchema, req.body);
+  if (data.status !== 'blocked') data.blockerReason = '';
   const task = await Task.create({ ...data, owner: req.user._id });
   res.status(201).json({ task: serialize(task) });
 });
@@ -127,6 +139,8 @@ taskRouter.param('id', (req, res, next, id) => {
 });
 taskRouter.patch('/:id', async (req, res) => {
   const data = parse(taskUpdateSchema, req.body);
+  // Leaving Blocked clears the obsolete reason in the same write.
+  if (data.status && data.status !== 'blocked') data.blockerReason = '';
   // Include ownership in the query; never trust a client-supplied owner.
   const task = await Task.findOneAndUpdate(
     { _id: req.params.id, owner: req.user._id },

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { validDate } from '../../shared/date.js';
-import { validResourceUrl } from '../../shared/task.js';
+import { taskStatuses, validResourceUrl } from '../../shared/task.js';
 export { validDate } from '../../shared/date.js';
 
 const email = z.string().trim().toLowerCase().email().max(254);
@@ -52,11 +52,16 @@ export const taskSchema = z
     notes: z.string().trim().max(3000).default(''),
     links: z.array(resourceSchema).max(8).default([]),
     priority: z.enum(['low', 'medium', 'high']).default('medium'),
-    status: z.enum(['todo', 'progress', 'done']).default('todo'),
+    status: z.enum(Object.keys(taskStatuses)).default('todo'),
+    blockerReason: z.string().trim().max(500).default(''),
     due: z.string().refine(validDate, 'Enter a valid date.').default(''),
     checklist: checklistSchema.default([]),
   })
-  .strict();
+  .strict()
+  .refine((value) => value.status !== 'blocked' || value.blockerReason.length > 0, {
+    message: 'Explain what is blocking this task.',
+    path: ['blockerReason'],
+  });
 // PATCH fields must not apply creation defaults to omitted values.
 export const taskUpdateSchema = z
   .object({
@@ -67,23 +72,39 @@ export const taskUpdateSchema = z
     links: taskSchema.shape.links.removeDefault().optional(),
     priority: taskSchema.shape.priority.removeDefault().optional(),
     status: taskSchema.shape.status.removeDefault().optional(),
+    blockerReason: taskSchema.shape.blockerReason.removeDefault().optional(),
     due: taskSchema.shape.due.removeDefault().optional(),
     checklist: checklistSchema.optional(),
   })
   .strict()
-  .refine((value) => Object.keys(value).length > 0, 'No changes supplied.');
+  .refine((value) => Object.keys(value).length > 0, 'No changes supplied.')
+  .refine((value) => value.blockerReason === undefined || Boolean(value.status), {
+    message: 'Include the task status when changing its blocker.',
+    path: ['blockerReason'],
+  })
+  .refine((value) => value.status !== 'blocked' || Boolean(value.blockerReason), {
+    message: 'Explain what is blocking this task.',
+    path: ['blockerReason'],
+  })
+  .refine(
+    (value) => value.blockerReason !== '' || (value.status && value.status !== 'blocked'),
+    {
+      message: 'Choose a non-blocked status when clearing the blocker.',
+      path: ['blockerReason'],
+    },
+  );
 export const querySchema = z
   .object({
     page: z.coerce.number().int().min(1).max(10000).default(1),
     limit: z.coerce.number().int().min(1).max(50).default(30),
     search: z.string().trim().max(120).default(''),
     project: z.string().trim().max(60).default(''),
-    view: z.enum(['all', 'today', 'upcoming']).default('all'),
+    view: z.enum(['all', 'today', 'upcoming', 'blocked']).default('all'),
     date: z.string().refine(validDate, 'Enter a valid date.').default(''),
   })
   .strict()
   .refine(
-    (value) => value.view === 'all' || value.date !== '',
+    (value) => !['today', 'upcoming'].includes(value.view) || value.date !== '',
     'A date is required for daily planning.',
   );
 export function parse(schema, value) {

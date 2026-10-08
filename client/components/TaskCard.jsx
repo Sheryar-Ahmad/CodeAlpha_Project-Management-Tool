@@ -1,7 +1,15 @@
-import { CalendarDays, Copy, ExternalLink, Pencil, Trash2 } from 'lucide-react';
+import {
+  CalendarDays,
+  CirclePause,
+  Copy,
+  ExternalLink,
+  Pencil,
+  Trash2,
+} from 'lucide-react';
 import { today } from '../lib/api.js';
+import { taskStatuses } from '../../shared/task.js';
 
-export const statuses = { todo: 'To do', progress: 'In progress', done: 'Done' };
+export const statuses = taskStatuses;
 export default function TaskCard({
   task,
   onEdit,
@@ -27,6 +35,14 @@ export default function TaskCard({
       </div>
       <h3 className="task-title">{task.title}</h3>
       {task.description && <p className="task-description">{task.description}</p>}
+      {task.status === 'blocked' && (
+        <div className="task-blocker">
+          <span>
+            <CirclePause size={13} aria-hidden="true" /> Waiting on a next step
+          </span>
+          <p>{task.blockerReason}</p>
+        </div>
+      )}
       {(task.notes || task.links?.length > 0) && (
         <details className="task-context">
           <summary>Notes &amp; resources</summary>

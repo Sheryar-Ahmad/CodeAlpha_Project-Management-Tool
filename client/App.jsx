@@ -6,6 +6,7 @@ import {
   FolderOpen,
   CheckCheck,
   CircleDot,
+  CirclePause,
   Clock3,
   LayoutDashboard,
   LogOut,
@@ -45,6 +46,11 @@ const workspaceViews = {
     title: 'Every project, in perspective',
     description: 'See progress and unfinished deadlines across your project groups.',
   },
+  blocked: {
+    label: 'Blockers',
+    title: 'Clear the way forward',
+    description: 'See what is waiting on input, decisions, or access.',
+  },
   focus: {
     label: 'Focus timer',
     title: 'A little room to focus',
@@ -59,6 +65,11 @@ function Workspace({ mode, user, onExit, onExpired }) {
   const [signingOut, setSigningOut] = useState(false);
   const planning = ['today', 'upcoming'].includes(workspace.view);
   const pageCopy = workspaceViews[workspace.view];
+  const visibleStatuses = Object.entries(statuses).filter(([status]) => {
+    if (workspace.view === 'blocked') return status === 'blocked';
+    if (planning && status === 'done') return false;
+    return status !== 'blocked' || workspace.overview.blocked > 0;
+  });
   function openNewTask() {
     // Every entry point keeps the active project and calendar context.
     setDialog({
@@ -138,6 +149,7 @@ function Workspace({ mode, user, onExit, onExpired }) {
             ['today', 'Today', CalendarDays],
             ['upcoming', 'Upcoming', CalendarRange],
             ['projects', 'Projects', FolderOpen],
+            ['blocked', 'Blockers', CirclePause],
             ['focus', 'Focus timer', Clock3],
           ].map(([value, label, Icon]) => (
             <button
@@ -149,6 +161,9 @@ function Workspace({ mode, user, onExit, onExpired }) {
               onClick={() => workspace.setView(value)}
             >
               <Icon size={16} /> {label}
+              {value === 'blocked' && workspace.overview.blocked > 0 && (
+                <span className="nav-count">{workspace.overview.blocked}</span>
+              )}
             </button>
           ))}
           <a href="/#features">
@@ -265,7 +280,9 @@ function Workspace({ mode, user, onExit, onExpired }) {
                     ? 'Today’s priorities'
                     : workspace.view === 'upcoming'
                       ? 'Upcoming deadlines'
-                      : 'Your task board'}
+                      : workspace.view === 'blocked'
+                        ? 'Work that needs unblocking'
+                        : 'Your task board'}
                 </h2>
                 <span className="small muted">
                   Page {workspace.page} · {workspace.tasks.length} tasks shown
@@ -305,98 +322,111 @@ function Workspace({ mode, user, onExit, onExpired }) {
                 </label>
               </div>
             </div>
-            <div className={'board' + (planning ? ' planning-board' : '')}>
-              {Object.entries(statuses)
-                .filter(([status]) => !planning || status !== 'done')
-                .map(([status, label]) => {
-                  const tasks = workspace.tasks.filter((task) => task.status === status);
-                  return (
-                    <section
-                      className="column"
-                      key={status}
-                      aria-labelledby={'column-' + status}
-                    >
-                      <h3 className="column-heading" id={'column-' + status}>
-                        <span
-                          className={
-                            'dot ' +
-                            (status === 'progress'
-                              ? 'progress-dot'
-                              : status === 'done'
-                                ? 'done-dot'
+            <div
+              className={
+                'board' +
+                (planning ? ' planning-board' : '') +
+                (visibleStatuses.length === 4 ? ' expanded-board' : '') +
+                (workspace.view === 'blocked' ? ' blocked-board' : '')
+              }
+              style={{ '--board-columns': visibleStatuses.length }}
+            >
+              {visibleStatuses.map(([status, label]) => {
+                const tasks = workspace.tasks.filter((task) => task.status === status);
+                return (
+                  <section
+                    className="column"
+                    key={status}
+                    aria-labelledby={'column-' + status}
+                  >
+                    <h3 className="column-heading" id={'column-' + status}>
+                      <span
+                        className={
+                          'dot ' +
+                          (status === 'progress'
+                            ? 'progress-dot'
+                            : status === 'done'
+                              ? 'done-dot'
+                              : status === 'blocked'
+                                ? 'blocked-dot'
                                 : '')
+                        }
+                      />
+                      {label}
+                      <span className="count">{tasks.length}</span>
+                    </h3>
+                    {workspace.loading ? (
+                      <div className="skeleton-stack" aria-label="Loading tasks">
+                        <div className="skeleton-card" />
+                        <div className="skeleton-card" />
+                      </div>
+                    ) : (
+                      tasks.map((task) => (
+                        <TaskCard
+                          key={task.id}
+                          task={task}
+                          busy={workspace.busy}
+                          onEdit={(task) => setDialog({ task })}
+                          onStatus={(task, status) =>
+                            status === 'blocked'
+                              ? setDialog({ task: { ...task, status: 'blocked' } })
+                              : act(() => workspace.updateStatus(task, status))
                           }
-                        />
-                        {label}
-                        <span className="count">{tasks.length}</span>
-                      </h3>
-                      {workspace.loading ? (
-                        <div className="skeleton-stack" aria-label="Loading tasks">
-                          <div className="skeleton-card" />
-                          <div className="skeleton-card" />
-                        </div>
-                      ) : (
-                        tasks.map((task) => (
-                          <TaskCard
-                            key={task.id}
-                            task={task}
-                            busy={workspace.busy}
-                            onEdit={(task) => setDialog({ task })}
-                            onStatus={(task, status) =>
-                              act(() => workspace.updateStatus(task, status))
-                            }
-                            onChecklist={(task, checklist) =>
-                              act(() => workspace.updateChecklist(task, checklist))
-                            }
-                            onDuplicate={(task) =>
-                              setDialog({
-                                task: {
-                                  ...task,
-                                  id: undefined,
-                                  title: task.title.slice(0, 113) + ' (copy)',
-                                  status: 'todo',
-                                  due: '',
-                                  checklist: (task.checklist ?? []).map((step) => ({
-                                    ...step,
-                                    id: crypto.randomUUID(),
-                                    done: false,
-                                  })),
-                                },
-                              })
-                            }
-                            onDelete={(task) => {
-                              if (
-                                window.confirm(
-                                  'Delete “' + task.title + '”? This cannot be undone.',
-                                )
+                          onChecklist={(task, checklist) =>
+                            act(() => workspace.updateChecklist(task, checklist))
+                          }
+                          onDuplicate={(task) =>
+                            setDialog({
+                              task: {
+                                ...task,
+                                id: undefined,
+                                title: task.title.slice(0, 113) + ' (copy)',
+                                status: 'todo',
+                                blockerReason: '',
+                                due: '',
+                                checklist: (task.checklist ?? []).map((step) => ({
+                                  ...step,
+                                  id: crypto.randomUUID(),
+                                  done: false,
+                                })),
+                              },
+                            })
+                          }
+                          onDelete={(task) => {
+                            if (
+                              window.confirm(
+                                'Delete “' + task.title + '”? This cannot be undone.',
                               )
-                                act(() => workspace.remove(task));
-                            }}
-                          />
-                        ))
-                      )}
-                      {!workspace.loading && !tasks.length && (
-                        <div className="board-empty">
-                          <span aria-hidden="true">＋</span>
-                          <p>
-                            {workspace.search || workspace.project
-                              ? 'No matching tasks on this page.'
-                              : status === 'todo'
-                                ? 'Nothing waiting here.'
-                                : status === 'progress'
-                                  ? 'No tasks in progress here.'
+                            )
+                              act(() => workspace.remove(task));
+                          }}
+                        />
+                      ))
+                    )}
+                    {!workspace.loading && !tasks.length && (
+                      <div className="board-empty">
+                        <span aria-hidden="true">＋</span>
+                        <p>
+                          {workspace.search || workspace.project
+                            ? 'No matching tasks on this page.'
+                            : status === 'todo'
+                              ? 'Nothing waiting here.'
+                              : status === 'progress'
+                                ? 'No tasks in progress here.'
+                                : status === 'blocked'
+                                  ? 'Nothing is blocked here.'
                                   : 'Completed work will appear here.'}
-                          </p>
-                          {status === 'todo' && (
-                            <button className="text-button" onClick={openNewTask}>
-                              Create a task
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </section>
-                  );
-                })}
+                        </p>
+                        {status === 'todo' && (
+                          <button className="text-button" onClick={openNewTask}>
+                            Create a task
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </section>
+                );
+              })}
             </div>
             {(workspace.page > 1 || workspace.hasMore) && (
               <nav className="pagination" aria-label="Task pages">

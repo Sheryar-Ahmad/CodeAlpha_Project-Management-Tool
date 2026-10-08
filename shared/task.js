@@ -1,3 +1,10 @@
+export const taskStatuses = {
+  todo: 'To do',
+  progress: 'In progress',
+  blocked: 'Blocked',
+  done: 'Done',
+};
+
 // Shared validation keeps account requests and browser-only demo data consistent.
 export function validResourceUrl(value) {
   try {

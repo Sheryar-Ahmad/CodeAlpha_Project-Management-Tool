@@ -70,6 +70,11 @@ export default function ProjectOverview({ projects, loading, onOpen }) {
                   <span>{project.active} in progress</span>
                 </div>
                 <p className="project-deadline">Next due: {next}</p>
+                {project.blocked > 0 && (
+                  <p className="project-blocked">
+                    {project.blocked} blocked {project.blocked === 1 ? 'task' : 'tasks'}
+                  </p>
+                )}
                 {project.overdue > 0 && (
                   <p className="project-warning">
                     {project.overdue} overdue {project.overdue === 1 ? 'task' : 'tasks'}

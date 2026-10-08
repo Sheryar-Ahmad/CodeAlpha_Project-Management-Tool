@@ -6,6 +6,7 @@ export function addDays(date, days) {
 }
 export function matchesPlanningView(task, view, date) {
   if (view === 'all' || view === 'projects' || view === 'focus') return true;
+  if (view === 'blocked') return task.status === 'blocked';
   if (task.status === 'done' || !task.due) return false;
   return view === 'today'
     ? task.due <= date
@@ -19,12 +20,14 @@ export function summarizeProjects(tasks, date) {
       total: 0,
       completed: 0,
       active: 0,
+      blocked: 0,
       overdue: 0,
       nextDue: null,
     };
     summary.total++;
     if (task.status === 'done') summary.completed++;
     if (task.status === 'progress') summary.active++;
+    if (task.status === 'blocked') summary.blocked++;
     if (task.status !== 'done' && task.due) {
       if (task.due < date) summary.overdue++;
       if (!summary.nextDue || task.due < summary.nextDue) summary.nextDue = task.due;

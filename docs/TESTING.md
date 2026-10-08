@@ -26,6 +26,13 @@ Temporary databases and downloaded tools stay in the ignored project cache. Inte
 - Block browser storage: demo saves must fail visibly.
 - Reset demo requires confirmation and does not alter account tasks.
 
+## Blockers and task context
+
+- Choose Blocked from a task card. The form must request a reason; whitespace-only reasons must fail.
+- Save, refresh, and inspect Blockers and project counts. Undated blocked tasks must still appear.
+- Move back to To do or In progress: the old reason must clear, and the task must leave Blockers.
+- Save notes and HTTP/HTTPS resources, reopen the form, and search a unique word from the notes or blocker. Unsafe URL protocols and embedded credentials must be rejected.
+
 ## Planning, reuse, and focus
 
 - Give four unfinished tasks dates of yesterday, today, tomorrow, and eight days ahead. Today includes the first two; Upcoming includes only tomorrow. Completed and undated tasks are excluded from both.

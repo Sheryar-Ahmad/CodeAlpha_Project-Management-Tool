@@ -1,7 +1,7 @@
 import { today } from './api.js';
 import { addDays, summarizeProjects } from '../../shared/planning.js';
 import { validDate } from '../../shared/date.js';
-import { validResourceUrl } from '../../shared/task.js';
+import { taskStatuses, validResourceUrl } from '../../shared/task.js';
 const key = 'orbit.tasks.v1';
 const samples = [
   {
@@ -86,7 +86,10 @@ function isTask(task) {
             link.url.length <= 2048 &&
             validResourceUrl(link.url),
         ))) &&
-    ['todo', 'progress', 'done'].includes(task.status) &&
+    Object.hasOwn(taskStatuses, task.status) &&
+    (task.blockerReason === undefined ||
+      (typeof task.blockerReason === 'string' && task.blockerReason.length <= 500)) &&
+    (task.status !== 'blocked' || Boolean(task.blockerReason?.trim())) &&
     ['low', 'medium', 'high'].includes(task.priority) &&
     (task.checklist === undefined ||
       (Array.isArray(task.checklist) &&
@@ -111,6 +114,7 @@ function seedTasks() {
   const date = today();
   return structuredClone(samples).map((task) => ({
     ...task,
+    blockerReason: '',
     notes: '',
     links: [],
     due:
@@ -148,11 +152,14 @@ export function readDemo() {
     ...task,
     checklist: task.checklist ?? [],
     notes: task.notes ?? '',
+    blockerReason: task.blockerReason ?? '',
     links: task.links ?? [],
   }));
 }
 export function saveDemo(tasks) {
   if (tasks.length > 500) throw new Error('The demo supports up to 500 tasks.');
+  if (!tasks.every(isTask))
+    throw new Error('Please check your task fields before saving.');
   try {
     localStorage.setItem(key, JSON.stringify(tasks));
   } catch {
@@ -166,6 +173,7 @@ export function demoOverview(tasks, date) {
   return {
     total: tasks.length,
     active: tasks.filter((task) => task.status === 'progress').length,
+    blocked: tasks.filter((task) => task.status === 'blocked').length,
     completed: tasks.filter((task) => task.status === 'done').length,
     overdue: tasks.filter((task) => task.due && task.due < date && task.status !== 'done')
       .length,

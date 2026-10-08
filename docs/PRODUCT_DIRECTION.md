@@ -20,7 +20,7 @@ Important distinctions:
 
 ## Compact additions worth prioritizing
 
-These are the ordered extension milestones. Task notes/resource links are now implemented; the remaining items below are pending.
+These are the ordered extension milestones. Task notes/resource links and blocker reasons are now implemented; the remaining items below are pending.
 
 | Addition                      | Genuine problem                                    | Bounded first version                                                                            |
 | ----------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
@@ -32,7 +32,7 @@ These are the ordered extension milestones. Task notes/resource links are now im
 | Recurring tasks               | “Weekly work is easy to forget.”                   | Choose explicit recurrence rules, preserve completion history, and prevent duplicate occurrences |
 | Backup/export                 | “I want a copy of my own work.”                    | Export owned data first; validate imports separately before allowing writes                      |
 
-Recommended next small milestone: **blocker reasons and task notes/resource links**, followed by a list view or reusable templates based on user preference. Finish account recovery, deletion, and operational launch requirements before promoting broad public adoption.
+Next implementation milestones: **reusable templates**, followed by a list view. Finish account recovery, deletion, and operational launch requirements before promoting broad public adoption.
 
 Recurring scheduling needs decisions about timezone, missed runs, end-of-month dates, and idempotency. It should not merely erase a completed task and reset its history.
 
@@ -94,7 +94,7 @@ The full proposal is authorized for incremental implementation after the saved b
 | 8. Notifications and digest                                            | Pending                                                                                      |
 | 9. Contextual team communication                                       | Pending                                                                                      |
 | 10. Approvals                                                          | Pending                                                                                      |
-| 11. Blockers                                                           | Next milestone                                                                               |
+| 11. Blockers                                                           | Implemented: required reasons, dedicated view, and project counts                            |
 | 12. Project health                                                     | Pending                                                                                      |
 | 13. Roles and permissions                                              | Private owner-scoped accounts implemented; team roles pending                                |
 | 14. Guest/client portal                                                | Pending                                                                                      |

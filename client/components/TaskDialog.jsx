@@ -9,6 +9,8 @@ export default function TaskDialog({ task, onClose, onSave }) {
   const [error, setError] = useState('');
   const [steps, setSteps] = useState(task?.checklist ?? []);
   const [links, setLinks] = useState(task?.links ?? []);
+  const [status, setStatus] = useState(task?.status || 'todo');
+  const [blockerReason, setBlockerReason] = useState(task?.blockerReason ?? '');
   useEffect(() => {
     const trigger = document.activeElement;
     ref.current.showModal();
@@ -21,6 +23,11 @@ export default function TaskDialog({ task, onClose, onSave }) {
     data.project = data.project.trim();
     data.description = data.description.trim();
     data.notes = data.notes.trim();
+    data.blockerReason = status === 'blocked' ? blockerReason.trim() : '';
+    if (status === 'blocked' && !data.blockerReason) {
+      setError('Explain what is blocking this task.');
+      return;
+    }
     data.links = links.map((link) => ({
       label: link.label.trim(),
       url: link.url.trim(),
@@ -136,7 +143,8 @@ export default function TaskDialog({ task, onClose, onSave }) {
           <select
             aria-label="Status"
             name="status"
-            defaultValue={task?.status || 'todo'}
+            value={status}
+            onChange={(event) => setStatus(event.target.value)}
             disabled={busy}
           >
             {Object.entries(statuses).map(([value, label]) => (
@@ -146,6 +154,25 @@ export default function TaskDialog({ task, onClose, onSave }) {
             ))}
           </select>
         </label>
+        {status === 'blocked' && (
+          <label className="blocker-editor">
+            Blocker reason
+            <textarea
+              name="blockerReason"
+              aria-label="Blocker reason"
+              required
+              maxLength={500}
+              rows={3}
+              value={blockerReason}
+              disabled={busy}
+              onChange={(event) => setBlockerReason(event.target.value)}
+              placeholder="e.g. Waiting for the final design brief"
+            />
+            <span className="small muted">
+              Make the next step clear for your future self.
+            </span>
+          </label>
+        )}
         <details
           className="context-editor"
           open={Boolean(task?.notes || task?.links?.length)}

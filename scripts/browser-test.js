@@ -108,6 +108,34 @@ try {
     .getByLabel('Complete Prepare notes for Browser test task', { exact: true })
     .check();
   await page.getByText('1/2 steps complete', { exact: true }).waitFor();
+  await page
+    .getByLabel('Status for Browser test task', { exact: true })
+    .selectOption('blocked');
+  await page
+    .getByLabel('Blocker reason', { exact: true })
+    .fill('Waiting for the final brief');
+  await page.getByRole('button', { name: 'Save task', exact: true }).click();
+  await page.getByText('Waiting for the final brief', { exact: true }).waitFor();
+  await page
+    .locator('.sidebar')
+    .getByRole('button', { name: /^Blockers/ })
+    .click();
+  await page.getByRole('heading', { name: 'Browser test task', exact: true }).waitFor();
+  assert.equal(await page.locator('.task-card').count(), 1);
+  await page
+    .getByLabel('Status for Browser test task', { exact: true })
+    .selectOption('todo');
+  await page.getByText('Nothing is blocked here.', { exact: true }).waitFor();
+  await page
+    .locator('.sidebar')
+    .getByRole('button', { name: 'Task board', exact: true })
+    .click();
+  await page.getByRole('heading', { name: 'Browser test task', exact: true }).waitFor();
+  assert.equal(
+    await page.getByText('Waiting for the final brief', { exact: true }).count(),
+    0,
+  );
+  console.log('PASS: blocker reasons, dedicated view, and unblocking.');
   console.log('Step: change status');
   await page
     .getByLabel('Status for Browser test task', { exact: true })

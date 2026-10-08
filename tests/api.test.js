@@ -233,6 +233,7 @@ test('daily planning queries and project summaries remain owner-scoped', async (
   assert.equal(overview.body.projectSummaries.length, 1);
   assert.deepEqual(overview.body.projectSummaries[0], {
     name: 'Review',
+    blocked: 0,
     total: 7,
     completed: 1,
     active: 1,
@@ -350,4 +351,75 @@ test('notes and resources persist, remain searchable, and retain owner isolation
   const stored = await Task.findById(id).lean();
   assert.equal(stored.notes, '');
   assert.deepEqual(stored.links, []);
+});
+
+test('blockers enforce reasons, remain owner-scoped, and clear on unblocking', async () => {
+  const author = request.agent(app);
+  await author
+    .post('/api/auth/login')
+    .set('Origin', origin)
+    .send({ email: 'planner@example.com', password: 'planner-long-passphrase' })
+    .expect(200);
+  const data = { title: 'Blocked delivery', project: 'Blocker QA', status: 'blocked' };
+  await author.post('/api/tasks').set('Origin', origin).send(data).expect(400);
+  const created = await author
+    .post('/api/tasks')
+    .set('Origin', origin)
+    .send({ ...data, blockerReason: 'Waiting for design approval' })
+    .expect(201);
+  const id = created.body.task.id;
+  const overview = await author.get('/api/tasks/overview?date=2026-10-09').expect(200);
+  assert.equal(overview.body.blocked, 1);
+  assert.equal(
+    overview.body.projectSummaries.find((project) => project.name === 'Blocker QA')
+      .blocked,
+    1,
+  );
+  const blocked = await author.get('/api/tasks?view=blocked').expect(200);
+  assert.equal(blocked.body.tasks[0].id, id);
+  const updated = await author
+    .patch('/api/tasks/' + id)
+    .set('Origin', origin)
+    .send({ notes: 'Keep this separate from the reason' })
+    .expect(200);
+  assert.equal(updated.body.task.blockerReason, 'Waiting for design approval');
+  await author
+    .patch('/api/tasks/' + id)
+    .set('Origin', origin)
+    .send({ blockerReason: '' })
+    .expect(400);
+  await author
+    .patch('/api/tasks/' + id)
+    .set('Origin', origin)
+    .send({ status: 'blocked' })
+    .expect(400);
+  const stranger = request.agent(app);
+  await stranger
+    .post('/api/auth/login')
+    .set('Origin', origin)
+    .send({ email: 'stranger@example.com', password: 'stranger-long-passphrase' })
+    .expect(200);
+  await stranger
+    .patch('/api/tasks/' + id)
+    .set('Origin', origin)
+    .send({ status: 'blocked', blockerReason: 'Overwrite' })
+    .expect(404);
+  assert.deepEqual(
+    (await stranger.get('/api/tasks?view=blocked').expect(200)).body.tasks,
+    [],
+  );
+  const resolved = await author
+    .patch('/api/tasks/' + id)
+    .set('Origin', origin)
+    .send({ status: 'todo' })
+    .expect(200);
+  assert.equal(resolved.body.task.blockerReason, '');
+  assert.equal(
+    (await author.get('/api/tasks?view=blocked').expect(200)).body.tasks.length,
+    0,
+  );
+  const owner = await User.findOne({ email: 'planner@example.com' });
+  await assert.rejects(Task.create({ ...data, owner: owner._id }), {
+    name: 'ValidationError',
+  });
 });

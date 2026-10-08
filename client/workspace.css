@@ -33,6 +33,9 @@
   font-size: 20px;
   letter-spacing: -0.4px;
 }
+.workspace .board {
+  grid-template-columns: repeat(var(--board-columns, 3), minmax(0, 1fr));
+}
 .workspace .column {
   background: #f0f2f7;
   padding: 14px;
@@ -84,7 +87,7 @@
     height: auto;
     overflow-y: visible;
   }
-  .planning-board {
+  .workspace .board {
     grid-template-columns: 1fr;
   }
 }
@@ -729,5 +732,50 @@ textarea:disabled {
   }
   .resource-editor label:first-child {
     grid-column: 1 / -1;
+  }
+}
+
+.blocked-dot {
+  background: var(--amber);
+}
+.nav-count {
+  margin-left: auto;
+  padding: 0 6px;
+  border-radius: 5px;
+  background: #fff2d9;
+  color: var(--amber);
+  font-size: 11px;
+}
+.task-blocker {
+  margin: 12px 0;
+  padding: 10px;
+  border-radius: 8px;
+  background: #fff5e4;
+  color: #805719;
+}
+.task-blocker > span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.task-blocker p {
+  font-size: 12px;
+  margin: 6px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.project-blocked {
+  color: var(--amber);
+  font-size: 12px;
+  margin: 8px 0;
+}
+.blocked-board {
+  max-width: 760px;
+}
+@media (min-width: 1101px) and (max-width: 1599px) {
+  .workspace .expanded-board {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

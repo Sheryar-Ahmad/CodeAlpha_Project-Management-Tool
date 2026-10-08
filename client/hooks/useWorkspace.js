@@ -7,6 +7,7 @@ const emptyOverview = {
   total: 0,
   active: 0,
   completed: 0,
+  blocked: 0,
   overdue: 0,
   projects: [],
   projectSummaries: [],
@@ -69,12 +70,15 @@ export default function useWorkspace(mode, onExpired) {
                 ' ' +
                 task.description +
                 ' ' +
-                task.notes
+                task.notes +
+                ' ' +
+                task.blockerReason
               )
                 .toLocaleLowerCase()
                 .includes(query),
           );
-          if (view !== 'all') filtered.sort((a, b) => a.due.localeCompare(b.due));
+          if (['today', 'upcoming'].includes(view))
+            filtered.sort((a, b) => a.due.localeCompare(b.due));
           result = {
             tasks: filtered.slice((page - 1) * 30, page * 30),
             hasMore: filtered.length > page * 30,
@@ -177,7 +181,8 @@ export default function useWorkspace(mode, onExpired) {
     notice,
     retry: () => setRevision((value) => value + 1),
     save: (data, id) => mutate(id ? 'update' : 'create', id, data),
-    updateStatus: (task, status) => mutate('update', task.id, { status }),
+    updateStatus: (task, status) =>
+      mutate('update', task.id, { status, blockerReason: '' }),
     updateChecklist: (task, checklist) => mutate('update', task.id, { checklist }),
     remove: (task) => mutate('delete', task.id),
     reset: () => {

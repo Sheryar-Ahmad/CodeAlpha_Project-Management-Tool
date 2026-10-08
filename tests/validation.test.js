@@ -144,3 +144,25 @@ test('resource links reject executable protocols, credentials, and excessive con
   assert.throws(() => parse(taskSchema, { ...base, links: Array(9).fill(link) }));
   assert.deepEqual(parse(taskUpdateSchema, { status: 'done' }), { status: 'done' });
 });
+
+test('blocked tasks require a reason and safe transitions keep status and reason together', () => {
+  const base = { title: 'Task', project: 'Project', status: 'blocked' };
+  assert.throws(() => parse(taskSchema, base));
+  assert.throws(() => parse(taskSchema, { ...base, blockerReason: '   ' }));
+  assert.equal(
+    parse(taskSchema, { ...base, blockerReason: 'Waiting for a decision' }).status,
+    'blocked',
+  );
+  assert.throws(() => parse(taskUpdateSchema, { status: 'blocked' }));
+  assert.throws(() => parse(taskUpdateSchema, { blockerReason: '' }));
+  assert.throws(() => parse(taskUpdateSchema, { blockerReason: 'New reason' }));
+  assert.deepEqual(parse(taskUpdateSchema, { status: 'todo', blockerReason: '' }), {
+    status: 'todo',
+    blockerReason: '',
+  });
+  assert.equal(parse(querySchema, { view: 'blocked' }).view, 'blocked');
+  assert.equal(
+    matchesPlanningView({ status: 'blocked', due: '' }, 'blocked', '2026-10-09'),
+    true,
+  );
+});

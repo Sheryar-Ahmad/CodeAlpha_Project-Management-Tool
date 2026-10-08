@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+# Add the absolute sitemap URL after the production domain is confirmed.
+# The task dashboard uses a noindex meta directive; robots.txt is not access control.

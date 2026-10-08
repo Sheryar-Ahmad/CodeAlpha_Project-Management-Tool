@@ -35,7 +35,16 @@
       <p>
         Account mode stores your name, email address, a salted password hash, and your
         tasks in MongoDB. Plaintext passwords are not stored. Task data includes titles,
-        project labels, descriptions, priorities, statuses, due dates, and timestamps.
+        project labels, descriptions, priorities, statuses, due dates, checklist steps and
+        their completion states, and timestamps.
+      </p>
+      <h2>Focus timer</h2>
+      <p>
+        Timer settings, remaining time, and a running session’s deadline are saved in this
+        browser’s local storage. Demo and account timers use separate keys. They are not
+        synced to MongoDB or other devices. Your written focus goal is not stored. Anyone
+        with access to this browser profile may inspect its local storage; clear site
+        storage to remove timer records.
       </p>
       <h2>Sessions and request limits</h2>
       <p>

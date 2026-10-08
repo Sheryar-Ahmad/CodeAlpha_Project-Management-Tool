@@ -2,55 +2,70 @@
 <!-- Orbit | Copyright (c) 2026 Sheheryar Ahmad | See NOTICE. -->
 <html lang="en">
   <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>
-      Privacy &amp; data — Orbit
-    </title>
-    <meta name="description" content="Learn how Orbit’s local demo stores tasks and how to remove your data.">
-    <link rel="stylesheet" href="/css/styles.css">
-    <link rel="icon" href="/assets/favicon.svg">
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Privacy &amp; data — Orbit</title>
+    <meta
+      name="description"
+      content="Understand how Orbit stores local demo tasks, account details, sessions, and private project tasks."
+    />
+    <link rel="stylesheet" href="/css/styles.css" />
+    <link rel="icon" href="/assets/favicon.svg" />
   </head>
   <body>
+    <a class="skip" href="#main">Skip to content</a>
     <header class="landing-nav wrap">
-      <a class="brand" href="/">
-        orbit.
-      </a>
-      <a href="/app.html">
-        Open workspace →
-      </a>
+      <a class="brand" href="/">orbit.</a><a href="/app.html">Open workspace →</a>
     </header>
-    <main class="wrap section prose">
-      <p class="eyebrow">
-        YOUR DATA
-      </p>
-      <h1>
-        Privacy &amp; local storage
-      </h1>
+    <main id="main" class="wrap section prose">
+      <p class="eyebrow">YOUR DATA</p>
+      <h1>Privacy &amp; your workspace</h1>
       <p>
-        This prototype saves task titles, descriptions, projects, priorities, dates, and statuses in your browser’s local storage. It does not send task data to a database and includes no analytics or advertising scripts.
+        Orbit is a project management application by Sheheryar Ahmad, developed during the
+        CodeAlpha internship. This notice describes the current personal-workspace
+        implementation.
       </p>
-      <h2>
-        Who can see my tasks?
-      </h2>
+      <h2>Local demo</h2>
       <p>
-        Anyone with access to this browser profile may be able to view them. This demo has no authentication. Do not store passwords, personal records, or confidential work here.
+        Demo tasks are saved in this browser’s local storage. They are not uploaded to the
+        account database. Anyone using the same browser profile may see them. Use Reset
+        demo to replace them with samples, or clear the site’s browser storage to remove
+        them completely.
       </p>
-      <h2>
-        How do I delete my data?
-      </h2>
+      <h2>Accounts and tasks</h2>
       <p>
-        Use Reset demo on the task board to replace your tasks with sample tasks, or clear this site’s storage in your browser settings to remove it entirely. Data does not sync between devices and may be lost if browser storage is cleared.
+        Account mode stores your name, email address, a salted password hash, and your
+        tasks in MongoDB. Plaintext passwords are not stored. Task data includes titles,
+        project labels, descriptions, priorities, statuses, due dates, and timestamps.
       </p>
-      <h2>
-        Hosting
-      </h2>
+      <h2>Sessions and request limits</h2>
       <p>
-        Once deployed, the hosting provider may process request metadata such as IP addresses and browser information to serve the website. Connected accounts and database features will require an updated privacy notice before release.
+        A required HTTP-only cookie keeps you signed in for up to seven days. The database
+        stores a digest of the session token, its account reference, and its expiry.
+        Signing out revokes the current session. Request limits use hashed client-address
+        counters with expiry dates to reduce abuse.
       </p>
-      <a href="/">
-        Return to Orbit →
-      </a>
+      <h2>Deleting data</h2>
+      <p>
+        You can delete individual account tasks from the board. Self-service account
+        deletion and password recovery are not implemented yet. Clearing browser data does
+        not delete account records from MongoDB. Do not use this prototype for
+        confidential or regulated information.
+      </p>
+      <h2>Hosting and external services</h2>
+      <p>
+        A deployed instance uses its hosting provider and MongoDB deployment to serve and
+        store data. Providers may process network metadata such as IP addresses. Orbit
+        includes no advertising or analytics scripts and does not intentionally publish
+        private task content.
+      </p>
+      <h2>Development status</h2>
+      <p>
+        Production retention rules, account deletion, recovery, and a support contact must
+        be finalized before a broad public release. The public source repository contains
+        application code, not your account records or database credentials.
+      </p>
+      <a href="/">Return to Orbit →</a>
     </main>
   </body>
 </html>

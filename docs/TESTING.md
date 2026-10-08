@@ -74,3 +74,11 @@ Automated browser coverage verifies the primary flows above; exhaustive accessib
 - Sitemap, canonical host, structured data, Search Console, and measured performance.
 
 - Demo exit appears in both the top bar and sidebar. Check both return to sign-in without deleting demo tasks; the top button must be visible on mobile without scrolling.
+
+## Task templates
+
+- In New task, preview each starter and apply it. The form stays editable and no task is created until Save task.
+- Keep the current project/date when applying a template. Every use starts with fresh, unchecked steps.
+- Type a title or add steps first: applying a template asks before replacing the title, description, and checklist. Dismiss must preserve the draft.
+- Cancel must create nothing; save and refresh must retain edits. Existing task forms do not show the template picker.
+- Check the picker, preview, and buttons on a narrow mobile screen and with a keyboard.

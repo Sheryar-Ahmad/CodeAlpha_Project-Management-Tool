@@ -2,10 +2,15 @@ import { useEffect, useRef, useState } from 'react';
 import { Plus, X } from 'lucide-react';
 import { statuses } from './TaskCard.jsx';
 import { validResourceUrl } from '../../shared/task.js';
+import { taskTemplates, createTemplateDraft } from '../lib/templates.js';
 
 export default function TaskDialog({ task, onClose, onSave }) {
   const ref = useRef(null);
   const [busy, setBusy] = useState(false);
+  const [title, setTitle] = useState(task?.title ?? '');
+  const [description, setDescription] = useState(task?.description ?? '');
+  const [templateId, setTemplateId] = useState('');
+  const template = taskTemplates.find((item) => item.id === templateId);
   const [error, setError] = useState('');
   const [steps, setSteps] = useState(task?.checklist ?? []);
   const [links, setLinks] = useState(task?.links ?? []);
@@ -16,6 +21,22 @@ export default function TaskDialog({ task, onClose, onSave }) {
     ref.current.showModal();
     return () => trigger?.focus();
   }, []);
+  function applyTemplate() {
+    if (!template) return;
+    if (
+      (title.trim() || description.trim() || steps.length) &&
+      !window.confirm(
+        'Replace the task title, description, and checklist with this template? Your project, date, notes, and resources will stay.',
+      )
+    )
+      return;
+    const draft = createTemplateDraft(templateId);
+    setTitle(draft.title);
+    setDescription(draft.description);
+    setSteps(draft.checklist);
+    setError('');
+    ref.current.querySelector('[name="title"]').focus();
+  }
   async function submit(event) {
     event.preventDefault();
     const data = Object.fromEntries(new FormData(event.currentTarget));
@@ -78,13 +99,59 @@ export default function TaskDialog({ task, onClose, onSave }) {
             <X size={20} />
           </button>
         </div>
+        {!task?.id && (
+          <fieldset className="template-picker" disabled={busy}>
+            <legend>Give yourself a head start</legend>
+            <p className="small muted">
+              Choose a starter, then make it your own. Nothing saves until you select Save
+              task.
+            </p>
+            <div className="template-controls">
+              <label>
+                <span className="sr-only">Task template</span>
+                <select
+                  aria-label="Task template"
+                  value={templateId}
+                  onChange={(event) => setTemplateId(event.target.value)}
+                >
+                  <option value="">Start from scratch</option>
+                  {taskTemplates.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="button"
+                className="secondary"
+                disabled={!template}
+                onClick={applyTemplate}
+              >
+                Use template
+              </button>
+            </div>
+            {template && (
+              <details className="template-preview" key={template.id}>
+                <summary>Preview {template.name.toLowerCase()}</summary>
+                <p>{template.description}</p>
+                <ol>
+                  {template.steps.map((step) => (
+                    <li key={step}>{step}</li>
+                  ))}
+                </ol>
+              </details>
+            )}
+          </fieldset>
+        )}
         <label>
           Task title
           <input
             name="title"
             required
             maxLength={120}
-            defaultValue={task?.title}
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
             autoFocus
             disabled={busy}
             placeholder="What needs to get done?"
@@ -105,9 +172,11 @@ export default function TaskDialog({ task, onClose, onSave }) {
           Description
           <textarea
             name="description"
+            aria-label="Description"
             maxLength={1000}
             rows={3}
-            defaultValue={task?.description}
+            value={description}
+            onChange={(event) => setDescription(event.target.value)}
             disabled={busy}
             placeholder="A little context goes a long way"
           />

@@ -348,6 +348,82 @@ try {
     'PASS: desktop/mobile demo, CRUD, persistence, filters, safe text rendering, dialog Escape.',
   );
 
+  // Templates preview without saving and protect work already typed into the form.
+  const templatePage = await browser.newPage({ viewport: { width: 375, height: 812 } });
+  templatePage.on('pageerror', (error) => errors.push(error.message));
+  await templatePage.goto(origin + '/app.html?demo=1');
+  await templatePage
+    .getByRole('heading', { name: 'Build the homepage', exact: true })
+    .waitFor();
+  await templatePage.getByRole('button', { name: 'New task', exact: true }).click();
+  await templatePage.getByLabel('Project', { exact: true }).fill('Weekly planning');
+  await templatePage.getByLabel('Due date', { exact: true }).fill('2026-10-20');
+  await templatePage.getByLabel('Task template', { exact: true }).selectOption('review');
+  await templatePage.getByText('Preview weekly review', { exact: true }).click();
+  await templatePage
+    .getByText('Choose the next three priorities', { exact: true })
+    .waitFor();
+  await templatePage.getByRole('button', { name: 'Use template', exact: true }).click();
+  assert.equal(
+    await templatePage.getByLabel('Project', { exact: true }).inputValue(),
+    'Weekly planning',
+  );
+  assert.equal(
+    await templatePage.getByLabel('Due date', { exact: true }).inputValue(),
+    '2026-10-20',
+  );
+  assert.equal(
+    await templatePage.getByLabel('Checklist step 1', { exact: true }).inputValue(),
+    'Review finished and unfinished work',
+  );
+  assert.equal(
+    await templatePage.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+    true,
+  );
+  await templatePage.getByLabel('Task title', { exact: true }).fill('My weekly review');
+  await templatePage.getByLabel('Task template', { exact: true }).selectOption('kickoff');
+  templatePage.once('dialog', (dialog) => dialog.dismiss());
+  await templatePage.getByRole('button', { name: 'Use template', exact: true }).click();
+  assert.equal(
+    await templatePage.getByLabel('Task title', { exact: true }).inputValue(),
+    'My weekly review',
+  );
+  templatePage.once('dialog', (dialog) => dialog.accept());
+  await templatePage.getByRole('button', { name: 'Use template', exact: true }).click();
+  assert.equal(
+    await templatePage.getByLabel('Task title', { exact: true }).inputValue(),
+    'Plan the project kickoff',
+  );
+  await templatePage.getByRole('button', { name: 'Cancel', exact: true }).click();
+  assert.equal(await templatePage.locator('.task-card').count(), 6);
+  await templatePage.getByRole('button', { name: 'New task', exact: true }).click();
+  await templatePage.getByLabel('Task template', { exact: true }).selectOption('meeting');
+  await templatePage.getByRole('button', { name: 'Use template', exact: true }).click();
+  await templatePage.getByLabel('Project', { exact: true }).fill('Follow-ups');
+  await templatePage.getByRole('button', { name: 'Save task', exact: true }).click();
+  await templatePage
+    .getByRole('heading', { name: 'Follow up on the meeting', exact: true })
+    .waitFor();
+  await templatePage.reload();
+  await templatePage
+    .getByRole('heading', { name: 'Follow up on the meeting', exact: true })
+    .waitFor();
+  await templatePage
+    .getByRole('button', { name: 'Edit Follow up on the meeting', exact: true })
+    .click();
+  assert.equal(
+    await templatePage.getByLabel('Task template', { exact: true }).count(),
+    0,
+  );
+  assert.equal(
+    await templatePage.getByLabel('Checklist step 4', { exact: true }).inputValue(),
+    'Check that the next steps are understood',
+  );
+  await templatePage.close();
+  console.log(
+    'PASS: template previews, mobile layout, replacement confirmation, cancellation, and saved checklists.',
+  );
+
   // Use a separate browser profile so large-board checks do not change demo screenshots.
   const paginationPage = await browser.newPage({
     viewport: { width: 1440, height: 1000 },

@@ -12,6 +12,7 @@ import { hashPassword, verifyPassword } from '../server/lib/password.js';
 
 import { addDays, matchesPlanningView, summarizeProjects } from '../shared/planning.js';
 import { initialTimer, remainingSeconds, validTimer } from '../client/lib/focus.js';
+import { taskTemplates, createTemplateDraft } from '../client/lib/templates.js';
 
 test('dates reject impossible dates and accept leap days', () => {
   assert.equal(validDate('2026-02-30'), false);
@@ -165,4 +166,19 @@ test('blocked tasks require a reason and safe transitions keep status and reason
     matchesPlanningView({ status: 'blocked', due: '' }, 'blocked', '2026-10-09'),
     true,
   );
+});
+
+test('template drafts satisfy task rules and do not share checklist state', () => {
+  for (const template of taskTemplates) {
+    const first = createTemplateDraft(template.id);
+    const second = createTemplateDraft(template.id);
+    const parsed = parse(taskSchema, { ...first, project: 'Personal project' });
+    assert.equal(parsed.status, 'todo');
+    assert.ok(first.checklist.every((step) => !step.done));
+    assert.notEqual(first.checklist[0].id, second.checklist[0].id);
+    first.checklist[0].done = true;
+    assert.equal(second.checklist[0].done, false);
+    assert.equal(createTemplateDraft(template.id).checklist[0].done, false);
+  }
+  assert.equal(createTemplateDraft('unknown'), null);
 });

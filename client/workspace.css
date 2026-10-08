@@ -779,3 +779,54 @@ textarea:disabled {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+.template-picker {
+  border: 1px solid #ded8fa;
+  border-radius: 12px;
+  padding: 16px;
+  background: #f8f6ff;
+  margin: 0 0 20px;
+}
+.template-picker legend {
+  font-size: 14px;
+  font-weight: 600;
+  padding: 0 5px;
+}
+.template-picker p {
+  margin: 0 0 12px;
+}
+.template-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.template-controls label {
+  flex: 1;
+  margin: 0;
+  min-width: 0;
+}
+.template-controls button {
+  white-space: nowrap;
+}
+.template-preview {
+  margin-top: 14px;
+  font-size: 13px;
+}
+.template-preview summary {
+  color: var(--purple);
+  cursor: pointer;
+}
+.template-preview p {
+  margin: 12px 0 8px;
+}
+.template-preview ol {
+  padding-left: 20px;
+  margin: 0;
+  line-height: 1.8;
+}
+@media (max-width: 480px) {
+  .template-controls {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

@@ -20,7 +20,7 @@ Important distinctions:
 
 ## Compact additions worth prioritizing
 
-These are the ordered extension milestones. Task notes/resource links and blocker reasons are now implemented; the remaining items below are pending.
+These are the ordered extension milestones. Task notes/resource links, blocker reasons, and curated task templates are now implemented; the remaining items below are pending.
 
 | Addition                      | Genuine problem                                    | Bounded first version                                                                            |
 | ----------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
@@ -32,7 +32,7 @@ These are the ordered extension milestones. Task notes/resource links and blocke
 | Recurring tasks               | “Weekly work is easy to forget.”                   | Choose explicit recurrence rules, preserve completion history, and prevent duplicate occurrences |
 | Backup/export                 | “I want a copy of my own work.”                    | Export owned data first; validate imports separately before allowing writes                      |
 
-Next implementation milestones: **reusable templates**, followed by a list view. Finish account recovery, deletion, and operational launch requirements before promoting broad public adoption.
+Next implementation milestone: **list view**. Finish account recovery, deletion, and operational launch requirements before promoting broad public adoption.
 
 Recurring scheduling needs decisions about timezone, missed runs, end-of-month dates, and idempotency. It should not merely erase a completed task and reset its history.
 
@@ -98,7 +98,7 @@ The full proposal is authorized for incremental implementation after the saved b
 | 12. Project health                                                     | Pending                                                                                      |
 | 13. Roles and permissions                                              | Private owner-scoped accounts implemented; team roles pending                                |
 | 14. Guest/client portal                                                | Pending                                                                                      |
-| 15. Project templates                                                  | Pending                                                                                      |
+| 15. Project templates                                                  | Curated task/checklist starters implemented; multi-task project templates pending            |
 | 16. Recurring tasks                                                    | Pending                                                                                      |
 | 17. Forms / work requests                                              | Pending                                                                                      |
 | 18. Automation                                                         | Pending                                                                                      |

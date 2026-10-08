@@ -24,7 +24,7 @@ A project starts with an idea. Then come the messages, scattered notes, and dead
 
 **Orbit brings the next steps into one workspace.** Organize tasks by project, choose priorities, keep deadlines visible, and see work move from **To do → In progress → Done**.
 
-Built by **Sheheryar Ahmad**, a Semester 5 Software Engineering student at **COMSATS University Islamabad**, during the **CodeAlpha Full Stack Development Internship · October 1–30, 2026**.
+Built by **Sheheryar Ahmad**, a Semester 5 Software Engineering student at **COMSATS University Islamabad**.
 
 > **Current release: 0.2.0.** Personal task workspaces with MERN persistence and a separate local demo. Shared team projects, invitations, and live collaboration are future milestones. No production deployment is claimed.
 
@@ -250,8 +250,6 @@ Once the core is stable, the strongest optional additions are **activity history
 
 **Sheheryar Ahmad**  
 Software Engineering · COMSATS University Islamabad  
-CodeAlpha Full Stack Development Intern · October 2026
-
 [GitHub profile](https://github.com/Sheryar-Ahmad) · [Repository](https://github.com/Sheryar-Ahmad/CodeAlpha_Project-Management-Tool)
 
 Copyright © 2026 Sheheryar Ahmad. [MIT License](LICENSE). Copies or substantial portions must retain the copyright and permission notice. See [NOTICE](NOTICE) for attribution.

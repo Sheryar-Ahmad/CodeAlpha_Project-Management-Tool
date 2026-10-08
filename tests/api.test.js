@@ -86,7 +86,7 @@ test('create, list, and update tasks without losing omitted fields', async () =>
     .set('Origin', origin)
     .send({
       title: 'Task [alpha]',
-      project: 'Internship',
+      project: 'Planning',
       description: 'Keep this description',
       priority: 'high',
       due: '2026-01-01',
@@ -131,7 +131,7 @@ test('pagination is bounded and overview excludes completed overdue tasks', asyn
   await alice
     .post('/api/tasks')
     .set('Origin', origin)
-    .send({ title: 'Second task', project: 'Internship', due: '2026-01-01' })
+    .send({ title: 'Second task', project: 'Planning', due: '2026-01-01' })
     .expect(201);
   const page = await alice.get('/api/tasks?limit=1').expect(200);
   assert.equal(page.body.tasks.length, 1);

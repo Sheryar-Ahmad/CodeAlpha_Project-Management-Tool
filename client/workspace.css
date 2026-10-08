@@ -1,4 +1,102 @@
 /* Orbit | Copyright (c) 2026 Sheheryar Ahmad | See NOTICE. */
+/* Workspace hierarchy: keep content readable without changing the public palette. */
+.workspace .sidebar {
+  position: sticky;
+  top: 0;
+  height: 100dvh;
+  overflow-y: auto;
+  align-self: start;
+}
+.workspace .page-heading {
+  margin-top: 28px;
+}
+.workspace-summary {
+  margin: 22px 0 30px;
+}
+.summary-heading {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  margin: 0 0 10px;
+}
+.workspace-summary .stats {
+  margin: 0;
+}
+.workspace .stats article {
+  padding: 18px 20px;
+  border-radius: 14px;
+}
+.workspace .stats strong {
+  font-size: 28px;
+}
+.workspace .board-toolbar h2 {
+  font-size: 20px;
+  letter-spacing: -0.4px;
+}
+.workspace .column {
+  background: #f0f2f7;
+  padding: 14px;
+}
+.workspace .task-card {
+  padding: 18px;
+  border-radius: 12px;
+}
+.workspace .task-title {
+  font-size: 15px;
+  line-height: 1.45;
+}
+.workspace .task-description {
+  font-size: 13px;
+  line-height: 1.65;
+}
+.workspace .project-name,
+.workspace .task-date {
+  font-size: 12px;
+}
+.workspace .tag {
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.workspace .task-actions {
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.workspace .task-actions select {
+  min-width: 92px;
+  min-height: 36px;
+  font-size: 12px;
+  padding: 7px;
+}
+.planning-board {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.focus-workspace .focus-panel {
+  margin-top: 22px;
+}
+@media (max-width: 1100px) and (min-width: 801px) {
+  .workspace .board {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 800px) {
+  .workspace .sidebar {
+    position: static;
+    height: auto;
+    overflow-y: visible;
+  }
+  .planning-board {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 480px) {
+  .workspace .stats article {
+    padding: 15px;
+  }
+  .workspace .task-actions select {
+    min-height: 44px;
+  }
+}
+
 .sidebar nav a,
 .sidebar-exit {
   display: flex;
@@ -6,6 +104,7 @@
   gap: 10px;
 }
 .sidebar-exit {
+  min-height: 44px;
   border: 0;
   background: transparent;
   color: var(--muted);
@@ -21,7 +120,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  color: #8b94a9;
+  color: var(--muted);
 }
 .task-date {
   display: flex;
@@ -37,8 +136,8 @@
   border: 0;
   background: #f6f7fb;
   color: var(--muted);
-  width: 30px;
-  height: 30px;
+  width: 36px;
+  height: 36px;
   border-radius: 6px;
 }
 .card-icon:hover {
@@ -290,6 +389,7 @@ textarea:disabled {
 }
 
 .sidebar nav button {
+  min-height: 44px;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -331,9 +431,9 @@ textarea:disabled {
   margin-bottom: 8px;
 }
 .step-editor input[type='checkbox'] {
-  width: 16px;
-  height: 16px;
-  flex: 0 0 16px;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
   margin: 0;
   accent-color: var(--purple);
 }
@@ -343,7 +443,7 @@ textarea:disabled {
   flex: 1;
 }
 .step-editor button {
-  flex: 0 0 30px;
+  flex: 0 0 36px;
 }
 .add-step {
   display: inline-flex;
@@ -351,11 +451,13 @@ textarea:disabled {
   gap: 5px;
 }
 .task-checklist {
-  font-size: 11px;
+  font-size: 12px;
   margin: 12px 0 16px;
   color: var(--muted);
 }
 .task-checklist summary {
+  min-height: 32px;
+  padding: 5px 0;
   cursor: pointer;
   color: var(--purple);
 }
@@ -365,6 +467,8 @@ textarea:disabled {
   list-style: none;
 }
 .task-checklist label {
+  min-height: 32px;
+  cursor: pointer;
   display: flex;
   align-items: flex-start;
   gap: 7px;
@@ -423,7 +527,7 @@ textarea:disabled {
   justify-content: space-between;
   gap: 10px;
   margin-top: 10px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--muted);
 }
 .project-deadline {
@@ -435,6 +539,7 @@ textarea:disabled {
   color: #a33426;
 }
 .project-open {
+  min-height: 36px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -523,6 +628,7 @@ textarea:disabled {
 }
 .focus-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
   gap: 10px;
   margin: 24px 0;
@@ -541,5 +647,15 @@ textarea:disabled {
 @media (max-width: 600px) {
   .focus-panel {
     padding: 24px 18px;
+  }
+}
+
+@media (pointer: coarse) {
+  .card-icon {
+    width: 44px;
+    height: 44px;
+  }
+  .step-editor button {
+    flex-basis: 44px;
   }
 }

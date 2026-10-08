@@ -22,6 +22,7 @@ Temporary databases and downloaded tools stay in the ignored project cache. Inte
 - Enter markup as a title: show it as text without executing it.
 - Try long text, empty workspace, completed-only board, and multiple task pages.
 - Confirm summary counts cover the whole account while columns cover the current page.
+- Use 31 or more tasks. Move to the next page immediately after opening the board; it must stay on that page. Return with Previous. An unchanged or whitespace-only search must not reset navigation.
 - Block browser storage: demo saves must fail visibly.
 - Reset demo requires confirmation and does not alter account tasks.
 
@@ -53,6 +54,8 @@ Temporary databases and downloaded tools stay in the ignored project cache. Inte
 - Inspect widths of 375, 768, and 1440 pixels, and 200% zoom.
 - Verify contrast and reduced-motion preferences.
 - Check console errors and missing assets.
+- Confirm Today/Upcoming show unfinished-work columns, Focus keeps the timer free of task counters, and pagination appears only when needed.
+- Try the empty-column Create a task action in a filtered project and a daily view: the form must preserve its project/date defaults.
 
 Automated browser coverage verifies the primary flows above; exhaustive accessibility, multi-browser behavior, and large-account load checks still require review.
 

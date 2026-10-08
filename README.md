@@ -258,6 +258,8 @@ No ads are installed in this release. The proposed approach keeps the workspace 
 
 ## Next milestones
 
+See [the product direction review](docs/PRODUCT_DIRECTION.md) for which proposed features fit this release and which require a shared-project architecture first.
+
 - [ ] Recurring tasks with explicit scheduling rules
 - [ ] Task notes and useful resource links
 - [ ] Export and validated import for personal backups

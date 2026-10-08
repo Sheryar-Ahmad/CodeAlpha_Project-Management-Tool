@@ -258,3 +258,33 @@ textarea:disabled {
     animation: none;
   }
 }
+
+.topbar {
+  height: auto;
+  min-height: 80px;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 16px 0;
+}
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.demo-exit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px solid #bcb1f3;
+  border-radius: 8px;
+  background: white;
+  color: var(--purple);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.demo-exit:hover:not(:disabled) {
+  background: #efedff;
+  border-color: var(--purple);
+}

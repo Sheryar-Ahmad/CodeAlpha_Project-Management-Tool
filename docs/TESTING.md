@@ -47,3 +47,5 @@ Temporary databases and downloaded tools stay in the ignored project cache. Inte
 - Vercel /api routing, Secure cookies, exact APP_ORIGIN, and security headers.
 - Real 404 responses and public indexing directives.
 - Sitemap, canonical host, structured data, Search Console, and measured performance.
+
+- Demo exit appears in both the top bar and sidebar. Check both return to sign-in without deleting demo tasks; the top button must be visible on mobile without scrolling.

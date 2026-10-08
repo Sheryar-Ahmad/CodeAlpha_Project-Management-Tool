@@ -1,3 +1,4 @@
+import { createServer as createPortProbe } from 'node:net';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { createServer } from 'vite';
@@ -14,30 +15,36 @@ try {
   if (!demoOnly) {
     mongo = await MongoMemoryServer.create();
     process.env.MONGODB_URI = mongo.getUri();
-    process.env.APP_ORIGIN = 'http://127.0.0.1:5173';
+
     apiServer = app.listen(0, '127.0.0.1');
     await new Promise((resolve) => apiServer.once('listening', resolve));
     port = apiServer.address().port;
   }
+  const probe = createPortProbe();
+  await new Promise((resolve) => probe.listen(0, '127.0.0.1', resolve));
+  const uiPort = probe.address().port;
+  await new Promise((resolve) => probe.close(resolve));
   vite = await createServer({
     configFile: 'vite.config.js',
     server: {
       host: '127.0.0.1',
-      port: 5173,
+      port: uiPort,
       strictPort: true,
       proxy: { '/api': 'http://127.0.0.1:' + port },
     },
   });
   await vite.listen();
+  const origin = 'http://127.0.0.1:' + vite.httpServer.address().port;
+  process.env.APP_ORIGIN = origin;
   browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   page.setDefaultTimeout(15000);
   page.on('pageerror', (error) => errors.push(error.message));
   await mkdir('docs/screenshots', { recursive: true });
-  await page.goto('http://127.0.0.1:5173/');
+  await page.goto(origin + '/');
   await page.getByRole('heading', { name: /Big ideas/ }).waitFor();
   await page.screenshot({ path: 'docs/screenshots/landing-desktop.png', fullPage: true });
-  await page.goto('http://127.0.0.1:5173/app.html?demo=1');
+  await page.goto(origin + '/app.html?demo=1');
   await page.getByRole('heading', { name: 'Build the homepage', exact: true }).waitFor();
   await page.screenshot({
     path: 'docs/screenshots/workspace-desktop.png',
@@ -102,6 +109,20 @@ try {
     await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
     true,
   );
+  assert.equal(
+    await page.getByRole('button', { name: 'Leave demo', exact: true }).count(),
+    2,
+  );
+  const topExit = page
+    .locator('.topbar')
+    .getByRole('button', { name: 'Leave demo', exact: true });
+  await topExit.scrollIntoViewIfNeeded();
+  const exitBounds = await topExit.boundingBox();
+  assert.ok(exitBounds && exitBounds.y >= 0 && exitBounds.y + exitBounds.height <= 812);
+  await topExit.click();
+  await page.getByRole('heading', { name: 'Welcome back.', exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Open the local demo', exact: true }).click();
+  await page.getByRole('heading', { name: 'Build the homepage', exact: true }).waitFor();
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.getByRole('button', { name: 'New task', exact: true }).click();
   await page.keyboard.press('Escape');
@@ -111,7 +132,10 @@ try {
   );
 
   if (!demoOnly) {
-    await page.getByRole('button', { name: 'Leave demo', exact: true }).click();
+    await page
+      .locator('.sidebar')
+      .getByRole('button', { name: 'Leave demo', exact: true })
+      .click();
     await page
       .getByRole('button', { name: 'New here? Create an account', exact: true })
       .click();

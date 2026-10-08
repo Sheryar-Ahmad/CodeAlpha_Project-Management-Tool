@@ -113,9 +113,21 @@ function Workspace({ mode, user, onExit, onExpired }) {
           <span>
             Workspace <span className="muted">/ Overview</span>
           </span>
-          <span className="pill">
-            {mode === 'demo' ? 'LOCAL DEMO' : 'PERSONAL WORKSPACE'}
-          </span>
+          <div className="topbar-actions">
+            <span className="pill">
+              {mode === 'demo' ? 'LOCAL DEMO' : 'PERSONAL WORKSPACE'}
+            </span>
+            {mode === 'demo' && (
+              <button
+                type="button"
+                className="demo-exit"
+                disabled={signingOut || workspace.busy}
+                onClick={exit}
+              >
+                <LogOut size={14} aria-hidden="true" /> Leave demo
+              </button>
+            )}
+          </div>
         </header>
         <section className="page-heading">
           <div>

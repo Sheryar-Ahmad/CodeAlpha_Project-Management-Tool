@@ -1,5 +1,7 @@
 # SEO launch checklist
 
+# SEO launch checklist
+
 Orbit’s public landing and privacy pages are static HTML. The React workspace is marked noindex; authentication protects account data.
 
 ## Implemented

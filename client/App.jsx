@@ -385,6 +385,7 @@ export default function App() {
       <AuthScreen
         key={error}
         initialError={error}
+        initialRegister={new URLSearchParams(location.search).get('auth') === 'register'}
         onUser={(value) => {
           setUser(value);
           setError('');

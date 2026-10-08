@@ -2,8 +2,13 @@ import { useState } from 'react';
 import { ArrowUpRight, Layers3, LockKeyhole, ArrowLeft } from 'lucide-react';
 import { request } from '../lib/api.js';
 
-export default function AuthScreen({ onUser, onDemo, initialError }) {
-  const [register, setRegister] = useState(false);
+export default function AuthScreen({
+  onUser,
+  onDemo,
+  initialError,
+  initialRegister = false,
+}) {
+  const [register, setRegister] = useState(initialRegister);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(initialError || '');
   async function submit(event) {

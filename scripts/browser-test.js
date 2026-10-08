@@ -44,6 +44,21 @@ try {
   await page.goto(origin + '/');
   await page.getByRole('heading', { name: /Big ideas/ }).waitFor();
   await page.screenshot({ path: 'docs/screenshots/landing-desktop.png', fullPage: true });
+  await page.setViewportSize({ width: 375, height: 812 });
+  const accountLink = page
+    .locator('.landing-nav')
+    .getByRole('link', { name: 'Create your account', exact: true });
+  assert.ok(await accountLink.isVisible());
+  assert.equal(
+    await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+    true,
+  );
+  await accountLink.click();
+  await page
+    .getByRole('heading', { name: 'Start something great.', exact: true })
+    .waitFor();
+  assert.ok(await page.getByLabel('Your name', { exact: true }).isVisible());
+  await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto(origin + '/app.html?demo=1');
   await page.getByRole('heading', { name: 'Build the homepage', exact: true }).waitFor();
   await page.screenshot({

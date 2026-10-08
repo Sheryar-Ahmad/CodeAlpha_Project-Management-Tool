@@ -57,6 +57,7 @@ Screenshots are from the working local demo using illustrative sample tasks.
 | Project labels           | Keep tasks organized by project and filter the board               |
 | Priorities and deadlines | Make important work and overdue tasks visible                      |
 | Today and Upcoming       | Find overdue work, today’s tasks, and the next seven days          |
+| Task notes and resources | Keep decisions and reference links alongside each task             |
 | Checklists               | Break a task into up to 20 steps and track completion              |
 | Project overview         | See completion progress and the earliest unfinished deadline       |
 | Duplicate task           | Reuse a task with fresh steps and a cleared deadline               |
@@ -206,7 +207,7 @@ npm run build
 npm run format:check
 ```
 
-**Verified locally:** 25 API/input/planning/timer/password tests and Chromium browser flows covering demo CRUD, storage persistence, search, filters, safe text rendering, mobile overflow, dialog Escape, checklists, task duplication, daily views, overnight date changes, project progress, focus pause/refresh/completion, registration, database-backed task persistence, logout, and login.
+**Verified locally:** 27 API/input/planning/timer/password tests and Chromium browser flows covering demo CRUD, storage persistence, search, filters, safe text rendering, mobile overflow, dialog Escape, checklists, task duplication, daily views, overnight date changes, project progress, focus pause/refresh/completion, registration, database-backed task persistence, logout, and login.
 
 For browser checks:
 

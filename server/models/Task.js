@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import { validDate } from '../../shared/date.js';
+import { validResourceUrl } from '../../shared/task.js';
 
 const checklistItem = new mongoose.Schema(
   {
@@ -9,12 +10,28 @@ const checklistItem = new mongoose.Schema(
   },
   { _id: false },
 );
+const resource = new mongoose.Schema(
+  {
+    label: { type: String, required: true, trim: true, maxlength: 100 },
+    url: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 2048,
+      validate: validResourceUrl,
+    },
+  },
+  { _id: false },
+);
+
 const schema = new mongoose.Schema(
   {
     owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     title: { type: String, required: true, trim: true, maxlength: 120 },
     project: { type: String, required: true, trim: true, maxlength: 60 },
     description: { type: String, default: '', maxlength: 1000 },
+    notes: { type: String, default: '', maxlength: 3000 },
+    links: { type: [resource], default: [], validate: (items) => items.length <= 8 },
     priority: { type: String, enum: ['low', 'medium', 'high'], default: 'medium' },
     status: { type: String, enum: ['todo', 'progress', 'done'], default: 'todo' },
     due: { type: String, default: '', validate: validDate },

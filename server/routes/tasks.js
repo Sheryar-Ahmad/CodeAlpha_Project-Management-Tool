@@ -17,6 +17,8 @@ const serialize = (task) => ({
   title: task.title,
   project: task.project,
   description: task.description,
+  notes: task.notes ?? '',
+  links: (task.links ?? []).map(({ label, url }) => ({ label, url })),
   priority: task.priority,
   status: task.status,
   due: task.due,
@@ -98,7 +100,7 @@ taskRouter.get('/', async (req, res) => {
     const safe = [...search]
       .map((char) => (specials.includes(char) ? String.fromCharCode(92) + char : char))
       .join('');
-    filter.$or = ['title', 'project', 'description'].map((field) => ({
+    filter.$or = ['title', 'project', 'description', 'notes'].map((field) => ({
       [field]: { $regex: safe, $options: 'i' },
     }));
   }

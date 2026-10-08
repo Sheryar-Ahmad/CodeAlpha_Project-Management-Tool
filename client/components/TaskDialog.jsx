@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { Plus, X } from 'lucide-react';
 import { statuses } from './TaskCard.jsx';
+import { validResourceUrl } from '../../shared/task.js';
 
 export default function TaskDialog({ task, onClose, onSave }) {
   const ref = useRef(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [steps, setSteps] = useState(task?.checklist ?? []);
+  const [links, setLinks] = useState(task?.links ?? []);
   useEffect(() => {
     const trigger = document.activeElement;
     ref.current.showModal();
@@ -18,6 +20,15 @@ export default function TaskDialog({ task, onClose, onSave }) {
     data.title = data.title.trim();
     data.project = data.project.trim();
     data.description = data.description.trim();
+    data.notes = data.notes.trim();
+    data.links = links.map((link) => ({
+      label: link.label.trim(),
+      url: link.url.trim(),
+    }));
+    if (data.links.some((link) => !link.label || !validResourceUrl(link.url))) {
+      setError('Give each resource a name and a valid HTTP or HTTPS link.');
+      return;
+    }
     if (!data.title || !data.project) {
       setError('Enter a task title and project.');
       return;
@@ -135,6 +146,89 @@ export default function TaskDialog({ task, onClose, onSave }) {
             ))}
           </select>
         </label>
+        <details
+          className="context-editor"
+          open={Boolean(task?.notes || task?.links?.length)}
+        >
+          <summary>Notes &amp; resources</summary>
+          <p className="small muted">
+            Keep useful context and documents close to this task.
+          </p>
+          <label>
+            Notes
+            <textarea
+              aria-label="Notes"
+              name="notes"
+              rows={4}
+              maxLength={3000}
+              defaultValue={task?.notes}
+              disabled={busy}
+              placeholder="Decisions, reminders, or useful background…"
+            />
+          </label>
+          <fieldset disabled={busy}>
+            <legend className="small">Resource links · up to 8</legend>
+            {links.map((link, index) => (
+              <div className="resource-editor" key={index}>
+                <label>
+                  <span className="sr-only">Resource label {index + 1}</span>
+                  <input
+                    required
+                    maxLength={100}
+                    value={link.label}
+                    placeholder="e.g. Design brief"
+                    onChange={(event) =>
+                      setLinks(
+                        links.map((item, position) =>
+                          position === index
+                            ? { ...item, label: event.target.value }
+                            : item,
+                        ),
+                      )
+                    }
+                  />
+                </label>
+                <label>
+                  <span className="sr-only">Resource URL {index + 1}</span>
+                  <input
+                    type="url"
+                    required
+                    maxLength={2048}
+                    value={link.url}
+                    placeholder="https://…"
+                    onChange={(event) =>
+                      setLinks(
+                        links.map((item, position) =>
+                          position === index
+                            ? { ...item, url: event.target.value }
+                            : item,
+                        ),
+                      )
+                    }
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="card-icon"
+                  aria-label={'Remove resource ' + (index + 1)}
+                  onClick={() =>
+                    setLinks(links.filter((_, position) => position !== index))
+                  }
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              className="text-button add-step"
+              disabled={links.length >= 8}
+              onClick={() => setLinks([...links, { label: '', url: '' }])}
+            >
+              <Plus size={14} /> Add a resource
+            </button>
+          </fieldset>
+        </details>
         <fieldset className="checklist-editor" disabled={busy}>
           <legend>
             Checklist <span className="muted small">Optional · up to 20 steps</span>

@@ -22,6 +22,8 @@ All mutations require an Origin header exactly equal to APP_ORIGIN.
 - title: trimmed, 1–120 characters
 - project: trimmed, 1–60 characters
 - description: up to 1,000 characters
+- notes: plain text up to 3,000 characters
+- links: up to 8 resources, each with a label (1–100 characters) and HTTP/HTTPS URL (up to 2,048 characters); embedded credentials are rejected
 - priority: low, medium, high
 - status: todo, progress, done
 - due: empty string or real calendar date between 2000 and 2100
@@ -39,7 +41,7 @@ List parameters: page (1–10,000), limit (1–50), search (up to 120 characters
 - `view=today` requires date and returns unfinished tasks due on or before that date.
 - `view=upcoming` requires date and returns unfinished tasks due after that date and within seven calendar days.
 - Undated and completed tasks appear only in the all view.
-- Search and exact project filters can combine with either planning view.
+- Search includes title, project, description, and notes. Search and exact project filters can combine with either planning view.
 - Planning lists sort by due date, then ID. The all view sorts by latest update, then ID.
 
 Example: `GET /api/tasks?view=upcoming&date=2026-10-09&page=1&limit=30` includes October 10–16.
@@ -51,6 +53,8 @@ Response contains tasks, hasMore, and page. Dates represent calendar days in the
 The overview requires a valid date and returns total, active (in progress), completed, overdue, projects (label names), and projectSummaries. Each project summary contains name, total, active, completed, overdue, and nextDue (earliest unfinished deadline or null).
 
 Counts include the whole account, independently of task pagination and current filters. Project labels and summaries are capped at 1,000, sorted by label. They describe task groups, not shared project entities.
+
+Request JSON is capped at 32 KiB. The server stores links as references and does not fetch their contents. Updates replace only supplied fields; omitted notes/resources remain intact.
 
 ## Errors
 

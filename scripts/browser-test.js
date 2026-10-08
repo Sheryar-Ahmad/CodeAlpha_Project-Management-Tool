@@ -77,10 +77,32 @@ try {
   await page.getByLabel('Checklist step 1', { exact: true }).fill('Prepare notes');
   await page.getByRole('button', { name: 'Add a step', exact: true }).click();
   await page.getByLabel('Checklist step 2', { exact: true }).fill('Review the draft');
+  await page.locator('dialog').getByText('Notes & resources', { exact: true }).click();
+  await page
+    .getByLabel('Notes', { exact: true })
+    .fill('Decision: keep a simple delivery plan.');
+  await page.getByRole('button', { name: 'Add a resource', exact: true }).click();
+  await page.getByLabel('Resource label 1', { exact: true }).fill('Design brief');
+  await page
+    .getByLabel('Resource URL 1', { exact: true })
+    .fill('https://example.com/brief');
   console.log('Step: save task');
   await page.getByRole('button', { name: 'Save task', exact: true }).click();
   await page.getByRole('heading', { name: 'Browser test task', exact: true }).waitFor();
   assert.equal(await page.locator('.task-card img').count(), 0);
+  await page
+    .locator('.task-card')
+    .getByText('Notes & resources', { exact: true })
+    .click();
+  await page
+    .getByText('Decision: keep a simple delivery plan.', { exact: true })
+    .waitFor();
+  const resource = page.getByRole('link', {
+    name: 'Design brief (opens in a new tab)',
+    exact: true,
+  });
+  assert.equal(await resource.getAttribute('href'), 'https://example.com/brief');
+  assert.equal(await resource.getAttribute('rel'), 'noopener noreferrer');
   await page.getByText('0/2 steps complete', { exact: true }).click();
   await page
     .getByLabel('Complete Prepare notes for Browser test task', { exact: true })
@@ -100,6 +122,14 @@ try {
   );
   await page.getByText('1/2 steps complete', { exact: true }).waitFor();
   await page.getByRole('button', { name: 'Edit Browser test task', exact: true }).click();
+  assert.equal(
+    await page.getByLabel('Notes', { exact: true }).inputValue(),
+    'Decision: keep a simple delivery plan.',
+  );
+  assert.equal(
+    await page.getByLabel('Resource URL 1', { exact: true }).inputValue(),
+    'https://example.com/brief',
+  );
   await page.getByLabel('Task title', { exact: true }).fill('Renamed browser task');
   await page.getByRole('button', { name: 'Save task', exact: true }).click();
   await page

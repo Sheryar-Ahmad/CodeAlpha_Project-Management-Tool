@@ -124,3 +124,23 @@ test('focus storage rejects impossible state without accepting malformed data', 
   assert.equal(validTimer({ ...initialTimer(), duration: 999999 }), false);
   assert.equal(validTimer({ ...initialTimer(), deadline: 'not-a-time' }), false);
 });
+
+test('resource links reject executable protocols, credentials, and excessive context', () => {
+  const base = { title: 'Task', project: 'Project' };
+  const link = { label: 'Brief', url: 'https://example.com/brief' };
+  assert.equal(
+    parse(taskSchema, { ...base, links: [link], notes: ' Keep context ' }).notes,
+    'Keep context',
+  );
+  for (const url of [
+    'javascript:alert(1)',
+    'data:text/html,bad',
+    'ftp://example.com/file',
+    'https://user:secret@example.com',
+  ]) {
+    assert.throws(() => parse(taskSchema, { ...base, links: [{ ...link, url }] }));
+  }
+  assert.throws(() => parse(taskSchema, { ...base, notes: 'x'.repeat(3001) }));
+  assert.throws(() => parse(taskSchema, { ...base, links: Array(9).fill(link) }));
+  assert.deepEqual(parse(taskUpdateSchema, { status: 'done' }), { status: 'done' });
+});

@@ -1,4 +1,4 @@
-import { CalendarDays, Copy, Pencil, Trash2 } from 'lucide-react';
+import { CalendarDays, Copy, ExternalLink, Pencil, Trash2 } from 'lucide-react';
 import { today } from '../lib/api.js';
 
 export const statuses = { todo: 'To do', progress: 'In progress', done: 'Done' };
@@ -27,6 +27,28 @@ export default function TaskCard({
       </div>
       <h3 className="task-title">{task.title}</h3>
       {task.description && <p className="task-description">{task.description}</p>}
+      {(task.notes || task.links?.length > 0) && (
+        <details className="task-context">
+          <summary>Notes &amp; resources</summary>
+          {task.notes && <p className="task-notes">{task.notes}</p>}
+          {task.links?.length > 0 && (
+            <ul className="resource-links">
+              {task.links.map((link, index) => (
+                <li key={index}>
+                  <a
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={link.label + ' (opens in a new tab)'}
+                  >
+                    <ExternalLink size={13} aria-hidden="true" /> {link.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
+        </details>
+      )}
       {steps.length > 0 && (
         <details className="task-checklist">
           <summary>

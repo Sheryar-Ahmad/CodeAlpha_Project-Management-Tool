@@ -20,7 +20,7 @@ Important distinctions:
 
 ## Compact additions worth prioritizing
 
-These are proposals, not implemented features.
+These are the ordered extension milestones. Task notes/resource links are now implemented; the remaining items below are pending.
 
 | Addition                      | Genuine problem                                    | Bounded first version                                                                            |
 | ----------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
@@ -48,7 +48,7 @@ Shared projects require explicit agreement before implementation:
 
 Approvals, mentions, workload reporting, guests, activity feeds, and team notifications depend on this work. A simple two-role owner/member model is a more manageable first decision than six overlapping enterprise roles.
 
-## Defer for a later product
+## Later milestones
 
 Gantt charts, critical paths, automatic rescheduling, enterprise workload planning, client portals, OKRs, custom-field builders, automation builders, external integrations, and AI forecasting each introduce substantial behavior and maintenance costs.
 
@@ -77,3 +77,40 @@ These choices follow [USWDS principles on real user needs and ease of use](https
 ## Review gates
 
 Before shipping another feature, name the problem, define the smallest useful workflow, cover authorization and validation, and verify its empty/error/mobile states. Review the result with representative users; actual feedback should decide whether further polish or more functionality helps.
+
+## Authorized expansion and delivery tracking
+
+The full proposal is authorized for incremental implementation after the saved baseline `orbit-snapshot-2026-10-09`. Each milestone must remain usable, validated, tested, and committed before the next. Integrations requiring external accounts will be identified explicitly.
+
+| Proposal area                                                          | Current delivery status                                                                      |
+| ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| 1. Workspaces, projects, tasks, ownership, subtasks, context, recovery | Personal task foundation and context implemented; team/project entities and recovery pending |
+| 2. Multiple views / My Work                                            | Board, Today, Upcoming implemented; list/calendar/timeline pending                           |
+| 3. Dependencies                                                        | Pending                                                                                      |
+| 4. Milestones                                                          | Pending                                                                                      |
+| 5. Useful dashboard                                                    | Personal overview implemented; team reporting pending                                        |
+| 6. Workload and capacity                                               | Pending                                                                                      |
+| 7. Time tracking                                                       | Local focus timer implemented; persisted work logs/timesheets pending                        |
+| 8. Notifications and digest                                            | Pending                                                                                      |
+| 9. Contextual team communication                                       | Pending                                                                                      |
+| 10. Approvals                                                          | Pending                                                                                      |
+| 11. Blockers                                                           | Next milestone                                                                               |
+| 12. Project health                                                     | Pending                                                                                      |
+| 13. Roles and permissions                                              | Private owner-scoped accounts implemented; team roles pending                                |
+| 14. Guest/client portal                                                | Pending                                                                                      |
+| 15. Project templates                                                  | Pending                                                                                      |
+| 16. Recurring tasks                                                    | Pending                                                                                      |
+| 17. Forms / work requests                                              | Pending                                                                                      |
+| 18. Automation                                                         | Pending                                                                                      |
+| 19. Integrations                                                       | Pending; provider configuration required for live connections                                |
+| 20. Command bar / global search                                        | Task search implemented; command bar pending                                                 |
+| 21. Team directory                                                     | Pending                                                                                      |
+| 22. Project notes / documentation                                      | Task notes and safe resource links implemented; project docs pending                         |
+| 23. Decision log                                                       | Pending                                                                                      |
+| 24. Meeting action items                                               | Pending                                                                                      |
+| 25. AI assistance                                                      | Pending; provider configuration required for live generation                                 |
+| 26. Action Center                                                      | Daily planning implemented; unified attention view pending                                   |
+| 27. Portfolio                                                          | Personal label overview implemented; multi-project portfolio pending                         |
+| 28. Goals / OKRs                                                       | Pending                                                                                      |
+| 29. Admin / export / account lifecycle                                 | Pending                                                                                      |
+| 30. UX                                                                 | Responsive baseline implemented; ongoing polish and verification                             |

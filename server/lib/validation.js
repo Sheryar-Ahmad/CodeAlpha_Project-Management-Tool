@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { validDate } from '../../shared/date.js';
+import { validResourceUrl } from '../../shared/task.js';
 export { validDate } from '../../shared/date.js';
 
 const email = z.string().trim().toLowerCase().email().max(254);
@@ -29,11 +30,27 @@ const checklistSchema = z
     'Checklist IDs must be unique.',
   );
 
+const resourceSchema = z
+  .object({
+    label: z.string().trim().min(1).max(100),
+    url: z
+      .string()
+      .trim()
+      .max(2048)
+      .refine(
+        validResourceUrl,
+        'Use an HTTP or HTTPS link without embedded credentials.',
+      ),
+  })
+  .strict();
+
 export const taskSchema = z
   .object({
     title: z.string().trim().min(1).max(120),
     project: z.string().trim().min(1).max(60),
     description: z.string().trim().max(1000).default(''),
+    notes: z.string().trim().max(3000).default(''),
+    links: z.array(resourceSchema).max(8).default([]),
     priority: z.enum(['low', 'medium', 'high']).default('medium'),
     status: z.enum(['todo', 'progress', 'done']).default('todo'),
     due: z.string().refine(validDate, 'Enter a valid date.').default(''),
@@ -46,6 +63,8 @@ export const taskUpdateSchema = z
     title: taskSchema.shape.title.optional(),
     project: taskSchema.shape.project.optional(),
     description: taskSchema.shape.description.removeDefault().optional(),
+    notes: taskSchema.shape.notes.removeDefault().optional(),
+    links: taskSchema.shape.links.removeDefault().optional(),
     priority: taskSchema.shape.priority.removeDefault().optional(),
     status: taskSchema.shape.status.removeDefault().optional(),
     due: taskSchema.shape.due.removeDefault().optional(),

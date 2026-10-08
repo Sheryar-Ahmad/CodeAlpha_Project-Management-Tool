@@ -62,7 +62,15 @@ export default function useWorkspace(mode, onExpired) {
             (task) =>
               matchesPlanningView(task, view, date) &&
               (!project || task.project === project) &&
-              (task.title + ' ' + task.project + ' ' + task.description)
+              (
+                task.title +
+                ' ' +
+                task.project +
+                ' ' +
+                task.description +
+                ' ' +
+                task.notes
+              )
                 .toLocaleLowerCase()
                 .includes(query),
           );

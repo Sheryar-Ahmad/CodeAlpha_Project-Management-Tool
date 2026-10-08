@@ -1,6 +1,7 @@
 import { today } from './api.js';
 import { addDays, summarizeProjects } from '../../shared/planning.js';
 import { validDate } from '../../shared/date.js';
+import { validResourceUrl } from '../../shared/task.js';
 const key = 'orbit.tasks.v1';
 const samples = [
   {
@@ -70,6 +71,21 @@ function isTask(task) {
     task.project.length <= 60 &&
     typeof task.description === 'string' &&
     task.description.length <= 1000 &&
+    (task.notes === undefined ||
+      (typeof task.notes === 'string' && task.notes.length <= 3000)) &&
+    (task.links === undefined ||
+      (Array.isArray(task.links) &&
+        task.links.length <= 8 &&
+        task.links.every(
+          (link) =>
+            link &&
+            typeof link.label === 'string' &&
+            link.label.trim().length > 0 &&
+            link.label.length <= 100 &&
+            typeof link.url === 'string' &&
+            link.url.length <= 2048 &&
+            validResourceUrl(link.url),
+        ))) &&
     ['todo', 'progress', 'done'].includes(task.status) &&
     ['low', 'medium', 'high'].includes(task.priority) &&
     (task.checklist === undefined ||
@@ -95,6 +111,8 @@ function seedTasks() {
   const date = today();
   return structuredClone(samples).map((task) => ({
     ...task,
+    notes: '',
+    links: [],
     due:
       task.id === 'sample-2'
         ? date
@@ -126,7 +144,12 @@ export function readDemo() {
     new Set(tasks.map((task) => task.id)).size !== tasks.length
   )
     throw new Error('Local demo data is invalid. Reset the demo to recover.');
-  return tasks.map((task) => ({ ...task, checklist: task.checklist ?? [] }));
+  return tasks.map((task) => ({
+    ...task,
+    checklist: task.checklist ?? [],
+    notes: task.notes ?? '',
+    links: task.links ?? [],
+  }));
 }
 export function saveDemo(tasks) {
   if (tasks.length > 500) throw new Error('The demo supports up to 500 tasks.');

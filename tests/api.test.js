@@ -291,3 +291,63 @@ test('checklist updates persist without resetting task fields or accepting forei
   const overview = await stranger.get('/api/tasks/overview?date=2026-10-09').expect(200);
   assert.deepEqual(overview.body.projectSummaries, []);
 });
+
+test('notes and resources persist, remain searchable, and retain owner isolation', async () => {
+  const author = request.agent(app);
+  await author
+    .post('/api/auth/login')
+    .set('Origin', origin)
+    .send({ email: 'planner@example.com', password: 'planner-long-passphrase' })
+    .expect(200);
+  const links = [{ label: 'Design brief', url: 'https://example.com/brief' }];
+  const result = await author
+    .post('/api/tasks')
+    .set('Origin', origin)
+    .send({
+      title: 'Context task',
+      project: 'Context',
+      notes: 'Decision keyword-unique',
+      links,
+    })
+    .expect(201);
+  const id = result.body.task.id;
+  assert.deepEqual(result.body.task.links, links);
+  const updated = await author
+    .patch('/api/tasks/' + id)
+    .set('Origin', origin)
+    .send({ status: 'done' })
+    .expect(200);
+  assert.equal(updated.body.task.notes, 'Decision keyword-unique');
+  assert.deepEqual(updated.body.task.links, links);
+  const found = await author.get('/api/tasks?search=keyword-unique').expect(200);
+  assert.equal(found.body.tasks[0].id, id);
+  const stranger = request.agent(app);
+  await stranger
+    .post('/api/auth/login')
+    .set('Origin', origin)
+    .send({ email: 'stranger@example.com', password: 'stranger-long-passphrase' })
+    .expect(200);
+  await stranger
+    .patch('/api/tasks/' + id)
+    .set('Origin', origin)
+    .send({ notes: 'Overwrite' })
+    .expect(404);
+  await author
+    .patch('/api/tasks/' + id)
+    .set('Origin', origin)
+    .send({ links: [{ label: 'Unsafe', url: 'javascript:alert(1)' }] })
+    .expect(400);
+  await author
+    .post('/api/tasks')
+    .set('Origin', origin)
+    .send({ title: 'Too large', project: 'Context', notes: 'x'.repeat(40000) })
+    .expect(413);
+  await author
+    .patch('/api/tasks/' + id)
+    .set('Origin', origin)
+    .send({ notes: '', links: [] })
+    .expect(200);
+  const stored = await Task.findById(id).lean();
+  assert.equal(stored.notes, '');
+  assert.deepEqual(stored.links, []);
+});

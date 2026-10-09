@@ -71,6 +71,7 @@ Screenshots are from the working local demo using illustrative sample tasks.
 | Search                   | Find tasks by title, description, project, notes, or blocker reason                    |
 | Account-wide overview    | Track total, active, completed, and overdue work                                       |
 | Bounded pagination       | Browse 30 tasks per page instead of loading everything                                 |
+| Task export              | Download a private JSON copy of active, archived, and trashed tasks                    |
 | Local demo               | Explore without an account; demo data never enters account storage                     |
 | Interface feedback       | Loading skeletons, empty states, save feedback, and error recovery                     |
 | Responsive layout        | Readable layouts on desktop and mobile                                                 |
@@ -213,7 +214,7 @@ npm run build
 npm run format:check
 ```
 
-**Verified locally:** 33 API/input/planning/timer/password/template/recovery tests and Chromium browser flows covering demo CRUD, storage persistence, search, filters, safe text rendering, mobile overflow, dialog Escape, checklists, task duplication, template previews and replacement protection, list actions and pagination, blockers, archive/trash restoration, daily views, overnight date changes, project progress, focus pause/refresh/completion, registration, database-backed task persistence, logout, and login.
+**Verified locally:** 36 API/input/planning/timer/password/template/recovery/export tests and Chromium browser flows covering demo CRUD, storage persistence, search, filters, safe text rendering, mobile overflow, dialog Escape, checklists, task duplication, template previews and replacement protection, list actions and pagination, blockers, archive/trash restoration, private downloads, daily views, overnight date changes, project progress, focus pause/refresh/completion, registration, database-backed task persistence, logout, and login.
 
 For browser checks:
 
@@ -268,8 +269,9 @@ No ads are installed in this release. The proposed approach keeps the workspace 
 See [the product direction review](docs/PRODUCT_DIRECTION.md) for which proposed features fit this release and which require a shared-project architecture first.
 
 - [ ] Recurring tasks with explicit scheduling rules
-- [ ] Task notes and useful resource links
-- [ ] Export and validated import for personal backups
+- [x] Task notes and useful resource links
+- [x] Private task export
+- [ ] Validated import for task recovery
 - [ ] Separate project entities and shared workspace memberships
 - [ ] Invitations and role-based authorization
 - [ ] Email verification, password reset, and account deletion
@@ -277,9 +279,15 @@ See [the product direction review](docs/PRODUCT_DIRECTION.md) for which proposed
 - [ ] Accessibility audit and measured production performance
 - [ ] Live deployment link and LinkedIn walkthrough
 
-The next compact additions to choose from are **recurring tasks**, **task notes and resource links**, and **export/import**. Each should solve a practical need before expanding into shared team workflows.
+The next implementation milestones are **recurring tasks** and the shared-project foundation. A validated import remains pending. Each should solve a practical need before expanding into shared team workflows.
 
 For a short video, use [the 90-second demo outline](docs/DEMO.md).
+
+### Keep a copy of your work
+
+Use **Export tasks** in the workspace footer to download a JSON file containing your task content, including Archive and Trash. Current search/project filters do not restrict the export. Account exports support up to 1,000 tasks and five requests per hour; an oversized account receives an explicit error instead of a partial file. The local demo supports up to 500 tasks.
+
+The file contains your written task data, so keep it private. It excludes passwords, session tokens, and database credentials. Importing an export is a future feature; the download is not a complete database backup.
 
 ## Author and license
 

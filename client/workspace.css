@@ -941,3 +941,16 @@ textarea:disabled {
     flex-basis: 100%;
   }
 }
+
+.footer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+}
+.footer-actions .text-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+}

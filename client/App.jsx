@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
+  Download,
   Archive,
   Trash2,
   ArrowUpRight,
@@ -553,18 +554,29 @@ function Workspace({ mode, user, onExit, onExpired }) {
               ? 'Demo tasks stay in this browser. No account required.'
               : 'Your tasks are saved to your private account.'}
           </span>
-          {mode === 'demo' && (
+          <div className="footer-actions">
             <button
+              type="button"
               className="text-button"
-              disabled={workspace.busy}
-              onClick={() => {
-                if (window.confirm('Replace your local tasks with sample tasks?'))
-                  act(() => workspace.reset());
-              }}
+              disabled={workspace.busy || workspace.loading}
+              title="Download all tasks, including Archive and Trash"
+              onClick={() => act(workspace.exportTasks)}
             >
-              Reset demo
+              <Download size={14} aria-hidden="true" /> Export tasks
             </button>
-          )}
+            {mode === 'demo' && (
+              <button
+                className="text-button"
+                disabled={workspace.busy}
+                onClick={() => {
+                  if (window.confirm('Replace your local tasks with sample tasks?'))
+                    act(() => workspace.reset());
+                }}
+              >
+                Reset demo
+              </button>
+            )}
+          </div>
         </footer>
       </main>
       {dialog && (

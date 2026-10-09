@@ -75,3 +75,9 @@ Normal lists, daily views, Blockers, and project summaries include only active r
 PATCH /tasks/:id/lifecycle accepts only { "action": "archive" }, { "action": "unarchive" }, or { "action": "restore" }. Archive requires an active task; unarchive requires an archived task; restore requires a trashed task. Restore/unarchive return it to active work while preserving its task status, date, notes, resources, and checklist progress. Invalid source states return 404 without exposing another account's records.
 
 DELETE /tasks/:id moves an active/archived task to Trash (204). DELETE /tasks/:id/permanent only removes an already trashed record (204). Archived/trashed tasks cannot be edited through normal PATCH. There is no automatic Trash purge or claim of database-backup erasure.
+
+## Private export
+
+GET /tasks/export requires a valid session and returns an envelope with format=orbit-task-export, version=1, exportedAt, scope=account, and tasks. It includes all owned active/archived/trashed tasks, independent of list filters. Fields are explicitly allowlisted; owner references, passwords, sessions, and credentials are excluded. Responses remain no-store.
+
+Exports are bounded to 1,000 tasks. Larger accounts receive 413 with no partial task array. A MongoDB-backed per-account limit allows five export requests per hour (429 when exceeded). The export currently supports no import endpoint.

@@ -20,7 +20,7 @@ Important distinctions:
 
 ## Compact additions worth prioritizing
 
-These are the ordered extension milestones. Task notes/resource links, blocker reasons, curated task templates, the list view, and archive/recovery are now implemented; the remaining items below are pending.
+These are the ordered extension milestones. Task notes/resource links, blocker reasons, curated task templates, the list view, archive/recovery, and task export are now implemented; the remaining items below are pending.
 
 | Addition                      | Genuine problem                                    | Bounded first version                                                                            |
 | ----------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
@@ -32,7 +32,7 @@ These are the ordered extension milestones. Task notes/resource links, blocker r
 | Recurring tasks               | “Weekly work is easy to forget.”                   | Choose explicit recurrence rules, preserve completion history, and prevent duplicate occurrences |
 | Backup/export                 | “I want a copy of my own work.”                    | Export owned data first; validate imports separately before allowing writes                      |
 
-Next implementation milestones: **owned task export**, then explicit recurring-task rules. Finish account recovery, deletion, and operational launch requirements before promoting broad public adoption.
+Next implementation milestone: **recurring tasks with explicit completion rules**. Finish account recovery, deletion, and operational launch requirements before promoting broad public adoption.
 
 Recurring scheduling needs decisions about timezone, missed runs, end-of-month dates, and idempotency. It should not merely erase a completed task and reset its history.
 
@@ -112,5 +112,5 @@ The full proposal is authorized for incremental implementation after the saved b
 | 26. Action Center                                                      | Daily planning implemented; unified attention view pending                                            |
 | 27. Portfolio                                                          | Personal label overview implemented; multi-project portfolio pending                                  |
 | 28. Goals / OKRs                                                       | Pending                                                                                               |
-| 29. Admin / export / account lifecycle                                 | Pending                                                                                               |
+| 29. Admin / export / account lifecycle                                 | Private task export implemented; import and account lifecycle pending                                 |
 | 30. UX                                                                 | Responsive baseline implemented; ongoing polish and verification                                      |

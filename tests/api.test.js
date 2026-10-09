@@ -589,3 +589,67 @@ test('legacy tasks without lifecycle remain active and competing transitions can
   );
   assert.deepEqual(results.map((result) => result.status).sort(), [200, 404]);
 });
+
+test('task exports include all owned lifecycle states, exclude credentials, and limit frequency', async () => {
+  await request(app).get('/api/tasks/export').expect(401);
+  const owner = request.agent(app);
+  const registration = await owner
+    .post('/api/auth/register')
+    .set('Origin', origin)
+    .send({
+      name: 'Exporter',
+      email: 'exporter@example.com',
+      password: 'export-test-passphrase',
+    })
+    .expect(201);
+  await Task.insertMany(
+    ['active', 'archived', 'trashed'].map((lifecycle) => ({
+      owner: registration.body.user.id,
+      title: 'Export ' + lifecycle,
+      project: 'Export project',
+      lifecycle,
+      notes: 'Private context',
+    })),
+  );
+  const result = await owner.get('/api/tasks/export').expect(200);
+  assert.equal(result.headers['cache-control'], 'no-store');
+  assert.equal(result.body.scope, 'account');
+  assert.equal(result.body.tasks.length, 3);
+  assert.deepEqual(result.body.tasks.map((task) => task.lifecycle).sort(), [
+    'active',
+    'archived',
+    'trashed',
+  ]);
+  assert.ok(
+    result.body.tasks.every((task) => !('owner' in task) && !('passwordHash' in task)),
+  );
+  assert.equal(result.body.user, undefined);
+  assert.equal(result.body.session, undefined);
+  for (let index = 0; index < 4; index++)
+    await owner.get('/api/tasks/export').expect(200);
+  const limited = await owner.get('/api/tasks/export').expect(429);
+  assert.match(limited.body.message, /Export limit/);
+});
+
+test('oversize exports fail explicitly instead of producing a partial backup', async () => {
+  const owner = request.agent(app);
+  const registration = await owner
+    .post('/api/auth/register')
+    .set('Origin', origin)
+    .send({
+      name: 'Large Export',
+      email: 'largeexport@example.com',
+      password: 'export-test-passphrase',
+    })
+    .expect(201);
+  await Task.insertMany(
+    Array.from({ length: 1001 }, (_, index) => ({
+      owner: registration.body.user.id,
+      title: 'Task ' + index,
+      project: 'Large export',
+    })),
+  );
+  const result = await owner.get('/api/tasks/export').expect(413);
+  assert.match(result.body.message, /1,000 tasks/);
+  assert.equal(result.body.tasks, undefined);
+});

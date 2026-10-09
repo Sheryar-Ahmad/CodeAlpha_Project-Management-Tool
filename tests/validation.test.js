@@ -15,6 +15,7 @@ import { addDays, matchesPlanningView, summarizeProjects } from '../shared/plann
 import { initialTimer, remainingSeconds, validTimer } from '../client/lib/focus.js';
 import { taskTemplates, createTemplateDraft } from '../client/lib/templates.js';
 import { demoOverview } from '../client/lib/demo.js';
+import { createTaskExport } from '../shared/export.js';
 
 test('dates reject impossible dates and accept leap days', () => {
   assert.equal(validDate('2026-02-30'), false);
@@ -209,4 +210,39 @@ test('archive and trash are distinct from progress and excluded from active plan
   );
   assert.throws(() => parse(lifecycleSchema, { action: 'purge' }));
   assert.throws(() => parse(lifecycleSchema, { action: 'restore', owner: 'other' }));
+});
+
+test('exports allowlist task data and strip internal fields at every nesting level', () => {
+  const data = createTaskExport(
+    [
+      {
+        id: 'export-1',
+        title: 'My task',
+        project: 'Home',
+        lifecycle: 'archived',
+        status: 'done',
+        description: '',
+        notes: 'My notes',
+        priority: 'low',
+        due: '',
+        owner: 'private-owner',
+        passwordHash: 'secret',
+        links: [{ label: 'Reference', url: 'https://example.com', secret: 'hidden' }],
+        checklist: [{ id: 'step', text: 'Finished', done: true, owner: 'hidden' }],
+      },
+    ],
+    'demo',
+  );
+  assert.equal(data.version, 1);
+  assert.equal(data.format, 'orbit-task-export');
+  assert.equal(data.tasks[0].lifecycle, 'archived');
+  assert.equal(data.tasks[0].notes, 'My notes');
+  assert.equal(data.tasks[0].owner, undefined);
+  assert.equal(data.tasks[0].passwordHash, undefined);
+  assert.deepEqual(data.tasks[0].links, [
+    { label: 'Reference', url: 'https://example.com' },
+  ]);
+  assert.deepEqual(data.tasks[0].checklist, [
+    { id: 'step', text: 'Finished', done: true },
+  ]);
 });

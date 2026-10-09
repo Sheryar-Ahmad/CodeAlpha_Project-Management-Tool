@@ -1,6 +1,6 @@
 import { createServer as createPortProbe } from 'node:net';
 import assert from 'node:assert/strict';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import { createServer } from 'vite';
 import { chromium } from 'playwright';
 import { MongoMemoryServer } from 'mongodb-memory-server';
@@ -113,7 +113,7 @@ try {
   await page.getByText('0/2 steps complete', { exact: true }).click();
   await page
     .getByLabel('Complete Prepare notes for Browser test task', { exact: true })
-    .check();
+    .click();
   await page.getByText('1/2 steps complete', { exact: true }).waitFor();
   await page
     .getByLabel('Status for Browser test task', { exact: true })
@@ -261,6 +261,28 @@ try {
   assert.equal(
     await page.getByLabel('Status for Renamed browser task', { exact: true }).count(),
     0,
+  );
+  const demoDownloadEvent = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export tasks', exact: true }).click();
+  const demoDownload = await demoDownloadEvent;
+  await demoDownload.saveAs('.cache/demo-task-export.json');
+  const demoExport = JSON.parse(await readFile('.cache/demo-task-export.json', 'utf8'));
+  assert.equal(demoExport.scope, 'demo');
+  assert.equal(demoExport.tasks.length, 8);
+  assert.equal(
+    demoExport.tasks.find((task) => task.title === 'Renamed browser task').lifecycle,
+    'archived',
+  );
+  assert.equal(
+    demoExport.tasks.find((task) => task.title === 'Reusable copy').lifecycle,
+    'trashed',
+  );
+  assert.equal(
+    demoExport.tasks.find((task) => task.title === 'Renamed browser task').notes,
+    'Decision: keep a simple delivery plan.',
+  );
+  console.log(
+    'PASS: downloaded demo export includes active, archived, and trashed tasks.',
   );
   page.once('dialog', (dialog) => dialog.accept());
   await page
@@ -546,7 +568,8 @@ try {
     .getByLabel('Complete Write down the key decisions for Follow up on the meeting', {
       exact: true,
     })
-    .check();
+    .click();
+  // Checkbox state comes from persisted task data, not an immediate DOM toggle.
   await templatePage.getByText('1/4 steps complete', { exact: true }).waitFor();
   await templatePage
     .getByLabel('Status for Follow up on the meeting', { exact: true })
@@ -695,6 +718,18 @@ try {
     await page
       .getByRole('heading', { name: 'MongoDB saved task', exact: true })
       .waitFor();
+    const accountDownloadEvent = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Export tasks', exact: true }).click();
+    const accountDownload = await accountDownloadEvent;
+    await accountDownload.saveAs('.cache/account-task-export.json');
+    const accountExport = JSON.parse(
+      await readFile('.cache/account-task-export.json', 'utf8'),
+    );
+    assert.equal(accountExport.scope, 'account');
+    assert.equal(accountExport.tasks.length, 1);
+    assert.equal(accountExport.tasks[0].title, 'MongoDB saved task');
+    assert.equal(accountExport.tasks[0].lifecycle, 'active');
+    console.log('PASS: account task export downloads only its own records.');
     console.log('PASS: account archive and restoration persist in MongoDB.');
     console.log(
       'PASS: account registration, MongoDB task persistence, logout, and login.',

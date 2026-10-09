@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { request, today } from '../lib/api.js';
+import { createTaskExport } from '../../shared/export.js';
+import { downloadTaskExport } from '../lib/export.js';
 import { matchesPlanningView } from '../../shared/planning.js';
 import { readDemo, saveDemo, demoOverview, resetDemo } from '../lib/demo.js';
 
@@ -184,7 +186,28 @@ export default function useWorkspace(mode, onExpired) {
       setBusy(false);
     }
   }
+  async function exportTasks() {
+    if (mutationLock.current) throw new Error('Please wait for the current save.');
+    mutationLock.current = true;
+    setBusy(true);
+    setNotice('');
+    try {
+      const data =
+        mode === 'demo'
+          ? createTaskExport(readDemo(), 'demo')
+          : await request('/tasks/export');
+      downloadTaskExport(data);
+      setNotice('Task export prepared. Keep the downloaded file somewhere private.');
+    } catch (failure) {
+      if (failure.status === 401) onExpired();
+      throw failure;
+    } finally {
+      mutationLock.current = false;
+      setBusy(false);
+    }
+  }
   return {
+    exportTasks,
     tasks,
     overview,
     search,

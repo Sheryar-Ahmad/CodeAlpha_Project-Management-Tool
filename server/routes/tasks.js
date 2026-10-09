@@ -1,5 +1,8 @@
 import { Router } from 'express';
 import mongoose from 'mongoose';
+import rateLimit from 'express-rate-limit';
+import { MongoRateStore } from '../lib/rateStore.js';
+import { createTaskExport } from '../../shared/export.js';
 import { addDays } from '../../shared/planning.js';
 import { Task } from '../models/Task.js';
 import { requireAuth } from '../middleware/auth.js';
@@ -27,6 +30,7 @@ const serialize = (task) => ({
   status: task.status,
   blockerReason: task.blockerReason ?? '',
   due: task.due,
+  createdAt: task.createdAt,
   updatedAt: task.updatedAt,
   checklist: (task.checklist ?? []).map((item) => ({
     id: item.id,
@@ -34,6 +38,30 @@ const serialize = (task) => ({
     done: item.done,
   })),
 });
+const exportLimit = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 5,
+  keyGenerator: (req) => String(req.user._id),
+  store: new MongoRateStore('task-export'),
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  message: { message: 'Export limit reached. Please try again in an hour.' },
+});
+
+taskRouter.get('/export', exportLimit, async (req, res) => {
+  // One extra record detects oversize exports without loading an unbounded account.
+  const tasks = await Task.find({ owner: req.user._id })
+    .sort({ _id: 1 })
+    .limit(1001)
+    .lean();
+  if (tasks.length > 1000)
+    return res.status(413).json({
+      message:
+        'Exports currently support up to 1,000 tasks. Nothing has been downloaded.',
+    });
+  res.json(createTaskExport(tasks.map(serialize), 'account'));
+});
+
 taskRouter.get('/overview', async (req, res) => {
   const date = typeof req.query.date === 'string' ? req.query.date : '';
   if (!date || !validDate(date))

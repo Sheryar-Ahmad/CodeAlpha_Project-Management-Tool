@@ -99,3 +99,11 @@ Automated browser coverage verifies the primary flows above; exhaustive accessib
 - Permanent deletion appears only in Trash. Cancel confirmation preserves the task; confirm removes it. Check empty recovery views and refresh.
 - Test with two accounts: neither can list, transition, or permanently delete the other's records.
 - Existing demo/database records without lifecycle must still appear as active. No automatic Trash purge occurs.
+
+## Task export
+
+- Export with a project/search filter active. The file must still contain all owned active, archived, and trashed tasks.
+- Open the JSON and confirm titles, context, checklist progress, lifecycle, and export version. No passwords, sessions, credentials, or another user's records may appear.
+- Demo exports must be marked demo and account exports account. Test download permission failures and an unavailable account API.
+- More than 1,000 account tasks must return a clear size error; exceeding five account requests per hour must show a rate-limit message.
+- The file contains private task text; importing it is not implemented.

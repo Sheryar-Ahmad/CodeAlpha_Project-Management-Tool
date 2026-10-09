@@ -50,7 +50,7 @@ Approvals, mentions, workload reporting, guests, activity feeds, and team notifi
 
 ## Later milestones
 
-Gantt charts, critical paths, automatic rescheduling, enterprise workload planning, client portals, OKRs, custom-field builders, automation builders, external integrations, and AI forecasting each introduce substantial behavior and maintenance costs.
+Gantt charts, critical paths, automatic rescheduling, enterprise workload planning, client portals, OKRs, custom-field builders, automation builders, and external integrations each introduce substantial behavior and maintenance costs.
 
 Dependencies also require cycle checks, same-project access rules, and deletion behavior. Workload reports need reliable estimates and capacity information; task counts alone do not prove someone is overloaded. Forecasts should explain their assumptions rather than implying unsupported certainty.
 
@@ -80,7 +80,7 @@ Before shipping another feature, name the problem, define the smallest useful wo
 
 ## Authorized expansion and delivery tracking
 
-The full proposal is authorized for incremental implementation after the saved baseline `orbit-snapshot-2026-10-09`. Each milestone must remain usable, validated, tested, and committed before the next. Integrations requiring external accounts will be identified explicitly.
+The proposal, excluding AI assistance at the user's request, is authorized for incremental implementation after the saved baseline `orbit-snapshot-2026-10-09`. Each milestone must remain usable, validated, tested, and committed before the next. Integrations requiring external accounts will be identified explicitly.
 
 | Proposal area                                                          | Current delivery status                                                                               |
 | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
@@ -108,7 +108,7 @@ The full proposal is authorized for incremental implementation after the saved b
 | 22. Project notes / documentation                                      | Task notes and safe resource links implemented; project docs pending                                  |
 | 23. Decision log                                                       | Pending                                                                                               |
 | 24. Meeting action items                                               | Pending                                                                                               |
-| 25. AI assistance                                                      | Pending; provider configuration required for live generation                                          |
+| 25. AI assistance                                                      | Excluded at the user's request; no AI assistant or AI-generated features planned                      |
 | 26. Action Center                                                      | Daily planning implemented; unified attention view pending                                            |
 | 27. Portfolio                                                          | Personal label overview implemented; multi-project portfolio pending                                  |
 | 28. Goals / OKRs                                                       | Pending                                                                                               |

@@ -279,6 +279,8 @@ The file contains your written task data, so keep it private. It excludes passwo
 
 ## Next milestones
 
+AI assistance is excluded from the project scope. The remaining roadmap focuses on ordinary MERN workflows, collaboration, planning, and integrations.
+
 See [the product direction review](docs/PRODUCT_DIRECTION.md) for which proposed features fit this release and which require a shared-project architecture first.
 
 - [x] Recurring tasks with completion-driven scheduling rules

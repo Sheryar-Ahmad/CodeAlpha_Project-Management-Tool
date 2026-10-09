@@ -2,6 +2,7 @@ import { today } from './api.js';
 import { addDays, summarizeProjects } from '../../shared/planning.js';
 import { validDate } from '../../shared/date.js';
 import { taskStatuses, validResourceUrl } from '../../shared/task.js';
+import { recurrenceLabels } from '../../shared/recurrence.js';
 const key = 'orbit.tasks.v1';
 const samples = [
   {
@@ -108,6 +109,17 @@ function isTask(task) {
             typeof step.done === 'boolean',
         ) &&
         new Set(task.checklist.map((step) => step.id)).size === task.checklist.length)) &&
+    (task.recurrence === undefined || Object.hasOwn(recurrenceLabels, task.recurrence)) &&
+    (!task.recurrence || task.recurrence === 'none' || Boolean(task.due)) &&
+    (task.repeatDay === undefined ||
+      (Number.isInteger(task.repeatDay) &&
+        task.repeatDay >= 1 &&
+        task.repeatDay <= 31)) &&
+    [task.repeatSource, task.repeatNext].every(
+      (value) =>
+        value === undefined ||
+        (typeof value === 'string' && value.length > 0 && value.length <= 100),
+    ) &&
     typeof task.due === 'string' &&
     validDate(task.due)
   );
@@ -117,6 +129,7 @@ function seedTasks() {
   return structuredClone(samples).map((task) => ({
     ...task,
     lifecycle: 'active',
+    recurrence: 'none',
     blockerReason: '',
     notes: '',
     links: [],
@@ -154,6 +167,7 @@ export function readDemo() {
   return tasks.map((task) => ({
     ...task,
     lifecycle: task.lifecycle ?? 'active',
+    recurrence: task.recurrence ?? 'none',
     checklist: task.checklist ?? [],
     notes: task.notes ?? '',
     blockerReason: task.blockerReason ?? '',

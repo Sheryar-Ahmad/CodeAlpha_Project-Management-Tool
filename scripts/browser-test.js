@@ -604,6 +604,89 @@ try {
     'PASS: template previews, mobile layout, replacement confirmation, cancellation, and saved checklists.',
   );
 
+  const repeatPage = await browser.newPage({ viewport: { width: 375, height: 812 } });
+  repeatPage.on('pageerror', (error) => errors.push(error.message));
+  await repeatPage.goto(origin + '/app.html?demo=1');
+  await repeatPage
+    .getByRole('heading', { name: 'Build the homepage', exact: true })
+    .waitFor();
+  await repeatPage.getByRole('button', { name: 'New task', exact: true }).click();
+  await repeatPage
+    .getByLabel('Task title', { exact: true })
+    .fill('Monthly browser review');
+  await repeatPage.getByLabel('Project', { exact: true }).fill('Recurring QA');
+  await repeatPage.getByLabel('Repeat', { exact: true }).selectOption('monthly');
+  await repeatPage.getByRole('button', { name: 'Save task', exact: true }).click();
+  await repeatPage
+    .getByText('Repeating tasks need a due date.', { exact: true })
+    .waitFor();
+  await repeatPage.getByLabel('Due date', { exact: true }).fill('2027-01-31');
+  await repeatPage.getByRole('button', { name: 'Add a step', exact: true }).click();
+  await repeatPage
+    .getByLabel('Checklist step 1', { exact: true })
+    .fill('Review this month');
+  await repeatPage.getByLabel('Mark step 1 complete', { exact: true }).check();
+  await repeatPage.getByRole('button', { name: 'Save task', exact: true }).click();
+  await repeatPage
+    .getByRole('heading', { name: 'Monthly browser review', exact: true })
+    .waitFor();
+  await repeatPage
+    .getByLabel('Status for Monthly browser review', { exact: true })
+    .selectOption('done');
+  await repeatPage.waitForFunction(
+    () =>
+      JSON.parse(localStorage.getItem('orbit.tasks.v1')).filter(
+        (task) => task.title === 'Monthly browser review',
+      ).length === 2,
+  );
+  await repeatPage.reload();
+  await repeatPage
+    .getByRole('heading', { name: 'Monthly browser review', exact: true })
+    .first()
+    .waitFor();
+  const occurrences = await repeatPage.evaluate(() =>
+    JSON.parse(localStorage.getItem('orbit.tasks.v1')).filter(
+      (task) => task.title === 'Monthly browser review',
+    ),
+  );
+  const original = occurrences.find((task) => task.status === 'done');
+  const february = occurrences.find((task) => task.status === 'todo');
+  assert.equal(original.checklist[0].done, true);
+  assert.equal(february.due, '2027-02-28');
+  assert.equal(february.checklist[0].done, false);
+  await repeatPage
+    .locator('.task-card')
+    .filter({ has: repeatPage.locator('#status-' + february.id) })
+    .getByRole('button', { name: 'Edit Monthly browser review', exact: true })
+    .click();
+  await repeatPage.getByRole('button', { name: 'Save task', exact: true }).click();
+  await repeatPage.locator('#status-' + february.id).selectOption('done');
+  await repeatPage.waitForFunction(() =>
+    JSON.parse(localStorage.getItem('orbit.tasks.v1')).some(
+      (task) => task.title === 'Monthly browser review' && task.due === '2027-03-31',
+    ),
+  );
+  await repeatPage.locator('#status-' + original.id).selectOption('todo');
+  await repeatPage.locator('#status-' + original.id).selectOption('done');
+  await repeatPage.waitForTimeout(100);
+  assert.equal(
+    await repeatPage.evaluate(
+      () =>
+        JSON.parse(localStorage.getItem('orbit.tasks.v1')).filter(
+          (task) => task.title === 'Monthly browser review',
+        ).length,
+    ),
+    3,
+  );
+  assert.equal(
+    await repeatPage.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+    true,
+  );
+  await repeatPage.close();
+  console.log(
+    'PASS: recurring demo validation, history, fresh steps, monthly anchors, and completion retries.',
+  );
+
   // Use a separate browser profile so large-board checks do not change demo screenshots.
   const paginationPage = await browser.newPage({
     viewport: { width: 1440, height: 1000 },

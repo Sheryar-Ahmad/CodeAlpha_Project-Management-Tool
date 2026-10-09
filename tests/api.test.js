@@ -653,3 +653,136 @@ test('oversize exports fail explicitly instead of producing a partial backup', a
   assert.match(result.body.message, /1,000 tasks/);
   assert.equal(result.body.tasks, undefined);
 });
+
+test('concurrent recurring completions create one next task and retain month-end history', async () => {
+  // This independent scenario has its own request budget; production limits remain enabled.
+  await RateBucket.deleteMany({ key: /^(api|auth):/ });
+  const owner = request.agent(app),
+    outsider = request.agent(app);
+  for (const [agent, name] of [
+    [owner, 'Repeat Owner'],
+    [outsider, 'Repeat Outsider'],
+  ])
+    await agent
+      .post('/api/auth/register')
+      .set('Origin', origin)
+      .send({
+        name,
+        email: name.replaceAll(' ', '').toLowerCase() + '@example.com',
+        password: 'repeat-test-passphrase',
+      })
+      .expect(201);
+  const created = await owner
+    .post('/api/tasks')
+    .set('Origin', origin)
+    .send({
+      title: 'Monthly review',
+      project: 'Repeat',
+      due: '2027-01-31',
+      recurrence: 'monthly',
+      notes: 'Keep the decision',
+      checklist: [{ id: 'original-step', text: 'Review the notes', done: true }],
+    })
+    .expect(201);
+  const id = created.body.task.id;
+  await outsider
+    .patch('/api/tasks/' + id)
+    .set('Origin', origin)
+    .send({ status: 'done' })
+    .expect(404);
+  const results = await Promise.all(
+    [0, 1].map(() =>
+      owner
+        .patch('/api/tasks/' + id)
+        .set('Origin', origin)
+        .send({ status: 'done' }),
+    ),
+  );
+  assert.ok(results.every((result) => result.status === 200));
+  assert.equal(results[0].body.nextTask.id, results[1].body.nextTask.id);
+  const nextId = results[0].body.nextTask.id;
+  assert.equal(results[0].body.nextTask.due, '2027-02-28');
+  assert.equal(results[0].body.nextTask.status, 'todo');
+  assert.equal(results[0].body.nextTask.checklist[0].done, false);
+  assert.notEqual(results[0].body.nextTask.checklist[0].id, 'original-step');
+  assert.equal((await Task.findById(id)).checklist[0].done, true);
+  assert.equal(await Task.countDocuments({ repeatSource: id }), 1);
+  const edited = await owner
+    .patch('/api/tasks/' + nextId)
+    .set('Origin', origin)
+    .send({ due: '2027-02-28', recurrence: 'monthly', notes: 'Edited context' })
+    .expect(200);
+  assert.equal(edited.body.task.repeatDay, 31);
+  const march = await owner
+    .patch('/api/tasks/' + nextId)
+    .set('Origin', origin)
+    .send({ status: 'done' })
+    .expect(200);
+  assert.equal(march.body.nextTask.due, '2027-03-31');
+  await owner
+    .delete('/api/tasks/' + march.body.nextTask.id)
+    .set('Origin', origin)
+    .expect(204);
+  await owner
+    .delete('/api/tasks/' + march.body.nextTask.id + '/permanent')
+    .set('Origin', origin)
+    .expect(204);
+  await owner
+    .patch('/api/tasks/' + nextId)
+    .set('Origin', origin)
+    .send({ status: 'done' })
+    .expect(200);
+  assert.equal(await Task.countDocuments({ repeatSource: nextId }), 0);
+  assert.deepEqual((await outsider.get('/api/tasks').expect(200)).body.tasks, []);
+});
+
+test('recurrence requires dates and refuses internal successor injection', async () => {
+  const owner = request.agent(app);
+  await owner
+    .post('/api/auth/register')
+    .set('Origin', origin)
+    .send({
+      name: 'Repeat Rules',
+      email: 'repeatrules@example.com',
+      password: 'repeat-test-passphrase',
+    })
+    .expect(201);
+  await owner
+    .post('/api/tasks')
+    .set('Origin', origin)
+    .send({ title: 'Invalid repeat', project: 'Home', recurrence: 'daily' })
+    .expect(400);
+  const created = await owner
+    .post('/api/tasks')
+    .set('Origin', origin)
+    .send({
+      title: 'Daily repeat',
+      project: 'Home',
+      recurrence: 'daily',
+      due: '2027-01-01',
+    })
+    .expect(201);
+  const id = created.body.task.id;
+  await owner
+    .patch('/api/tasks/' + id)
+    .set('Origin', origin)
+    .send({ due: '' })
+    .expect(404);
+  await owner
+    .patch('/api/tasks/' + id)
+    .set('Origin', origin)
+    .send({ repeatSource: id })
+    .expect(400);
+  await owner
+    .patch('/api/tasks/' + id)
+    .set('Origin', origin)
+    .send({ recurrence: 'weekly' })
+    .expect(400);
+  const stopped = await owner
+    .patch('/api/tasks/' + id)
+    .set('Origin', origin)
+    .send({ recurrence: 'none', due: '' })
+    .expect(200);
+  assert.equal(stopped.body.task.recurrence, 'none');
+  assert.equal(stopped.body.task.due, '');
+});

@@ -53,6 +53,14 @@ const schema = new mongoose.Schema(
       },
     },
     due: { type: String, default: '', validate: validDate },
+    recurrence: {
+      type: String,
+      enum: ['none', 'daily', 'weekly', 'monthly'],
+      default: 'none',
+    },
+    repeatDay: { type: Number, min: 1, max: 31 },
+    repeatSource: { type: mongoose.Schema.Types.ObjectId, ref: 'Task' },
+    repeatNext: { type: mongoose.Schema.Types.ObjectId, ref: 'Task' },
     checklist: {
       type: [checklistItem],
       default: [],
@@ -67,4 +75,5 @@ schema.index({ owner: 1, lifecycle: 1, updatedAt: -1, _id: -1 });
 schema.index({ owner: 1, project: 1 });
 schema.index({ owner: 1, status: 1, due: 1 });
 schema.index({ owner: 1, due: 1, _id: -1 });
+schema.index({ repeatSource: 1 }, { unique: true, sparse: true });
 export const Task = mongoose.models.Task || mongoose.model('Task', schema);

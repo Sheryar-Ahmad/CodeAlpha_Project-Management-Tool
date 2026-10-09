@@ -65,6 +65,7 @@ Screenshots are from the working local demo using illustrative sample tasks.
 | Task notes and resources | Keep decisions and reference links alongside each task                                 |
 | Checklists               | Break a task into up to 20 steps and track completion                                  |
 | Project overview         | See completion progress and the earliest unfinished deadline                           |
+| Recurring tasks          | Keep completed history and create a fresh daily, weekly, or monthly next occurrence    |
 | Task templates           | Start a kickoff, assignment, meeting follow-up, or weekly review with editable steps   |
 | Duplicate task           | Reuse a task with fresh steps and a cleared deadline                                   |
 | Focus timer              | Work in quiet sessions with pause, break, and refresh recovery                         |
@@ -214,7 +215,7 @@ npm run build
 npm run format:check
 ```
 
-**Verified locally:** 36 API/input/planning/timer/password/template/recovery/export tests and Chromium browser flows covering demo CRUD, storage persistence, search, filters, safe text rendering, mobile overflow, dialog Escape, checklists, task duplication, template previews and replacement protection, list actions and pagination, blockers, archive/trash restoration, private downloads, daily views, overnight date changes, project progress, focus pause/refresh/completion, registration, database-backed task persistence, logout, and login.
+**Verified locally:** 40 API/input/planning/timer/password/template/recovery/export/recurrence tests and Chromium browser flows covering demo CRUD, storage persistence, search, filters, safe text rendering, mobile overflow, dialog Escape, checklists, task duplication, template previews and replacement protection, list actions and pagination, blockers, archive/trash restoration, private downloads, daily views, overnight date changes, project progress, focus pause/refresh/completion, registration, database-backed task persistence, logout, and login.
 
 For browser checks:
 
@@ -264,11 +265,23 @@ No fabricated reviews, keyword stuffing, or unsupported ranking claims. A README
 
 No ads are installed in this release. The proposed approach keeps the workspace ad-free and considers a clearly labelled unit on useful public planning content after deployment and AdSense approval. SEO does not guarantee approval or income. Read [the monetization plan](docs/MONETIZATION.md).
 
+### Repeating work without losing history
+
+Choose a due date and Daily, Weekly, or Monthly in the task form. Marking the task Done creates one fresh next occurrence from that due date and preserves the completed record. New steps are unchecked. Monthly schedules retain the original day across short months; changing the due date establishes a new anchor.
+
+There is no background scheduler or automatic catch-up. An overdue completion still advances by one scheduled interval. Archive/Trash do not generate occurrences. To stop repeating, edit the active occurrence and choose Does not repeat. Duplicating a task starts with recurrence off. Dates do not advance beyond 2100-12-31.
+
+### Keep a copy of your work
+
+Use **Export tasks** in the workspace footer to download a JSON file containing your task content, including Archive and Trash. Current search/project filters do not restrict the export. Account exports support up to 1,000 tasks and five requests per hour; an oversized account receives an explicit error instead of a partial file. The local demo supports up to 500 tasks.
+
+The file contains your written task data, so keep it private. It excludes passwords, session tokens, and database credentials. Importing an export is a future feature; the download is not a complete database backup.
+
 ## Next milestones
 
 See [the product direction review](docs/PRODUCT_DIRECTION.md) for which proposed features fit this release and which require a shared-project architecture first.
 
-- [ ] Recurring tasks with explicit scheduling rules
+- [x] Recurring tasks with completion-driven scheduling rules
 - [x] Task notes and useful resource links
 - [x] Private task export
 - [ ] Validated import for task recovery
@@ -279,15 +292,9 @@ See [the product direction review](docs/PRODUCT_DIRECTION.md) for which proposed
 - [ ] Accessibility audit and measured production performance
 - [ ] Live deployment link and LinkedIn walkthrough
 
-The next implementation milestones are **recurring tasks** and the shared-project foundation. A validated import remains pending. Each should solve a practical need before expanding into shared team workflows.
+The next implementation milestone is the **shared-project foundation**. A validated import remains pending. Each should solve a practical need before expanding into shared team workflows.
 
 For a short video, use [the 90-second demo outline](docs/DEMO.md).
-
-### Keep a copy of your work
-
-Use **Export tasks** in the workspace footer to download a JSON file containing your task content, including Archive and Trash. Current search/project filters do not restrict the export. Account exports support up to 1,000 tasks and five requests per hour; an oversized account receives an explicit error instead of a partial file. The local demo supports up to 500 tasks.
-
-The file contains your written task data, so keep it private. It excludes passwords, session tokens, and database credentials. Importing an export is a future feature; the download is not a complete database backup.
 
 ## Author and license
 

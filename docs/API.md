@@ -81,3 +81,11 @@ DELETE /tasks/:id moves an active/archived task to Trash (204). DELETE /tasks/:i
 GET /tasks/export requires a valid session and returns an envelope with format=orbit-task-export, version=1, exportedAt, scope=account, and tasks. It includes all owned active/archived/trashed tasks, independent of list filters. Fields are explicitly allowlisted; owner references, passwords, sessions, and credentials are excluded. Responses remain no-store.
 
 Exports are bounded to 1,000 tasks. Larger accounts receive 413 with no partial task array. A MongoDB-backed per-account limit allows five export requests per hour (429 when exceeded). The export currently supports no import endpoint.
+
+## Recurrence
+
+recurrence defaults to none and accepts none, daily, weekly, monthly. A repeating task requires a nonempty due date. PATCH setting a non-none recurrence must include its due date. To clear a repeating deadline, also set recurrence=none; clearing it alone returns 404 without changing the record. repeatDay, repeatSource, and repeatNext are server-managed and rejected in payloads.
+
+Creating a Done repeating task or explicitly PATCHing status=done ensures one next occurrence and may return nextTask alongside task. The next task retains context, starts To do, and uses fresh unchecked steps. Its unique source index prevents completion retries/concurrent requests from creating duplicate successors. A completed source retains a successor marker so deleting that successor deliberately does not recreate it on a later retry.
+
+Monthly calculations preserve the original day through short months; an explicitly changed due date establishes a new anchor. Scheduling advances by one interval from the previous due date, including overdue dates. No background worker creates missed occurrences, and recurrence stops at the supported date limit (2100-12-31).

@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import rateLimit from 'express-rate-limit';
 import { MongoRateStore } from '../lib/rateStore.js';
 import { createTaskExport } from '../../shared/export.js';
+import { ensureNextOccurrence } from '../lib/recurrence.js';
 import { addDays } from '../../shared/planning.js';
 import { Task } from '../models/Task.js';
 import { requireAuth } from '../middleware/auth.js';
@@ -30,6 +31,9 @@ const serialize = (task) => ({
   status: task.status,
   blockerReason: task.blockerReason ?? '',
   due: task.due,
+  recurrence: task.recurrence ?? 'none',
+  repeatDay: task.repeatDay,
+  repeatSource: task.repeatSource ? String(task.repeatSource) : undefined,
   createdAt: task.createdAt,
   updatedAt: task.updatedAt,
   checklist: (task.checklist ?? []).map((item) => ({
@@ -178,8 +182,16 @@ taskRouter.get('/', async (req, res) => {
 taskRouter.post('/', async (req, res) => {
   const data = parse(taskSchema, req.body);
   if (data.status !== 'blocked') data.blockerReason = '';
+  if (data.due) data.repeatDay = Number(data.due.slice(8));
   const task = await Task.create({ ...data, owner: req.user._id });
-  res.status(201).json({ task: serialize(task) });
+  const nextTask =
+    task.status === 'done' && task.recurrence !== 'none'
+      ? await ensureNextOccurrence(task.toObject())
+      : null;
+  res.status(201).json({
+    task: serialize(task),
+    ...(nextTask ? { nextTask: serialize(nextTask) } : {}),
+  });
 });
 taskRouter.param('id', (req, res, next, id) => {
   if (!mongoose.isObjectIdOrHexString(id))
@@ -190,14 +202,41 @@ taskRouter.patch('/:id', async (req, res) => {
   const data = parse(taskUpdateSchema, req.body);
   // Leaving Blocked clears the obsolete reason in the same write.
   if (data.status && data.status !== 'blocked') data.blockerReason = '';
+  if (data.due) {
+    const current = await Task.findOne({
+      _id: req.params.id,
+      owner: req.user._id,
+      ...activeRecords,
+    })
+      .select('due repeatDay')
+      .lean();
+    if (!current) return res.status(404).json({ message: 'Task not found.' });
+    // A full edit of an unchanged date must retain a January-31 monthly anchor.
+    if (data.due !== current.due || !current.repeatDay)
+      data.repeatDay = Number(data.due.slice(8));
+  }
   // Include ownership in the query; never trust a client-supplied owner.
   const task = await Task.findOneAndUpdate(
-    { _id: req.params.id, owner: req.user._id, ...activeRecords },
+    {
+      _id: req.params.id,
+      owner: req.user._id,
+      ...activeRecords,
+      ...(data.due === '' && !data.recurrence
+        ? { recurrence: { $in: ['none', null] } }
+        : {}),
+    },
     { $set: data },
     { returnDocument: 'after', runValidators: true },
   ).lean();
   if (!task) return res.status(404).json({ message: 'Task not found.' });
-  res.json({ task: serialize(task) });
+  const nextTask =
+    data.status === 'done' && task.recurrence && task.recurrence !== 'none'
+      ? await ensureNextOccurrence(task)
+      : null;
+  res.json({
+    task: serialize(task),
+    ...(nextTask ? { nextTask: serialize(nextTask) } : {}),
+  });
 });
 // State transitions include the expected old state, keeping racing requests safe.
 taskRouter.patch('/:id/lifecycle', async (req, res) => {

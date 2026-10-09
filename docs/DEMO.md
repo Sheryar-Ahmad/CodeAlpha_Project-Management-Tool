@@ -10,4 +10,4 @@ Aim for about 90 seconds. Use the local demo and illustrative tasks, not private
 6. **Protect focus (10 seconds):** Start the focus timer, pause, and resume. Mention that it survives a refresh in the same browser.
 7. **The implementation (10 seconds):** “React powers the workspace, Express validates requests, and MongoDB saves private account tasks. The demo stays in local browser storage.”
 
-Close with the repository link and, after deployment, the verified live URL. Describe this release as a personal workspace; shared team collaboration and recurring tasks are not implemented. Do not claim production performance, security certification, search rankings, or ad revenue without evidence.
+Close with the repository link and, after deployment, the verified live URL. Describe this release as a personal workspace; shared team collaboration is not implemented; recurrence advances when a task is completed. Do not claim production performance, security certification, search rankings, or ad revenue without evidence.

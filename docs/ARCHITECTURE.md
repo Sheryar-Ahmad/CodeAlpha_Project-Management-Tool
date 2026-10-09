@@ -52,3 +52,9 @@ Projects are task group labels, not separate project entities. There are no memb
 Lifecycle is separate from progress status: a completed task can be active, archived, or trashed without losing what happened. Archive/Trash views reuse the list and task context, while editing is disabled until restoration.
 
 Transitions use one owner-scoped conditional update that includes the expected source state. This prevents two competing transitions from both succeeding. Old records with a missing lifecycle field match active queries; no startup migration rewrites the user's database. The demo adapter follows the same source-state rules. Trash retains records until the owner explicitly permanently deletes them.
+
+## Completion-driven recurrence
+
+Pure calendar functions live in shared/recurrence.js so the API and demo calculate the same dates. Monthly tasks retain an anchor day rather than drifting from January 31 to March 28. The next occurrence has independent checklist IDs and preserves the previous completed record.
+
+MongoDB uses a unique sparse repeatSource index and upsert to ensure one successor. The source also stores repeatNext to remember intentionally removed successors. Completion, successor creation, and the marker update are separate writes for compatibility with local standalone MongoDB. If a database failure interrupts this sequence, retrying the explicit Done update repairs the successor/marker without resetting completed history. This is not an all-or-nothing multi-document transaction.

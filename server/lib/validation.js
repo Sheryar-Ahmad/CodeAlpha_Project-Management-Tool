@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { validDate } from '../../shared/date.js';
 import { taskStatuses, validResourceUrl } from '../../shared/task.js';
+import { recurrenceLabels } from '../../shared/recurrence.js';
 export { validDate } from '../../shared/date.js';
 
 const email = z.string().trim().toLowerCase().email().max(254);
@@ -55,9 +56,14 @@ export const taskSchema = z
     status: z.enum(Object.keys(taskStatuses)).default('todo'),
     blockerReason: z.string().trim().max(500).default(''),
     due: z.string().refine(validDate, 'Enter a valid date.').default(''),
+    recurrence: z.enum(Object.keys(recurrenceLabels)).default('none'),
     checklist: checklistSchema.default([]),
   })
   .strict()
+  .refine((value) => value.recurrence === 'none' || Boolean(value.due), {
+    message: 'Repeating tasks need a due date.',
+    path: ['due'],
+  })
   .refine((value) => value.status !== 'blocked' || value.blockerReason.length > 0, {
     message: 'Explain what is blocking this task.',
     path: ['blockerReason'],
@@ -74,10 +80,15 @@ export const taskUpdateSchema = z
     status: taskSchema.shape.status.removeDefault().optional(),
     blockerReason: taskSchema.shape.blockerReason.removeDefault().optional(),
     due: taskSchema.shape.due.removeDefault().optional(),
+    recurrence: taskSchema.shape.recurrence.removeDefault().optional(),
     checklist: checklistSchema.optional(),
   })
   .strict()
   .refine((value) => Object.keys(value).length > 0, 'No changes supplied.')
+  .refine(
+    (value) => !value.recurrence || value.recurrence === 'none' || Boolean(value.due),
+    { message: 'Include the due date when setting recurrence.', path: ['due'] },
+  )
   .refine((value) => value.blockerReason === undefined || Boolean(value.status), {
     message: 'Include the task status when changing its blocker.',
     path: ['blockerReason'],

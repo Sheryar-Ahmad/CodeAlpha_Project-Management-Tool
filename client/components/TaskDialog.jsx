@@ -3,6 +3,7 @@ import { Plus, X } from 'lucide-react';
 import { statuses } from './TaskCard.jsx';
 import { validResourceUrl } from '../../shared/task.js';
 import { taskTemplates, createTemplateDraft } from '../lib/templates.js';
+import { recurrenceLabels } from '../../shared/recurrence.js';
 
 export default function TaskDialog({ task, onClose, onSave }) {
   const ref = useRef(null);
@@ -44,6 +45,10 @@ export default function TaskDialog({ task, onClose, onSave }) {
     data.project = data.project.trim();
     data.description = data.description.trim();
     data.notes = data.notes.trim();
+    if (data.recurrence !== 'none' && !data.due) {
+      setError('Repeating tasks need a due date.');
+      return;
+    }
     data.blockerReason = status === 'blocked' ? blockerReason.trim() : '';
     if (status === 'blocked' && !data.blockerReason) {
       setError('Explain what is blocking this task.');
@@ -222,6 +227,25 @@ export default function TaskDialog({ task, onClose, onSave }) {
               </option>
             ))}
           </select>
+        </label>
+        <label>
+          Repeat
+          <select
+            aria-label="Repeat"
+            name="recurrence"
+            defaultValue={task?.recurrence ?? 'none'}
+            disabled={busy}
+          >
+            {Object.entries(recurrenceLabels).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+          <span className="small muted">
+            Completing this task keeps it as history and creates the next occurrence from
+            its due date.
+          </span>
         </label>
         {status === 'blocked' && (
           <label className="blocker-editor">

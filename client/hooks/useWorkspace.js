@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { request, today } from '../lib/api.js';
 import { createTaskExport } from '../../shared/export.js';
 import { downloadTaskExport } from '../lib/export.js';
+import { nextRecurringDraft } from '../../shared/recurrence.js';
 import { matchesPlanningView } from '../../shared/planning.js';
 import { readDemo, saveDemo, demoOverview, resetDemo } from '../lib/demo.js';
 
@@ -152,12 +153,34 @@ export default function useWorkspace(mode, onExpired) {
           : action === 'delete'
             ? { lifecycle: 'trashed' }
             : data;
-        const next =
+        let next =
           action === 'create'
             ? [{ ...data, lifecycle: 'active', id: crypto.randomUUID() }, ...all]
             : action === 'permanent'
               ? all.filter((task) => task.id !== id)
               : all.map((task) => (task.id === id ? { ...task, ...changes } : task));
+        const changed = next.find(
+          (task) => task.id === (action === 'create' ? next[0].id : id),
+        );
+        if (
+          changed &&
+          data?.due &&
+          (!current || data.due !== current.due || !current.repeatDay)
+        )
+          changed.repeatDay = Number(data.due.slice(8));
+        if (
+          changed &&
+          data?.status === 'done' &&
+          changed.recurrence !== 'none' &&
+          !changed.repeatNext
+        ) {
+          const draft = nextRecurringDraft(changed, () => crypto.randomUUID());
+          if (draft) {
+            const nextId = crypto.randomUUID();
+            changed.repeatNext = nextId;
+            next = [{ ...draft, id: nextId, repeatSource: changed.id }, ...next];
+          }
+        }
         saveDemo(next);
       } else {
         const suffix = transition

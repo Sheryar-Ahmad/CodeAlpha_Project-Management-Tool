@@ -16,6 +16,7 @@ import { initialTimer, remainingSeconds, validTimer } from '../client/lib/focus.
 import { taskTemplates, createTemplateDraft } from '../client/lib/templates.js';
 import { demoOverview } from '../client/lib/demo.js';
 import { createTaskExport } from '../shared/export.js';
+import { nextRecurringDate, nextRecurringDraft } from '../shared/recurrence.js';
 
 test('dates reject impossible dates and accept leap days', () => {
   assert.equal(validDate('2026-02-30'), false);
@@ -245,4 +246,43 @@ test('exports allowlist task data and strip internal fields at every nesting lev
   assert.deepEqual(data.tasks[0].checklist, [
     { id: 'step', text: 'Finished', done: true },
   ]);
+});
+
+test('recurrence uses calendar dates and preserves the monthly anchor across short months', () => {
+  assert.equal(nextRecurringDate('2027-01-31', 'monthly', 31), '2027-02-28');
+  assert.equal(nextRecurringDate('2027-02-28', 'monthly', 31), '2027-03-31');
+  assert.equal(nextRecurringDate('2028-01-31', 'monthly', 31), '2028-02-29');
+  assert.equal(nextRecurringDate('2026-12-31', 'daily'), '2027-01-01');
+  assert.equal(nextRecurringDate('2026-12-28', 'weekly'), '2027-01-04');
+  assert.equal(nextRecurringDate('2100-12-31', 'daily'), null);
+  assert.equal(nextRecurringDate('', 'daily'), null);
+  assert.throws(() =>
+    parse(taskSchema, { title: 'Repeat', project: 'Home', recurrence: 'weekly' }),
+  );
+  assert.throws(() => parse(taskUpdateSchema, { recurrence: 'daily' }));
+});
+
+test('next occurrence keeps context without resetting the completed record', () => {
+  const original = {
+    title: 'Review',
+    project: 'Home',
+    description: 'Context',
+    notes: 'Keep this',
+    links: [],
+    priority: 'medium',
+    status: 'done',
+    due: '2027-01-31',
+    recurrence: 'monthly',
+    repeatDay: 31,
+    checklist: [{ id: 'old-step', text: 'Review notes', done: true }],
+  };
+  const next = nextRecurringDraft(original, () => 'fresh-step');
+  assert.equal(next.due, '2027-02-28');
+  assert.equal(next.status, 'todo');
+  assert.equal(next.notes, 'Keep this');
+  assert.deepEqual(next.checklist, [
+    { id: 'fresh-step', text: 'Review notes', done: false },
+  ]);
+  assert.equal(original.status, 'done');
+  assert.equal(original.checklist[0].done, true);
 });

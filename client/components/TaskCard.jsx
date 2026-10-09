@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { today } from '../lib/api.js';
 import { taskStatuses } from '../../shared/task.js';
+import { recurrenceLabels } from '../../shared/recurrence.js';
 
 export const statuses = taskStatuses;
 export default function TaskCard({
@@ -112,6 +113,11 @@ export default function TaskCard({
           <CalendarDays size={13} aria-hidden="true" /> {overdue ? 'Overdue · ' : ''}
           {date}
         </div>
+        {task.recurrence && task.recurrence !== 'none' && (
+          <p className="recurrence-hint">
+            Repeats {recurrenceLabels[task.recurrence].toLowerCase()}
+          </p>
+        )}
         <div className="task-actions">
           {readOnly ? (
             <button

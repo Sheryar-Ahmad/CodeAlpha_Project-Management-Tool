@@ -954,3 +954,9 @@ textarea:disabled {
   gap: 6px;
   min-height: 40px;
 }
+
+.recurrence-hint {
+  font-size: 12px;
+  color: var(--purple);
+  margin: 8px 0 12px;
+}

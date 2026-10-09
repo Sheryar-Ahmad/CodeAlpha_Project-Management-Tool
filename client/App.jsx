@@ -163,6 +163,9 @@ function Workspace({ mode, user, onExit, onExpired }) {
               title: task.title.slice(0, 113) + ' (copy)',
               status: 'todo',
               blockerReason: '',
+              recurrence: 'none',
+              repeatSource: undefined,
+              repeatNext: undefined,
               due: '',
               checklist: (task.checklist ?? []).map((step) => ({
                 ...step,

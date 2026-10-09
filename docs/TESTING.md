@@ -107,3 +107,12 @@ Automated browser coverage verifies the primary flows above; exhaustive accessib
 - Demo exports must be marked demo and account exports account. Test download permission failures and an unavailable account API.
 - More than 1,000 account tasks must return a clear size error; exceeding five account requests per hour must show a rate-limit message.
 - The file contains private task text; importing it is not implemented.
+
+## Recurring tasks
+
+- Repeating tasks require a date. Complete Daily/Weekly/Monthly tasks: the completed occurrence remains and the next task starts To do with unchecked, independent steps.
+- January 31 should become February 28/29, then March 31. Saving an unchanged February date must retain that anchor.
+- Refresh and repeat completion requests: only one successor exists. Intentionally permanently deleting that successor must not recreate it on another completion retry.
+- Stop repetition on the active task. Archive/Trash must not generate tasks. Duplicate starts with repetition off.
+- An overdue date advances by one interval, not to the present day. There is no scheduled background generation. Supported dates stop at the end of 2100.
+- Verify account isolation and persistence, narrow screens, blocked storage, and API failures.

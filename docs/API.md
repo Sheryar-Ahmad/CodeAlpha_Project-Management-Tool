@@ -227,3 +227,16 @@ PATCH /collaboration/:taskId/comments/:commentId/read with {} acknowledges only 
 Review creation accepts optional includeResources: true. The server captures up to eight validated resource labels/URLs from the current scoped task; caller-supplied resources are rejected, and a task without resources cannot request a resource review. Listing returns the captured resources alongside the brief. The designated reviewer uses the normal approve/request-changes flow.
 
 Later task-link edits never replace a review snapshot. External file contents can change at the same URL; Orbit does not fetch, upload, fingerprint or lock those files. This records approval of the brief and linked resources presented for review, not an immutable binary-file version.
+
+### Independent subtasks and recent task activity
+
+Account routes (also available under `/api/projects/:projectId/tasks` for accepted members):
+
+- `GET /api/tasks/:id/details?page=1`: scoped parent summary, 30 children/page, eligible assignees, pending setup title and the latest 50 activity events. Guests, revoked members and other owners cannot access details.
+- `POST /api/tasks/:id/subtasks { key: UUID, task: taskDraft }`: one-level child in the same project, with independent status/deadline/assignment. Task drafts cannot inject owner, parent or project IDs. Recurring tasks cannot be parents or children.
+- `POST /api/tasks/:id/subtasks/resume {}`: repair interrupted reserved setup. Reuses the saved ID without overwriting an existing child. Active worker leases return 409; retry after one minute.
+- `PATCH /api/tasks/:id/subtasks/detach {}`: make an active child independent without changing its content/project/assignment. Pending setup must finish first.
+
+Creation uses a normalized-content digest and persisted receipt. Identical completed retries return the existing child, or `{ task: null, previouslyRemoved: true }` if it was removed/detached. Changed content under the same key returns 409. Each root supports 100 retained children and 200 lifetime creation receipts. Requests use existing account/IP limits. Pending setup blocks parent lifecycle/project changes. Child lifecycle/detach operations also wait while their setup is pending. Parent completion/archive/trash does not cascade; retained children (including Trash/archive) block parent moves, recurrence and permanent deletion. This is a resumable workflow on standalone MongoDB, not an all-or-nothing transaction.
+
+Activity records actor name, action, field names and time, without previous values. Normal board responses omit history and setup receipts/drafts. Project moves reset history; deleted actors become `Former account`. Recorded task changes include ordinary edits, assignment, lifecycle, subtask setup/detach, imports, templates, recurring creation, overdue priority rules and dependency schedule application. It does not record every read, discussion or project-level action and is not a compliance audit log. Previously existing records have no retroactive events. Task exports retain parent IDs as metadata; imports deliberately flatten subtasks into independent tasks in the new private project. The import confirmation states this behavior.

@@ -45,7 +45,11 @@ The local demo uses a different adapter. It never sends demo tasks to the accoun
 
 ## Current scope
 
-Projects are separate records with stable task references, dates, milestones and planning status. Shared projects use explicit invitations and owner/member/guest permissions. Accepted members can collaborate through project-scoped routes; guests use a restricted read-only portal. Team views refresh through polling, rather than live sockets. Checklists remain embedded steps; independently assigned subtasks are pending.
+Projects are separate records with stable task references, dates, milestones and planning status. Shared projects use explicit invitations and owner/member/guest permissions. Accepted members can collaborate through project-scoped routes; guests use a restricted read-only portal. Team views refresh through polling. Checklists remain embedded steps; account users can also create one-level subtasks with their own status, deadline and assignee. Subtasks reference another task in the same project and reuse normal task permissions and views.
+
+Subtask creation reserves an ID and request digest on the parent before saving the child. A persistent pending draft allows interrupted standalone-MongoDB writes to resume; a short worker lease reduces concurrent retries. Parent family revisions guard project moves, lifecycle changes and deletion against concurrent creation. This is a resumable multi-document workflow, rather than a transaction. Parent completion/archive/trash does not cascade to children, and retained children block parent project moves, recurrence and permanent deletion. Child detach is explicit. Exports preserve parent IDs as metadata; imports recover task content as independent tasks.
+
+Task activity is embedded, capped at 50 events, and loaded on demand with task details. Recorded actions cover task creation/editing, assignment, lifecycle changes, subtask setup/detach, imports, templates, recurrence, overdue priority rules and dependency date application. Events contain actor identity, action, field names and timestamp, without old notes or field values. Project moves reset history to avoid carrying prior project context into another team; account deletion redacts that account's actor identity in retained shared histories. Activity is a convenience history, not an immutable audit trail. Existing records have no retroactive history.
 
 ## Task lifecycle
 

@@ -49,6 +49,8 @@ Built by **Sheheryar Ahmad**, a Semester 5 Software Engineering student at **COM
 
 ![Owned and joined project portfolio with an actionable work digest](docs/screenshots/portfolio-desktop.png)
 
+![Task details with independently assigned subtasks](docs/screenshots/task-details-desktop.png)
+
 ![Recorded project date ranges on a monthly timeline](docs/screenshots/timeline-desktop.png)
 
 ![Quiet focus timer with pause, reset, and session length controls](docs/screenshots/focus-desktop.png)
@@ -65,6 +67,8 @@ Screenshots are from the working local demo using illustrative sample tasks.
 
 | Feature                   | What it solves                                                                                 |
 | ------------------------- | ---------------------------------------------------------------------------------------------- |
+| Independent subtasks      | Break work into one-level child tasks with their own status, deadline and assignee             |
+| Recent task activity      | See up to 50 actions and changed field names without keeping duplicate private note content    |
 | Resource reviews          | Capture task document/design links and record a designated reviewer’s feedback                 |
 | Discussion notifications  | Flag a comment for one teammate and acknowledge it in the work digest                          |
 | Public request forms      | Optional revocable links, account-free proposals, bounded submissions and private owner triage |
@@ -259,7 +263,7 @@ npm run build
 npm run format:check
 ```
 
-**Verified locally:** 83 API/input/planning/timer/password/template/recovery/export/recurrence/project tests and Chromium browser flows covering demo CRUD, storage persistence, search, filters, safe text rendering, mobile overflow, dialog Escape, checklists, task duplication, template previews and replacement protection, list actions and pagination, blockers, archive/trash restoration, private downloads, daily views, overnight date changes, project progress, focus pause/refresh/completion, registration, database-backed persistence, logout, and login. Expanded checks cover whole-month calendar queries, leap years, Action Center rules, milestones, health explanations, command navigation, notebook decisions/meetings, follow-up drafts, weekly time totals, private APIs, and explicit legacy linking. Team checks cover invitation state transitions, cross-project isolation, removed/pending users, role restrictions, assignment eligibility, private/team note separation, discussion moderation, review decisions and inbox access. Browser tests exercise two separate authenticated accounts and team layouts at 320–1440px.
+**Verified locally:** 88 API/input/planning/timer/password/template/recovery/export/recurrence/project tests and Chromium browser flows covering demo CRUD, storage persistence, search, filters, safe text rendering, mobile overflow, dialog Escape, checklists, task duplication, template previews and replacement protection, list actions and pagination, blockers, archive/trash restoration, private downloads, daily views, overnight date changes, project progress, focus pause/refresh/completion, registration, database-backed persistence, logout, and login. Expanded checks cover whole-month calendar queries, leap years, Action Center rules, milestones, health explanations, command navigation, notebook decisions/meetings, follow-up drafts, weekly time totals, private APIs, and explicit legacy linking. Team checks cover invitation state transitions, cross-project isolation, removed/pending users, role restrictions, assignment eligibility, private/team note separation, discussion moderation, review decisions and inbox access. Browser tests exercise two separate authenticated accounts and team layouts at 320–1440px.
 
 For browser checks:
 
@@ -345,10 +349,11 @@ See [the delivery tracker](docs/PRODUCT_DIRECTION.md) for implemented capabiliti
 - [x] Recovery-code password reset, password changes, and account deletion
 - [x] Portfolio, work digest, and targeted discussion notifications
 - [x] Optional public work requests and resource-link reviews
-- [ ] Independent assigned subtasks
+- [x] One-level subtasks with independent deadlines, status and assignment
+- [x] Bounded recent task activity with privacy-safe field names
 - [ ] Email verification and email-based recovery/delivery
 - [ ] Live Google Calendar OAuth integration
-- [ ] Activity history and optional live task updates
+- [ ] Optional live task updates (current team refresh uses polling)
 - [ ] Accessibility audit and measured production performance
 - [ ] Live deployment link and LinkedIn walkthrough
 

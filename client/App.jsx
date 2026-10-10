@@ -1,6 +1,10 @@
+import TeamWorkspace from './components/TeamWorkspace.jsx';
 import { useCallback, useEffect, useState } from 'react';
 import {
+  Users,
   Download,
+  Inbox,
+  Timer,
   Archive,
   Trash2,
   ArrowUpRight,
@@ -24,12 +28,22 @@ import AuthScreen from './components/AuthScreen.jsx';
 import TaskCard, { statuses } from './components/TaskCard.jsx';
 import TaskDialog from './components/TaskDialog.jsx';
 import ProjectOverview from './components/ProjectOverview.jsx';
+import ProjectNotebook from './components/ProjectNotebook.jsx';
+import ProjectDialog from './components/ProjectDialog.jsx';
+import CommandBar from './components/CommandBar.jsx';
+import CalendarView from './components/CalendarView.jsx';
+import TimeTracking from './components/TimeTracking.jsx';
 import FocusTimer from './components/FocusTimer.jsx';
 import useWorkspace from './hooks/useWorkspace.js';
 import { request, today } from './lib/api.js';
-import { addDays } from '../shared/planning.js';
+import { addDays, attentionReasons } from '../shared/planning.js';
 
 const workspaceViews = {
+  teams: {
+    label: 'Team projects',
+    title: 'Good work, together',
+    description: 'Share a project with the right people and keep the next steps clear.',
+  },
   all: {
     label: 'Task board',
     title: 'Let’s move things forward',
@@ -45,10 +59,21 @@ const workspaceViews = {
     title: 'Stay one step ahead',
     description: 'Unfinished deadlines in the next seven days, starting tomorrow.',
   },
+  calendar: {
+    label: 'Calendar',
+    title: 'See your month clearly',
+    description: 'Keep deadlines in view and make room for the work ahead.',
+  },
+  attention: {
+    label: 'Action Center',
+    title: 'Know what needs you next',
+    description:
+      'Unfinished work that is blocked, high priority, overdue, or due within three days.',
+  },
   projects: {
     label: 'Projects',
     title: 'Every project, in perspective',
-    description: 'See progress and unfinished deadlines across your project groups.',
+    description: 'Give each project a purpose, a timeline, and clear next steps.',
   },
   blocked: {
     label: 'Blockers',
@@ -67,6 +92,11 @@ const workspaceViews = {
     description:
       'Restore a task to the board or permanently delete it. Nothing is automatically removed from Trash.',
   },
+  time: {
+    label: 'Work log',
+    title: 'Give your effort a clear record',
+    description: 'Record actual work and review a simple weekly timesheet.',
+  },
   focus: {
     label: 'Focus timer',
     title: 'A little room to focus',
@@ -77,14 +107,48 @@ const workspaceViews = {
 function Workspace({ mode, user, onExit, onExpired }) {
   const workspace = useWorkspace(mode, onExpired);
   const [dialog, setDialog] = useState(null);
+  const [projectDialog, setProjectDialog] = useState(null);
+  const [notebookProject, setNotebookProject] = useState(null);
+  const [commandOpen, setCommandOpen] = useState(false);
   const [layout, setLayout] = useState('board');
   const [actionError, setActionError] = useState('');
   const [signingOut, setSigningOut] = useState(false);
+  useEffect(() => {
+    function shortcut(event) {
+      if (
+        (event.ctrlKey || event.metaKey) &&
+        event.key.toLowerCase() === 'k' &&
+        !workspace.busy &&
+        !dialog &&
+        !projectDialog &&
+        !notebookProject
+      ) {
+        event.preventDefault();
+        const openDialog = document.querySelector('dialog[open]');
+        if (openDialog && !openDialog.classList.contains('command-dialog')) return;
+        setCommandOpen((value) => !value);
+      }
+    }
+    document.addEventListener('keydown', shortcut);
+    return () => document.removeEventListener('keydown', shortcut);
+  }, [workspace.busy, dialog, projectDialog, notebookProject]);
+  function chooseCommand(item) {
+    setCommandOpen(false);
+    if (item.kind === 'task') openNewTask();
+    else if (item.kind === 'createProject') setProjectDialog({ project: null });
+    else if (item.kind === 'view') workspace.setView(item.value);
+    else if (item.kind === 'project') workspace.openProject(item.value);
+    else if (item.kind === 'search') {
+      workspace.setView('all');
+      workspace.setSearch(item.value);
+    }
+  }
   const recovery = ['archived', 'trash'].includes(workspace.view);
   const planning = ['today', 'upcoming'].includes(workspace.view);
   const pageCopy = workspaceViews[workspace.view];
   const taskHeading =
     {
+      attention: 'Work that needs attention',
       today: 'Today’s priorities',
       upcoming: 'Upcoming deadlines',
       blocked: 'Work that needs unblocking',
@@ -100,7 +164,7 @@ function Workspace({ mode, user, onExit, onExpired }) {
     // Every entry point keeps the active project and calendar context.
     setDialog({
       task:
-        planning || workspace.project
+        planning || workspace.project || workspace.view === 'calendar'
           ? {
               project: workspace.project || undefined,
               due:
@@ -108,7 +172,11 @@ function Workspace({ mode, user, onExit, onExpired }) {
                   ? today()
                   : workspace.view === 'upcoming'
                     ? addDays(today(), 1)
-                    : '',
+                    : workspace.view === 'calendar'
+                      ? workspace.date.startsWith(workspace.month)
+                        ? workspace.date
+                        : workspace.month + '-01'
+                      : '',
             }
           : null,
     });
@@ -146,6 +214,9 @@ function Workspace({ mode, user, onExit, onExpired }) {
         key={task.id}
         task={task}
         busy={workspace.busy}
+        attention={
+          workspace.view === 'attention' ? attentionReasons(task, workspace.date) : []
+        }
         onEdit={(task) => setDialog({ task })}
         onStatus={(task, status) =>
           status === 'blocked'
@@ -231,9 +302,13 @@ function Workspace({ mode, user, onExit, onExpired }) {
             ['all', 'Task board', LayoutDashboard],
             ['today', 'Today', CalendarDays],
             ['upcoming', 'Upcoming', CalendarRange],
+            ['calendar', 'Calendar', CalendarDays],
+            ['attention', 'Action Center', Inbox],
             ['projects', 'Projects', FolderOpen],
+            ['teams', 'Team projects', Users],
             ['blocked', 'Blockers', CirclePause],
             ['focus', 'Focus timer', Clock3],
+            ['time', 'Work log', Timer],
             ['archived', 'Archive', Archive],
             ['trash', 'Trash', Trash2],
           ].map(([value, label, Icon]) => (
@@ -285,8 +360,24 @@ function Workspace({ mode, user, onExit, onExpired }) {
             Workspace <span className="muted">/ {pageCopy.label}</span>
           </span>
           <div className="topbar-actions">
+            <button
+              type="button"
+              className="workspace-search-button"
+              aria-label="Search workspace"
+              title="Search workspace (Ctrl+K or Command+K)"
+              disabled={workspace.busy || workspace.loading}
+              onClick={() => setCommandOpen(true)}
+            >
+              <Search size={15} aria-hidden="true" />
+              <span>Quick find</span>
+              <kbd>Ctrl K</kbd>
+            </button>
             <span className="pill">
-              {mode === 'demo' ? 'LOCAL DEMO' : 'PERSONAL WORKSPACE'}
+              {mode === 'demo'
+                ? 'LOCAL DEMO'
+                : workspace.view === 'teams'
+                  ? 'TEAM PROJECTS'
+                  : 'PERSONAL WORKSPACE'}
             </span>
             {mode === 'demo' && (
               <button
@@ -309,16 +400,25 @@ function Workspace({ mode, user, onExit, onExpired }) {
             </h1>
             <p className="muted">{pageCopy.description}</p>
           </div>
-          {workspace.view !== 'focus' && !recovery && (
-            <button className="button" disabled={workspace.busy} onClick={openNewTask}>
-              <Plus size={17} /> New task
+          {!['focus', 'time', 'teams'].includes(workspace.view) && !recovery && (
+            <button
+              className="button"
+              disabled={workspace.busy || workspace.loading}
+              onClick={() =>
+                workspace.view === 'projects'
+                  ? setProjectDialog({ project: null })
+                  : openNewTask()
+              }
+            >
+              <Plus size={17} />{' '}
+              {workspace.view === 'projects' ? 'New project' : 'New task'}
             </button>
           )}
         </section>
         <div className="notice-row" role="status" aria-live="polite">
           {workspace.notice}
         </div>
-        {workspace.view !== 'focus' && (
+        {!['focus', 'time', 'teams'].includes(workspace.view) && (
           <section className="workspace-summary" aria-label="All tasks summary">
             <p className="summary-heading">Across your active workspace</p>
             <div className="stats">
@@ -351,13 +451,44 @@ function Workspace({ mode, user, onExit, onExpired }) {
             </button>
           </div>
         )}
-        {workspace.view === 'focus' ? (
+        {workspace.view === 'teams' ? (
+          <TeamWorkspace demo={mode === 'demo'} onExpired={onExpired} />
+        ) : workspace.view === 'focus' ? (
           <FocusTimer storageScope={mode === 'demo' ? 'demo' : user.id} />
+        ) : workspace.view === 'time' ? (
+          <TimeTracking
+            demo={mode === 'demo'}
+            projects={workspace.overview.projects}
+            onExpired={onExpired}
+          />
+        ) : workspace.view === 'calendar' ? (
+          <CalendarView
+            month={workspace.month}
+            onMonth={workspace.setMonth}
+            tasks={workspace.tasks}
+            loading={workspace.loading}
+            busy={workspace.busy}
+            truncated={workspace.calendarTruncated}
+            today={workspace.date}
+            projects={workspace.overview.projects}
+            project={workspace.project}
+            onProject={workspace.setProject}
+            onNew={(due) =>
+              setDialog({ task: { due, project: workspace.project || undefined } })
+            }
+            renderTask={renderTask}
+          />
         ) : workspace.view === 'projects' ? (
           <ProjectOverview
+            date={workspace.date}
             projects={workspace.overview.projectSummaries ?? []}
             loading={workspace.loading}
             onOpen={workspace.openProject}
+            busy={workspace.busy}
+            truncated={workspace.overview.projectRecordsTruncated}
+            onEdit={(project) => setProjectDialog({ project })}
+            onNotebook={setNotebookProject}
+            onConnect={(project) => act(() => workspace.connectProject(project))}
           />
         ) : (
           <section aria-labelledby="board-heading" aria-busy={workspace.loading}>
@@ -555,7 +686,9 @@ function Workspace({ mode, user, onExit, onExpired }) {
           <span>
             {mode === 'demo'
               ? 'Demo tasks stay in this browser. No account required.'
-              : 'Your tasks are saved to your private account.'}
+              : workspace.view === 'teams'
+                ? 'Shared project work is visible to accepted members. Exports contain only tasks owned by your account.'
+                : 'Your tasks are saved to your private account.'}
           </span>
           <div className="footer-actions">
             <button
@@ -565,14 +698,19 @@ function Workspace({ mode, user, onExit, onExpired }) {
               title="Download all tasks, including Archive and Trash"
               onClick={() => act(workspace.exportTasks)}
             >
-              <Download size={14} aria-hidden="true" /> Export tasks
+              <Download size={14} aria-hidden="true" />{' '}
+              {workspace.view === 'teams' ? 'Export owned tasks' : 'Export tasks'}
             </button>
             {mode === 'demo' && (
               <button
                 className="text-button"
                 disabled={workspace.busy}
                 onClick={() => {
-                  if (window.confirm('Replace your local tasks with sample tasks?'))
+                  if (
+                    window.confirm(
+                      'Replace demo tasks with samples and remove project details, notebook entries, and work logs?',
+                    )
+                  )
                     act(() => workspace.reset());
                 }}
               >
@@ -582,9 +720,38 @@ function Workspace({ mode, user, onExit, onExpired }) {
           </div>
         </footer>
       </main>
+      {notebookProject && (
+        <ProjectNotebook
+          project={notebookProject}
+          demo={mode === 'demo'}
+          onClose={() => setNotebookProject(null)}
+          onExpired={onExpired}
+          onFollowUp={(task) => {
+            setNotebookProject(null);
+            setDialog({ task });
+          }}
+        />
+      )}
+      {commandOpen && (
+        <CommandBar
+          views={workspaceViews}
+          projects={workspace.overview.projects}
+          onClose={() => setCommandOpen(false)}
+          onChoose={chooseCommand}
+        />
+      )}
+      {projectDialog && (
+        <ProjectDialog
+          project={projectDialog.project}
+          demo={mode === 'demo'}
+          onClose={() => setProjectDialog(null)}
+          onSave={workspace.saveProject}
+        />
+      )}
       {dialog && (
         <TaskDialog
           task={dialog.task}
+          projectNames={workspace.overview.projects}
           onClose={() => setDialog(null)}
           onSave={workspace.save}
         />

@@ -4,7 +4,17 @@ import { createTaskExport } from '../../shared/export.js';
 import { downloadTaskExport } from '../lib/export.js';
 import { nextRecurringDraft } from '../../shared/recurrence.js';
 import { matchesPlanningView } from '../../shared/planning.js';
-import { readDemo, saveDemo, demoOverview, resetDemo } from '../lib/demo.js';
+import { monthBounds } from '../../shared/calendar.js';
+import { combineProjects } from '../../shared/project.js';
+import {
+  readDemo,
+  saveDemo,
+  demoOverview,
+  resetDemo,
+  readDemoProjects,
+  saveDemoProjects,
+  ensureDemoProject,
+} from '../lib/demo.js';
 
 const lifecycleActions = {
   archive: { from: 'active', to: 'archived' },
@@ -37,6 +47,8 @@ export default function useWorkspace(mode, onExpired) {
   const [notice, setNotice] = useState('');
   const [revision, setRevision] = useState(0);
   const [date, setDate] = useState(today);
+  const [month, setMonth] = useState(() => today().slice(0, 7));
+  const [calendarTruncated, setCalendarTruncated] = useState(false);
   // Refresh calendar views after midnight, including tabs returning from the background.
   useEffect(() => {
     const refreshDate = () => setDate(today());
@@ -67,11 +79,16 @@ export default function useWorkspace(mode, onExpired) {
         let result, stats;
         if (mode === 'demo') {
           const all = readDemo();
-          stats = demoOverview(all, date);
+          stats = demoOverview(all, date, readDemoProjects());
           const query = debounced.toLocaleLowerCase();
+          const range = view === 'calendar' ? monthBounds(month) : null;
           const filtered = all.filter(
             (task) =>
-              matchesPlanningView(task, view, date) &&
+              (range
+                ? (!task.lifecycle || task.lifecycle === 'active') &&
+                  task.due >= range.start &&
+                  task.due <= range.end
+                : matchesPlanningView(task, view, date)) &&
               (!project || task.project === project) &&
               (
                 task.title +
@@ -89,30 +106,57 @@ export default function useWorkspace(mode, onExpired) {
           );
           if (['today', 'upcoming'].includes(view))
             filtered.sort((a, b) => a.due.localeCompare(b.due));
-          result = {
-            tasks: filtered.slice((page - 1) * 30, page * 30),
-            hasMore: filtered.length > page * 30,
-          };
+          result =
+            view === 'calendar'
+              ? {
+                  tasks: filtered.sort((a, b) => a.due.localeCompare(b.due)),
+                  hasMore: false,
+                }
+              : {
+                  tasks: filtered.slice((page - 1) * 30, page * 30),
+                  hasMore: filtered.length > page * 30,
+                };
         } else {
           const params = new URLSearchParams({
             search: debounced,
             project,
             page: String(page),
-            view: ['projects', 'focus'].includes(view) ? 'all' : view,
+            view: ['projects', 'focus', 'time', 'teams'].includes(view) ? 'all' : view,
             date,
           });
-          [result, stats] = await Promise.all([
-            ['projects', 'focus'].includes(view)
+          const [taskResult, taskStats, projectResult] = await Promise.all([
+            ['projects', 'focus', 'time', 'teams'].includes(view)
               ? Promise.resolve({ tasks: [], hasMore: false })
-              : request('/tasks?' + params, { signal: controller.signal }),
+              : view === 'calendar'
+                ? request('/tasks/calendar?' + new URLSearchParams({ month, project }), {
+                    signal: controller.signal,
+                  })
+                : request('/tasks?' + params, { signal: controller.signal }),
             request('/tasks/overview?date=' + date, { signal: controller.signal }),
+            request('/projects', { signal: controller.signal }),
           ]);
+          result = taskResult;
+          stats = {
+            ...taskStats,
+            projects: [
+              ...new Set([
+                ...taskStats.projects,
+                ...projectResult.projects.map((item) => item.name),
+              ]),
+            ].sort((a, b) => a.localeCompare(b)),
+            projectSummaries: combineProjects(
+              taskStats.projectSummaries,
+              projectResult.projects,
+            ),
+            projectRecordsTruncated: projectResult.hasMore,
+          };
         }
         if (!controller.signal.aborted) {
           if (!result.tasks.length && page > 1) {
             setPage(page - 1);
             return;
           }
+          setCalendarTruncated(Boolean(result.truncated));
           setTasks(result.tasks);
           setHasMore(result.hasMore);
           setOverview(stats);
@@ -127,7 +171,7 @@ export default function useWorkspace(mode, onExpired) {
     }
     load();
     return () => controller.abort();
-  }, [mode, debounced, project, view, page, revision, date, onExpired]);
+  }, [mode, debounced, project, view, page, revision, date, month, onExpired]);
   async function mutate(action, id, data) {
     if (mutationLock.current) throw new Error('Please wait for the current save.');
     mutationLock.current = true;
@@ -148,6 +192,8 @@ export default function useWorkspace(mode, onExpired) {
         ) {
           throw new Error('This task has changed. Refresh and try again.');
         }
+        if (data?.project)
+          data = { ...data, projectId: ensureDemoProject(data.project).id };
         const changes = transition
           ? { lifecycle: transition.to }
           : action === 'delete'
@@ -209,6 +255,83 @@ export default function useWorkspace(mode, onExpired) {
       setBusy(false);
     }
   }
+  async function saveProject(data, id) {
+    if (mutationLock.current) throw new Error('Please wait for the current save.');
+    mutationLock.current = true;
+    setBusy(true);
+    setNotice('');
+    try {
+      if (mode === 'demo') {
+        const projects = readDemoProjects();
+        if (id && !projects.some((item) => item.id === id))
+          throw new Error('This project has changed. Refresh and try again.');
+        const next = id
+          ? projects.map((item) => (item.id === id ? { ...item, ...data } : item))
+          : [...projects, { ...data, id: crypto.randomUUID() }];
+        saveDemoProjects(next);
+      } else {
+        await request('/projects' + (id ? '/' + id : ''), {
+          method: id ? 'PATCH' : 'POST',
+          body: JSON.stringify(data),
+        });
+      }
+      setRevision((value) => value + 1);
+      setNotice(
+        mode === 'demo'
+          ? 'Project details saved in this browser.'
+          : 'Project details saved to your account.',
+      );
+    } catch (failure) {
+      if (failure.status === 401) onExpired();
+      throw failure;
+    } finally {
+      mutationLock.current = false;
+      setBusy(false);
+    }
+  }
+
+  async function connectProject(project) {
+    if (mutationLock.current) throw new Error('Please wait for the current save.');
+    mutationLock.current = true;
+    setBusy(true);
+    setNotice('');
+    try {
+      let linked;
+      if (mode === 'demo') {
+        if (
+          !readDemoProjects().some(
+            (record) => record.id === project.id && record.name === project.name,
+          )
+        )
+          throw new Error('Project not found.');
+        const all = readDemo();
+        linked = 0;
+        saveDemo(
+          all.map((task) => {
+            if (task.project === project.name && !task.projectId) {
+              linked++;
+              return { ...task, projectId: project.id };
+            }
+            return task;
+          }),
+        );
+      } else
+        linked = (
+          await request('/projects/' + project.id + '/link-tasks', {
+            method: 'PATCH',
+            body: '{}',
+          })
+        ).linked;
+      setRevision((value) => value + 1);
+      setNotice(linked + ' existing tasks connected to this project.');
+    } catch (failure) {
+      if (failure.status === 401) onExpired();
+      throw failure;
+    } finally {
+      mutationLock.current = false;
+      setBusy(false);
+    }
+  }
   async function exportTasks() {
     if (mutationLock.current) throw new Error('Please wait for the current save.');
     mutationLock.current = true;
@@ -230,7 +353,13 @@ export default function useWorkspace(mode, onExpired) {
     }
   }
   return {
+    month,
+    setMonth,
+    calendarTruncated,
+    date,
     exportTasks,
+    saveProject,
+    connectProject,
     tasks,
     overview,
     search,

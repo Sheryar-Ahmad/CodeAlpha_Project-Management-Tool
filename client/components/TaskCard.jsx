@@ -15,6 +15,7 @@ import { recurrenceLabels } from '../../shared/recurrence.js';
 export const statuses = taskStatuses;
 export default function TaskCard({
   task,
+  attention = [],
   onEdit,
   onDelete,
   onStatus,
@@ -24,6 +25,7 @@ export default function TaskCard({
   onRestore,
   onPermanentDelete,
   busy,
+  canPurge = true,
 }) {
   const lifecycle = task.lifecycle ?? 'active';
   const readOnly = lifecycle !== 'active';
@@ -43,6 +45,16 @@ export default function TaskCard({
           {readOnly && <span className="small muted">{statuses[task.status]}</span>}
           <span className={'tag priority-' + task.priority}>{task.priority}</span>
         </div>
+        {attention.length > 0 && (
+          <ul
+            className="attention-reasons"
+            aria-label="Reasons this task needs attention"
+          >
+            {attention.map((reason) => (
+              <li key={reason}>{reason}</li>
+            ))}
+          </ul>
+        )}
         <h3 className="task-title">{task.title}</h3>
         {task.description && <p className="task-description">{task.description}</p>}
         {task.status === 'blocked' && (
@@ -198,7 +210,7 @@ export default function TaskCard({
               </button>
             </>
           )}
-          {lifecycle === 'trashed' && (
+          {lifecycle === 'trashed' && canPurge && (
             <button
               type="button"
               className="card-icon danger"

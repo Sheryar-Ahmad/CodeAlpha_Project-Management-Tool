@@ -1,11 +1,18 @@
-import { useEffect, useRef, useState } from 'react';
+import useModal from '../hooks/useModal.js';
+import { useRef, useState } from 'react';
 import { Plus, X } from 'lucide-react';
 import { statuses } from './TaskCard.jsx';
 import { validResourceUrl } from '../../shared/task.js';
 import { taskTemplates, createTemplateDraft } from '../lib/templates.js';
 import { recurrenceLabels } from '../../shared/recurrence.js';
 
-export default function TaskDialog({ task, onClose, onSave }) {
+export default function TaskDialog({
+  task,
+  projectNames = [],
+  lockedProject = false,
+  onClose,
+  onSave,
+}) {
   const ref = useRef(null);
   const [busy, setBusy] = useState(false);
   const [title, setTitle] = useState(task?.title ?? '');
@@ -17,11 +24,7 @@ export default function TaskDialog({ task, onClose, onSave }) {
   const [links, setLinks] = useState(task?.links ?? []);
   const [status, setStatus] = useState(task?.status || 'todo');
   const [blockerReason, setBlockerReason] = useState(task?.blockerReason ?? '');
-  useEffect(() => {
-    const trigger = document.activeElement;
-    ref.current.showModal();
-    return () => trigger?.focus();
-  }, []);
+  useModal(ref);
   function applyTemplate() {
     if (!template) return;
     if (
@@ -166,12 +169,19 @@ export default function TaskDialog({ task, onClose, onSave }) {
           Project
           <input
             name="project"
+            list="project-suggestions"
             required
             maxLength={60}
             defaultValue={task?.project}
+            readOnly={lockedProject}
             disabled={busy}
             placeholder="e.g. Website launch"
           />
+          <datalist id="project-suggestions">
+            {projectNames.map((name) => (
+              <option key={name} value={name} />
+            ))}
+          </datalist>
         </label>
         <label>
           Description

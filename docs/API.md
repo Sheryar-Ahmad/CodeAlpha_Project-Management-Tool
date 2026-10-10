@@ -142,3 +142,7 @@ All routes below require a session and trusted mutation origin.
 Shared task lists accept assigned=me (or empty) to filter the session user's assignments. Private lists still return only owned tasks. Shared tasks cannot change project labels, and only owners permanently delete them. Pending/declined/revoked members and outsiders receive 404 for shared reads/writes. Shared access never grants private notebooks, work logs, project administration, or unrelated task access.
 
 Review requests capture title and description at creation, not a full task/file snapshot. Only the designated reviewer decides; the requester or owner can cancel pending requests. A second decision returns 409; duplicate pending requests return 409. History does not change task status and remains project-scoped after task deletion. Invitations and review inbox entries are in-app; no email provider is invoked.
+
+## Dependencies
+
+GET /projects/:id/dependencies returns at most 200 directed links and current scoped task titles/statuses. POST accepts {from,to} for two active connected tasks. DELETE accepts the same pair, keeping tasks intact. Owner/accepted members can manage links. Self-links, duplicates, foreign tasks, and circular chains are rejected. Missing/moved/trashed tasks return null task details without leaking new project data. A per-project revision compare-and-swap validates concurrent changes against the entire graph; it requires no MongoDB transactions. Links are informational and do not gate status or automatically reschedule work.

@@ -1,3 +1,4 @@
+import { hasDependencyCycle } from '../shared/dependencies.js';
 import { timelinePosition } from '../shared/timeline.js';
 import { weekBounds, validWorkLog, loggedTime } from '../shared/workLog.js';
 import { readDemoWorkLogs, saveDemoWorkLogs } from '../client/lib/workLogs.js';
@@ -657,4 +658,31 @@ test('project timelines clip dates and distinguish checkpoints, missing dates an
   assert.equal(checkpoint.kind, 'checkpoint');
   assert.equal(checkpoint.left, (28 / 29) * 100);
   assert.equal(checkpoint.width, (1 / 29) * 100);
+});
+
+test('dependency cycle checks handle indirect loops, separate chains and empty graphs', () => {
+  assert.equal(hasDependencyCycle([]), false);
+  assert.equal(
+    hasDependencyCycle([
+      { from: 'a', to: 'b' },
+      { from: 'b', to: 'c' },
+    ]),
+    false,
+  );
+  assert.equal(
+    hasDependencyCycle([
+      { from: 'a', to: 'b' },
+      { from: 'b', to: 'c' },
+      { from: 'c', to: 'a' },
+    ]),
+    true,
+  );
+  assert.equal(hasDependencyCycle([{ from: 'a', to: 'a' }]), true);
+  assert.equal(
+    hasDependencyCycle([
+      { from: 'a', to: 'b' },
+      { from: 'x', to: 'y' },
+    ]),
+    false,
+  );
 });

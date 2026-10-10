@@ -1802,3 +1802,41 @@ textarea:disabled {
   height: 18px;
   accent-color: #5946df;
 }
+
+.dependency-form {
+  display: grid;
+  gap: 12px;
+  margin: 20px 0;
+}
+.dependency-form label {
+  display: grid;
+  gap: 8px;
+}
+.dependency-form select {
+  width: 100%;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #cbd5e6;
+  border-radius: 8px;
+  background: white;
+  font: inherit;
+  color: inherit;
+}
+.dependency-list {
+  list-style: none;
+  margin: 16px 0;
+  padding: 0;
+}
+.dependency-list li {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 0;
+  border-top: 1px solid #e4e8f1;
+}
+.dependency-list div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}

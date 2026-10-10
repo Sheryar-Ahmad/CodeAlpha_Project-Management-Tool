@@ -1,3 +1,4 @@
+import ProjectDependencies from './ProjectDependencies.jsx';
 import ProjectReviews from './ProjectReviews.jsx';
 import TaskDiscussion from './TaskDiscussion.jsx';
 import { useEffect, useRef, useState } from 'react';
@@ -599,6 +600,14 @@ export default function TeamWorkspace({ demo, onExpired }) {
             </nav>
           )}
         </section>
+      )}
+      {project && directory && (
+        <ProjectDependencies
+          key={project.id}
+          project={project}
+          tasks={tasks}
+          onExpired={onExpired}
+        />
       )}
       {project && directory && (
         <ProjectReviews

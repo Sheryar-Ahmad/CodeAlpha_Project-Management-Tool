@@ -154,3 +154,5 @@ Project timeline: switch from cards, choose a month, verify clipped spans and si
 - At widths 320, 375, 768, 1024, and 1440px, verify project selection, invitations, assignments, discussion, and review forms fit the viewport.
 
 npm run test:browser -- --teams-only runs the isolated two-account team regression. The full browser command also verifies all personal/demo workflows. API tests include role/access boundaries and review/assignment/discussion rules.
+
+Dependency checks cover direct/indirect cycles, same-task and foreign-task rejection, duplicate links, concurrent opposing updates, and moved-task title privacy. In Team projects, add a prerequisite, reject its reverse link, refresh, and confirm Waiting for prerequisite completion. Check the form and existing links at mobile widths; removing a link must keep its tasks.

@@ -1,3 +1,4 @@
+import { ProjectDependencies } from '../server/models/ProjectDependencies.js';
 import { TaskReview } from '../server/models/TaskReview.js';
 import { TaskComment } from '../server/models/TaskComment.js';
 import { ProjectMember } from '../server/models/ProjectMember.js';
@@ -32,6 +33,7 @@ before(async () => {
     ProjectMember.init(),
     TaskComment.init(),
     TaskReview.init(),
+    ProjectDependencies.init(),
     ProjectNote.init(),
     WorkLog.init(),
     RateBucket.init(),
@@ -1823,4 +1825,103 @@ test('team invitations, scoped tasks, private notes, and revocation preserve acc
     .send({ action: 'decline' })
     .expect(204);
   await member.get(shared).expect(404);
+});
+
+test('project dependencies reject cycles, foreign tasks and concurrent opposing edges', async () => {
+  await RateBucket.deleteMany({ key: /^(api|auth):/ });
+  const owner = request.agent(app),
+    outsider = request.agent(app);
+  for (const [agent, email] of [
+    [owner, 'dependency-owner@example.com'],
+    [outsider, 'dependency-outsider@example.com'],
+  ])
+    await agent
+      .post('/api/auth/register')
+      .set('Origin', origin)
+      .send({ name: 'Dependency user', email, password: 'dependency-passphrase-long' })
+      .expect(201);
+  const tasks = [];
+  for (const title of ['Research', 'Draft', 'Review'])
+    tasks.push(
+      (
+        await owner
+          .post('/api/tasks')
+          .set('Origin', origin)
+          .send({ title, project: 'Dependency workflow' })
+          .expect(201)
+      ).body.task,
+    );
+  const foreign = (
+    await owner
+      .post('/api/tasks')
+      .set('Origin', origin)
+      .send({ title: 'Other project', project: 'Elsewhere' })
+      .expect(201)
+  ).body.task;
+  const endpoint = '/api/projects/' + tasks[0].projectId + '/dependencies';
+  await outsider.get(endpoint).expect(404);
+  await outsider
+    .post(endpoint)
+    .set('Origin', origin)
+    .send({ from: tasks[0].id, to: tasks[1].id })
+    .expect(404);
+  await owner
+    .post(endpoint)
+    .set('Origin', origin)
+    .send({ from: tasks[0].id, to: tasks[0].id })
+    .expect(400);
+  await owner
+    .post(endpoint)
+    .set('Origin', origin)
+    .send({ from: tasks[0].id, to: foreign.id })
+    .expect(404);
+  await owner
+    .post(endpoint)
+    .set('Origin', origin)
+    .send({ from: tasks[0].id, to: tasks[1].id, owner: 'injected' })
+    .expect(400);
+  await owner
+    .post(endpoint)
+    .set('Origin', origin)
+    .send({ from: tasks[0].id.toUpperCase(), to: tasks[1].id })
+    .expect(201);
+  await owner
+    .post(endpoint)
+    .set('Origin', origin)
+    .send({ from: tasks[0].id, to: tasks[1].id })
+    .expect(409);
+  const racing = await Promise.all([
+    owner
+      .post(endpoint)
+      .set('Origin', origin)
+      .send({ from: tasks[1].id, to: tasks[2].id }),
+    owner
+      .post(endpoint)
+      .set('Origin', origin)
+      .send({ from: tasks[2].id, to: tasks[1].id }),
+  ]);
+  assert.deepEqual(racing.map((result) => result.status).sort(), [201, 400]);
+  const edges = (await owner.get(endpoint).expect(200)).body.edges;
+  assert.equal(edges.length, 2);
+  assert.equal(edges[0].predecessor.title, 'Research');
+  await owner
+    .patch('/api/tasks/' + tasks[1].id)
+    .set('Origin', origin)
+    .send({ project: 'Moved elsewhere' })
+    .expect(200);
+  const changed = (await owner.get(endpoint).expect(200)).body.edges;
+  assert.equal(changed[0].dependent, null);
+  assert.ok(
+    changed.every(
+      (edge) =>
+        edge.predecessor?.title !== 'Moved elsewhere' &&
+        edge.dependent?.title !== 'Moved elsewhere',
+    ),
+  );
+  await owner
+    .delete(endpoint)
+    .set('Origin', origin)
+    .send({ from: tasks[0].id, to: tasks[1].id })
+    .expect(204);
+  assert.equal((await owner.get(endpoint).expect(200)).body.edges.length, 1);
 });

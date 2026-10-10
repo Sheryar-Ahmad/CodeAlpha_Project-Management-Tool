@@ -1856,6 +1856,10 @@ try {
     const ownerPage = await ownerContext.newPage(),
       memberPage = await memberContext.newPage();
     for (const current of [ownerPage, memberPage]) {
+      current.on('response', (response) => {
+        if (response.status() === 429)
+          console.log('Team test rate limit: ' + new URL(response.url()).pathname);
+      });
       current.setDefaultTimeout(15000);
       current.on('pageerror', (error) => errors.push(error.message));
     }
@@ -1952,6 +1956,9 @@ try {
     await memberPage
       .getByRole('heading', { name: 'Reserve the meeting room', exact: true })
       .waitFor();
+    // Both test accounts share one loopback IP and run faster than human interaction.
+    // Rate-limit behavior is covered separately; start a fresh bucket for the next scenario.
+    await RateBucket.deleteMany({ key: /^api:/ });
     await memberPage.reload();
     await memberPage.getByRole('button', { name: 'Team projects', exact: true }).click();
     await memberPage
@@ -1963,6 +1970,36 @@ try {
         .inputValue(),
       memberId,
     );
+
+    await memberPage
+      .getByLabel('Finish this first', { exact: true })
+      .selectOption({ label: 'Prepare the workshop outline' });
+    await memberPage
+      .getByLabel('Before starting this', { exact: true })
+      .selectOption({ label: 'Reserve the meeting room' });
+    await memberPage.getByRole('button', { name: 'Add dependency', exact: true }).click();
+    await memberPage.getByText('Dependency added.', { exact: true }).waitFor();
+    await memberPage
+      .getByText('Waiting for prerequisite completion', { exact: true })
+      .waitFor();
+    await memberPage
+      .getByLabel('Finish this first', { exact: true })
+      .selectOption({ label: 'Reserve the meeting room' });
+    await memberPage
+      .getByLabel('Before starting this', { exact: true })
+      .selectOption({ label: 'Prepare the workshop outline' });
+    await memberPage.getByRole('button', { name: 'Add dependency', exact: true }).click();
+    await memberPage
+      .getByText('This dependency would create a circular chain.', { exact: true })
+      .waitFor();
+    await memberPage
+      .getByRole('button', { name: 'Refresh dependencies', exact: true })
+      .click();
+    await memberPage
+      .getByText('This dependency would create a circular chain.', { exact: true })
+      .waitFor({ state: 'hidden' });
+    await memberPage.getByLabel('Finish this first', { exact: true }).selectOption('');
+    await memberPage.getByLabel('Before starting this', { exact: true }).selectOption('');
     for (const width of [320, 375, 768, 1024, 1440]) {
       await memberPage.setViewportSize({ width, height: 1000 });
       assert.equal(

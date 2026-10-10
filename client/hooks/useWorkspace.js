@@ -75,6 +75,11 @@ export default function useWorkspace(mode, onExpired) {
     setLoading(true);
     setError('');
     async function load() {
+      // TeamWorkspace owns its scoped queries; private summaries are unused in that view.
+      if (mode !== 'demo' && view === 'teams') {
+        setLoading(false);
+        return;
+      }
       try {
         let result, stats;
         if (mode === 'demo') {

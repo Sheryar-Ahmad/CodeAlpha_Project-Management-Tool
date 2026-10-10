@@ -90,3 +90,7 @@ Notebook visibility defaults to private, including legacy records. Team notes us
 Assignments require an active task and owner/accepted assignee. Removal preserves historical work; stale assignments appear as Former member and can be cleared/reassigned. Checks and writes are separate documents for standalone MongoDB, so concurrent removal can leave a stale assignment that never grants access.
 
 TaskReview stores a captured title/description, requester, designated reviewer, message and one terminal decision. A partial unique index allows one pending request per task/reviewer. Decisions include expected pending status and actor authorization. Reviews approve the captured brief, never current mutable task state or files. History remains project-scoped after task deletion. The derived review inbox only includes currently accessible projects; it sends no external notifications.
+
+## Dependency graph
+
+One ProjectDependencies document holds up to 200 edges and a revision counter. Kahn’s algorithm detects direct and indirect cycles. Every mutation compares the read revision and retries conflicts against the newer graph, preventing concurrent opposing edges from introducing a cycle. Creation verifies both tasks are active and connected to the current project. Tasks can later move/recover/delete independently; read-side scoped lookup marks unavailable endpoints without exposing their new context, and users can remove stale links. This is dependency recording, not date scheduling or task status enforcement.

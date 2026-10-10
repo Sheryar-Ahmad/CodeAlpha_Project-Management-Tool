@@ -2327,6 +2327,30 @@ try {
     console.log(
       'PASS: account recovery code, private handling, password reset and sign-in.',
     );
+    await ownerPage
+      .getByRole('button', { name: 'Account settings', exact: true })
+      .click();
+    await ownerPage
+      .getByLabel('Password to delete account', { exact: true })
+      .fill('browser-recovered-passphrase-long');
+    await ownerPage.getByLabel('Type DELETE to confirm', { exact: true }).fill('DELETE');
+    ownerPage.once('dialog', (dialog) => dialog.accept());
+    await ownerPage
+      .getByRole('button', { name: 'Permanently delete account', exact: true })
+      .click();
+    await ownerPage
+      .getByRole('heading', { name: 'Welcome back.', exact: true })
+      .waitFor();
+    assert.equal((await ownerContext.request.get(origin + '/api/auth/me')).status(), 401);
+    assert.equal(
+      (
+        await memberContext.request.get(
+          origin + '/api/projects/' + teamProject.id + '/guest',
+        )
+      ).status(),
+      404,
+    );
+    console.log('PASS: explicit account deletion and revoked shared access.');
     await ownerContext.close();
     await memberContext.close();
     console.log(

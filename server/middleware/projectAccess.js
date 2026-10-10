@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { User } from '../models/User.js';
 import { Project } from '../models/Project.js';
 import { ProjectMember } from '../models/ProjectMember.js';
 // Project access is checked on every shared request, including writes after removal.
@@ -7,6 +8,8 @@ export async function requireProjectAccess(req, res, next) {
     return res.status(400).json({ message: 'Invalid project ID.' });
   const project = await Project.findById(req.params.id).lean();
   if (!project) return res.status(404).json({ message: 'Project not found.' });
+  if (!(await User.exists({ _id: project.owner, deleting: { $ne: true } })))
+    return res.status(404).json({ message: 'Project not found.' });
   const isOwner = String(project.owner) === String(req.user._id);
   const membership = isOwner
     ? null

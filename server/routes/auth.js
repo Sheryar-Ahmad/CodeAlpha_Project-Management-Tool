@@ -94,7 +94,7 @@ authRouter.post('/recover', limiter, async (req, res) => {
   // Hash password work happens even if the supplied recovery code does not match.
   const passwordHash = await hashPassword(data.password);
   const user = await User.findOneAndUpdate(
-    { email: data.email, recoveryHash: tokenHash(data.code) },
+    { email: data.email, deleting: { $ne: true }, recoveryHash: tokenHash(data.code) },
     { $set: { passwordHash, recoveryHash: '' }, $inc: { authVersion: 1 } },
     { returnDocument: 'after' },
   );

@@ -102,3 +102,7 @@ WorkRequest reserves accepting state before writing a task. Pending cancellation
 ## Limited guest role
 
 Membership role defaults to member, including legacy records. Only the guest portal router opts into guest access; all existing team routers remain unavailable to guests. The portal uses an explicit field projection and response allowlist. Guest roles are excluded from assignment/reviewer eligibility and the pending-review inbox. Owners must revoke and re-invite to change roles, so a prior member cannot silently acquire a different permission state.
+
+### Deletion lifecycle
+
+Deletion is an idempotent standalone-Mongo-compatible workflow rather than a cross-collection transaction. Access freezes before cleanup. Project children are removed before parents so retries find partial work. Batches are bounded to five projects. A daily secret-protected maintenance job resumes cleanup and re-sweeps completed account IDs for 90 days to remove requests already in flight when access froze. Other owners retain their work; authored contributions are removed and former assignments cleared. Configure and monitor the scheduler in production.

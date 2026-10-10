@@ -12,6 +12,7 @@ const schema = new mongoose.Schema(
     },
     passwordHash: { type: String, required: true, select: false },
     authVersion: { type: Number, default: 0 },
+    deleting: { type: Boolean, default: false },
     recoveryHash: { type: String, default: '', select: false },
   },
   { timestamps: true },

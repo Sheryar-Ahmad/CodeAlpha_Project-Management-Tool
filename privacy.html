@@ -111,10 +111,16 @@
         Archiving keeps a task saved outside active work. Delete moves a task to Trash,
         where you can restore it to the board or permanently delete it. Trash is not
         automatically emptied. Notebook entries and work logs can be permanently deleted
-        directly after confirmation. Self-service account deletion is not implemented yet.
-        Saved one-time recovery codes can reset a password; there is no email recovery
-        fallback. Clearing browser data does not delete account records from MongoDB. Do
-        not use this prototype for confidential or regulated information.
+        directly after confirmation. Account settings offers password-confirmed account
+        deletion. It freezes access and removes owned projects (including shared
+        projects), tasks, personal records and authored contributions. Other accounts keep
+        their owned work. Interrupted deletion can be resumed; configured daily
+        maintenance retries cleanup. Minimal account-ID cleanup markers remain for up to
+        90 days to purge in-flight writes. Hosting/database backups may retain copies
+        according to provider policies. Saved one-time recovery codes can reset a
+        password; there is no email recovery fallback. Clearing browser data does not
+        delete account records from MongoDB. Do not use this prototype for confidential or
+        regulated information.
       </p>
       <h2>Hosting and external services</h2>
       <p>
@@ -125,9 +131,9 @@
       </p>
       <h2>Development status</h2>
       <p>
-        Production retention rules, account deletion, and a support contact must be
-        finalized before a broad public release. The public source repository contains
-        application code, not your account records or database credentials.
+        Production backup retention rules and a support contact must be finalized before a
+        broad public release. The public source repository contains application code, not
+        your account records or database credentials.
       </p>
       <a href="/">Return to Orbit →</a>
     </main>

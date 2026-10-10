@@ -35,5 +35,11 @@
       "source": "/api/:path*",
       "destination": "/api/index"
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/maintenance",
+      "schedule": "0 3 * * *"
+    }
   ]
 }

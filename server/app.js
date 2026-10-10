@@ -1,3 +1,5 @@
+import { accountRouter } from './routes/account.js';
+import { maintenanceRouter } from './routes/maintenance.js';
 import { importsRouter } from './routes/imports.js';
 import { teamRouter } from './routes/teams.js';
 import { workLogRouter } from './routes/workLogs.js';
@@ -50,6 +52,8 @@ app.use('/api/projects', projectRouter);
 app.use('/api/work-logs', workLogRouter);
 app.use('/api/teams', teamRouter);
 app.use('/api/imports', importsRouter);
+app.use('/api/account', accountRouter);
+app.use('/api/maintenance', maintenanceRouter);
 app.use((req, res) => res.status(404).json({ message: 'Endpoint not found.' }));
 app.use((error, req, res, next) => {
   if (res.headersSent) return next(error);

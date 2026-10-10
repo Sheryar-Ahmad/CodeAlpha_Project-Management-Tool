@@ -14,6 +14,7 @@ export const publicUser = (user) => ({
   id: String(user._id),
   name: user.name,
   email: user.email,
+  ...(user.deleting ? { deleting: true } : {}),
 });
 export async function createSession(res, user) {
   const token = randomBytes(32).toString('hex');
@@ -38,6 +39,17 @@ export async function requireAuth(req, res, next) {
   const user = await User.findById(session.user).lean();
   if (!user || (session.authVersion ?? 0) !== (user.authVersion ?? 0))
     return res.status(401).json({ message: 'Please sign in to continue.' });
+  if (
+    user.deleting &&
+    !['GET /api/auth/me', 'POST /api/auth/logout', 'DELETE /api/account'].includes(
+      req.method + ' ' + req.originalUrl,
+    )
+  )
+    return res
+      .status(403)
+      .json({
+        message: 'Account deletion is in progress. Resume it from Account settings.',
+      });
   req.user = user;
   req.sessionToken = token;
   next();

@@ -1963,3 +1963,15 @@ textarea:disabled {
   border: 1px solid var(--border);
   border-radius: 10px;
 }
+
+.account-delete-form {
+  border-top: 1px solid var(--border);
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+}
+.deletion-screen {
+  max-width: 760px;
+  margin: 2rem auto;
+  padding: 1.5rem;
+  overflow-wrap: anywhere;
+}

@@ -1,6 +1,6 @@
 import TeamWorkspace from './components/TeamWorkspace.jsx';
 import TaskImportDialog from './components/TaskImportDialog.jsx';
-import AccountSettings from './components/AccountSettings.jsx';
+import AccountSettings, { AccountDeletionScreen } from './components/AccountSettings.jsx';
 import { useCallback, useEffect, useState } from 'react';
 import {
   Users,
@@ -106,7 +106,7 @@ const workspaceViews = {
   },
 };
 
-function Workspace({ mode, user, onExit, onExpired }) {
+function Workspace({ mode, user, onExit, onExpired, onDeleting }) {
   const workspace = useWorkspace(mode, onExpired);
   const [dialog, setDialog] = useState(null);
   const [projectDialog, setProjectDialog] = useState(null);
@@ -756,7 +756,12 @@ function Workspace({ mode, user, onExit, onExpired }) {
         />
       )}
       {accountOpen && (
-        <AccountSettings onClose={() => setAccountOpen(false)} onExpired={onExpired} />
+        <AccountSettings
+          onClose={() => setAccountOpen(false)}
+          onExpired={onExpired}
+          onDeleted={onExit}
+          onDeleting={onDeleting}
+        />
       )}
       {importOpen && (
         <TaskImportDialog
@@ -850,10 +855,22 @@ export default function App() {
         onDemo={() => chooseMode('demo')}
       />
     );
+  if (user?.deleting)
+    return (
+      <AccountDeletionScreen
+        onExpired={expired}
+        onDeleted={() => {
+          setUser(null);
+          setError('Your account has been removed.');
+          chooseMode('auth');
+        }}
+      />
+    );
   return (
     <Workspace
       mode={mode}
       user={user}
+      onDeleting={() => setUser((value) => ({ ...value, deleting: true }))}
       onExpired={expired}
       onExit={() => {
         setUser(null);

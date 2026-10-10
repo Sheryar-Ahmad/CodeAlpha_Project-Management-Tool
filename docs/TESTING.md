@@ -168,3 +168,5 @@ Goals checks cover member authorship/owner moderation, numeric limits, decreasin
 Project-template tests race application, repair interrupted setup, preserve customized tasks and prevent deleted task recreation after completion. Chromium applies a workshop blueprint from its preview and finds the saved starter tasks.
 
 Import tests reject owner injection and oversize files, verify fresh IDs/disabled schedules, concurrent restore, unchanged retry payloads and no recreation after completion. Recovery tests verify password-gated generation, hash-only storage, atomic one-use consumption, old-session rejection and password-change revocation. Chromium covers import preview/save, account settings, 320–1440px layouts, recovery reset and sign-in with the new password.
+
+Account deletion checks reject incorrect password/confirmation, freeze mutations and team access, resume a six-project cascade, preserve another account, revoke sessions and purge a simulated late write with authenticated maintenance. Chromium deletes only its isolated test account after typed confirmation and verifies the guest can no longer open its removed project.

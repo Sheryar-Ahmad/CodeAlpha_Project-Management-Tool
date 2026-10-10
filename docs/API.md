@@ -180,3 +180,8 @@ Account-only `POST /api/imports/preview { file }` checks an Orbit v1 JSON export
 `POST /api/auth/recover { email, code, password }` atomically consumes the code, changes the password and revokes older sessions. It does not sign in automatically. Invalid/used/unknown credentials return the same error.
 `POST /api/auth/password { password, newPassword }` requires the current password, revokes other sessions and recovery codes, and renews the caller's session. Session versions reject earlier credentials even if cleanup races with login.
 All three routes use the authentication attempt limit. Recovery has no email fallback: a lost password without a saved code cannot be reset through this workflow.
+
+### Account deletion and scheduled maintenance
+
+`DELETE /api/account { password, confirmation: "DELETE" }` freezes the caller after password confirmation. It removes up to five owned projects per batch and their team records, personal data, authored contributions, memberships and assignments. Returns 202 to continue safely or 204 when finished. Owned shared projects are removed too; other accounts' owned work is preserved. A frozen account can only read its account identity, sign out or continue deletion; sign-in can resume an interrupted deletion.
+`GET /api/maintenance` requires `Authorization: Bearer <CRON_SECRET>` (32+ characters). It processes up to ten deletion records and repeats completed cleanup for writes already in flight. Minimal account-ID cleanup markers expire after 90 days; no password/recovery code is retained there. The Vercel configuration schedules this daily at 03:00 UTC; configure the secret before enabling production cron. Deletion does not promise erasure from provider backups.

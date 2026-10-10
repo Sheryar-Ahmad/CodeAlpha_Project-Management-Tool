@@ -2663,3 +2663,120 @@ test('recovery codes are password-gated, one-use and revoke all earlier session 
   assert.equal(publicResponse.passwordHash, undefined);
   assert.equal(publicResponse.authVersion, undefined);
 });
+
+test('account deletion freezes access, resumes in batches and cascades only the requested owner', async () => {
+  await RateBucket.deleteMany({ key: /^(api|auth):/ });
+  const owner = request.agent(app),
+    member = request.agent(app),
+    password = 'delete-test-passphrase-long';
+  const users = [];
+  for (const [agent, email] of [
+    [owner, 'delete-owner@example.com'],
+    [member, 'delete-member@example.com'],
+  ])
+    users.push(
+      (
+        await agent
+          .post('/api/auth/register')
+          .set('Origin', origin)
+          .send({ name: 'Deletion user', email, password })
+          .expect(201)
+      ).body.user,
+    );
+  const ownedProjects = [];
+  for (let index = 0; index < 6; index++)
+    ownedProjects.push(
+      (
+        await owner
+          .post('/api/projects')
+          .set('Origin', origin)
+          .send({ name: 'Deletion project ' + index })
+          .expect(201)
+      ).body.project,
+    );
+  const base = '/api/projects/' + ownedProjects[5].id;
+  await owner
+    .post(base + '/members')
+    .set('Origin', origin)
+    .send({ email: users[1].email })
+    .expect(201);
+  const invitation = (await member.get('/api/teams').expect(200)).body.invitations[0];
+  await member
+    .patch('/api/teams/invitations/' + invitation.id)
+    .set('Origin', origin)
+    .send({ action: 'accept' })
+    .expect(204);
+  await owner
+    .post(base + '/tasks')
+    .set('Origin', origin)
+    .send({ title: 'Owner task', project: ownedProjects[5].name })
+    .expect(201);
+  await member
+    .post('/api/tasks')
+    .set('Origin', origin)
+    .send({ title: 'Keep member task', project: 'Member project' })
+    .expect(201);
+  await owner
+    .delete('/api/account')
+    .set('Origin', origin)
+    .send({ password, confirmation: 'no' })
+    .expect(400);
+  await owner
+    .delete('/api/account')
+    .set('Origin', origin)
+    .send({ password: 'wrong', confirmation: 'DELETE' })
+    .expect(401);
+  await owner
+    .delete('/api/account')
+    .set('Origin', origin)
+    .send({ password, confirmation: 'DELETE' })
+    .expect(202);
+  assert.equal((await owner.get('/api/auth/me').expect(200)).body.user.deleting, true);
+  await owner
+    .post('/api/tasks')
+    .set('Origin', origin)
+    .send({ title: 'Cannot create', project: 'Frozen' })
+    .expect(403);
+  await member.get(base + '/tasks').expect(404);
+  await owner
+    .delete('/api/account')
+    .set('Origin', origin)
+    .send({ password, confirmation: 'DELETE' })
+    .expect(204);
+  await owner.get('/api/auth/me').expect(401);
+  assert.equal(await Project.countDocuments({ owner: users[0].id }), 0);
+  assert.equal(await Task.countDocuments({ owner: users[0].id }), 0);
+  assert.equal(await Session.countDocuments({ user: users[0].id }), 0);
+  assert.equal(
+    await ProjectMember.countDocuments({
+      project: { $in: ownedProjects.map((item) => item.id) },
+    }),
+    0,
+  );
+  assert.equal(
+    (await member.get('/api/tasks').expect(200)).body.tasks[0].title,
+    'Keep member task',
+  );
+  await request(app).get('/api/maintenance').expect(401);
+  process.env.CRON_SECRET = 'test-only-maintenance-secret-at-least-32-characters';
+  await request(app)
+    .get('/api/maintenance')
+    .set('Authorization', 'Bearer wrong')
+    .expect(401);
+  await Task.create({
+    owner: users[0].id,
+    project: 'Late orphan',
+    title: 'Late in-flight write',
+  });
+  const { AccountDeletion } = await import('../server/models/AccountDeletion.js');
+  await AccountDeletion.updateOne(
+    { user: users[0].id },
+    { $set: { lastSweptAt: new Date(0) } },
+  );
+  await request(app)
+    .get('/api/maintenance')
+    .set('Authorization', 'Bearer ' + process.env.CRON_SECRET)
+    .expect(200);
+  assert.equal(await Task.countDocuments({ owner: users[0].id }), 0);
+  delete process.env.CRON_SECRET;
+});

@@ -3582,3 +3582,84 @@ test('targeted discussion notifications follow current task access and recipient
   await purgeAccount(member.id);
   assert.equal((await TaskComment.findOne({ task: task._id }).lean()).notified, null);
 });
+
+test('resource reviews capture safe task links and keep later file-link edits separate from decisions', async () => {
+  await RateBucket.deleteMany({});
+  const ownerAgent = request.agent(app),
+    reviewerAgent = request.agent(app),
+    outsiderAgent = request.agent(app);
+  const register = async (agent, name) =>
+    (
+      await agent
+        .post('/api/auth/register')
+        .set('Origin', origin)
+        .send({
+          name,
+          email: name + '@resource-review.example',
+          password: 'resource-review-long-passphrase',
+        })
+        .expect(201)
+    ).body.user;
+  const owner = await register(ownerAgent, 'ResourceOwner'),
+    reviewer = await register(reviewerAgent, 'ResourceReviewer');
+  await register(outsiderAgent, 'ResourceOutsider');
+  const project = await Project.create({
+    owner: owner.id,
+    name: 'Document review project',
+  });
+  await ProjectMember.create({
+    project: project._id,
+    user: reviewer.id,
+    status: 'active',
+  });
+  const task = await Task.create({
+    owner: owner.id,
+    projectId: project._id,
+    project: project.name,
+    title: 'Review delivery guide',
+  });
+  const endpoint = '/api/projects/' + project._id + '/reviews';
+  const submit = (body) => ownerAgent.post(endpoint).set('Origin', origin).send(body);
+  const draft = { task: String(task._id), reviewer: reviewer.id, includeResources: true };
+  await submit(draft).expect(400);
+  await submit({
+    ...draft,
+    resources: [{ label: 'Injected', url: 'javascript:alert(1)' }],
+  }).expect(400);
+  const resource = {
+    label: 'Delivery guide v1',
+    url: 'https://example.com/guide-v1.pdf',
+  };
+  await Task.updateOne(
+    { _id: task._id },
+    { $set: { links: [resource] } },
+    { runValidators: true },
+  );
+  await submit(draft).expect(201);
+  await Task.updateOne(
+    { _id: task._id },
+    { $set: { links: [{ label: 'Guide v2', url: 'https://example.com/guide-v2.pdf' }] } },
+    { runValidators: true },
+  );
+  const review = (await reviewerAgent.get(endpoint).expect(200)).body.reviews[0];
+  assert.deepEqual(review.resources, [resource]);
+  await outsiderAgent.get(endpoint).expect(404);
+  await ownerAgent
+    .patch(endpoint + '/' + review.id)
+    .set('Origin', origin)
+    .send({ action: 'approve' })
+    .expect(409);
+  await reviewerAgent
+    .patch(endpoint + '/' + review.id)
+    .set('Origin', origin)
+    .send({ action: 'approve', response: 'The captured guide link is ready.' })
+    .expect(204);
+  assert.equal((await Task.findById(task._id).lean()).status, 'todo');
+  const saved = (await ownerAgent.get(endpoint).expect(200)).body.reviews[0];
+  assert.equal(saved.status, 'approved');
+  assert.deepEqual(saved.resources, [resource]);
+  await submit({ task: String(task._id), reviewer: reviewer.id }).expect(201);
+  const pending = (await ownerAgent.get(endpoint + '?status=pending').expect(200)).body
+    .reviews[0];
+  assert.deepEqual(pending.resources, []);
+});

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { request } from '../lib/api.js';
-// Reviews record a frozen title/description and never silently change a task's status.
+// Reviews capture the brief and optional resource URLs and never silently change a task's status.
 export default function ProjectReviews({ project, directory, tasks, onExpired }) {
+  const [includeResources, setIncludeResources] = useState(false);
   const [reviews, setReviews] = useState([]),
     [page, setPage] = useState(1),
     [status, setStatus] = useState('pending');
@@ -63,6 +64,7 @@ export default function ProjectReviews({ project, directory, tasks, onExpired })
         setTask('');
         setReviewer('');
         setMessage('');
+        setIncludeResources(false);
         setPage(1);
       }
       setResponses({});
@@ -79,14 +81,15 @@ export default function ProjectReviews({ project, directory, tasks, onExpired })
       <h2 id="reviews-heading">Review requests</h2>
       <p className="small muted">
         Record feedback on the task title and description captured when requested. Later
-        task edits do not update that snapshot. An approval does not mark the task
+        task edits do not update that snapshot. Optional resource links keep their saved
+        URLs, but external file contents may change. An approval does not mark the task
         complete or lock its edits.
       </p>
       <form
         className="review-request-form"
         onSubmit={(event) => {
           event.preventDefault();
-          mutate({ task, reviewer, message });
+          mutate({ task, reviewer, message, includeResources });
         }}
       >
         <label>
@@ -96,7 +99,10 @@ export default function ProjectReviews({ project, directory, tasks, onExpired })
             required
             value={task}
             disabled={busy}
-            onChange={(event) => setTask(event.target.value)}
+            onChange={(event) => {
+              setTask(event.target.value);
+              setIncludeResources(false);
+            }}
           >
             <option value="">Choose an active task on this page</option>
             {tasks
@@ -140,6 +146,20 @@ export default function ProjectReviews({ project, directory, tasks, onExpired })
             disabled={busy}
           />
         </label>
+
+        <label className="checkbox-label">
+          <input
+            type="checkbox"
+            checked={includeResources}
+            disabled={busy || !tasks.find((item) => item.id === task)?.links?.length}
+            onChange={(event) => setIncludeResources(event.target.checked)}
+          />
+          Include resource links in this review
+        </label>
+        <p className="small muted">
+          Add links in the task editor first. Reviewers open external resources
+          themselves; Orbit does not upload or verify the file contents.
+        </p>
         <button className="button" disabled={busy}>
           Request review
         </button>
@@ -192,7 +212,31 @@ export default function ProjectReviews({ project, directory, tasks, onExpired })
                   {item.requester?.name ?? 'Former account'} →{' '}
                   {item.reviewer?.name ?? 'Former account'} · {item.status}
                 </p>
+
                 {item.message && <p>{item.message}</p>}
+                {item.resources?.length > 0 && (
+                  <div>
+                    <strong>Resources captured for review</strong>
+                    <ul>
+                      {item.resources.map((resource, index) => (
+                        <li key={index}>
+                          <a
+                            href={resource.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            {resource.label} ↗
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="small muted">
+                      URLs are captured at request time. Linked file contents are managed
+                      by their external provider.
+                    </p>
+                  </div>
+                )}
+
                 {item.response && (
                   <p>
                     <strong>Response:</strong> {item.response}

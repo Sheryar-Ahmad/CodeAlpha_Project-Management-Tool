@@ -221,3 +221,9 @@ Database-backed limits allow 60 form visits/hour/IP, 8 submission attempts/hour/
 POST /api/projects/:id/collaboration/:taskId/comments accepts optional notified: an owner/accepted-member user ID, or null. One other person can be notified per comment; self, guest, pending, revoked and foreign recipients are rejected. Comments remain plain text. The recipient's Portfolio digest shows unread notification/task summaries, without copying the comment body into the report.
 
 PATCH /collaboration/:taskId/comments/:commentId/read with {} acknowledges only a notification addressed to the current caller. Every request checks project membership and current task scope. Deleted or moved tasks/comments disappear from the digest; account deletion clears recipient references. The inbox is bounded to 30 unread active-task notifications and refreshes in a visible tab. This is in-app delivery; no email, push service or live socket is implied.
+
+### Resource-link approvals
+
+Review creation accepts optional includeResources: true. The server captures up to eight validated resource labels/URLs from the current scoped task; caller-supplied resources are rejected, and a task without resources cannot request a resource review. Listing returns the captured resources alongside the brief. The designated reviewer uses the normal approve/request-changes flow.
+
+Later task-link edits never replace a review snapshot. External file contents can change at the same URL; Orbit does not fetch, upload, fingerprint or lock those files. This records approval of the brief and linked resources presented for review, not an immutable binary-file version.

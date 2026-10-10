@@ -16,6 +16,7 @@ const requestSchema = z
     task: objectId,
     reviewer: objectId,
     message: z.string().trim().max(500).default(''),
+    includeResources: z.boolean().default(false),
   })
   .strict();
 const decisionSchema = z
@@ -54,6 +55,7 @@ reviewRouter.get('/', async (req, res) => {
       title: item.title,
       description: item.description,
       message: item.message,
+      resources: item.resources ?? [],
       requester: person(item.requester),
       reviewer: person(item.reviewer),
       status: item.status,
@@ -94,10 +96,19 @@ reviewRouter.post('/', async (req, res) => {
     lifecycle: { $in: ['active', null] },
   }).lean();
   if (!task) return res.status(404).json({ message: 'Active task not found.' });
+  if (data.includeResources && !task.links?.length)
+    return res.status(400).json({
+      message: 'Add resource links to the task before including them in a review.',
+    });
   await TaskReview.init();
   try {
     await TaskReview.create({
-      ...data,
+      task: data.task,
+      reviewer: data.reviewer,
+      message: data.message,
+      resources: data.includeResources
+        ? task.links.map(({ label, url }) => ({ label, url }))
+        : [],
       project: req.sharedProject._id,
       requester: req.user._id,
       title: task.title,

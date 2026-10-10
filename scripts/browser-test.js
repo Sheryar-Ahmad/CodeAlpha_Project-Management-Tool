@@ -1888,6 +1888,12 @@ try {
         title: 'Prepare the workshop outline',
         project: teamProject.name,
         description: 'Choose three practical topics and share the draft for review.',
+        links: [
+          {
+            label: 'Workshop outline document',
+            url: 'https://example.com/workshop-outline',
+          },
+        ],
         due: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
       },
     });
@@ -2277,6 +2283,9 @@ try {
     await memberPage
       .getByLabel('What should they check?', { exact: true })
       .fill('Check that the topics are practical.');
+    await memberPage
+      .getByLabel('Include resource links in this review', { exact: true })
+      .check();
     await memberPage.getByRole('button', { name: 'Request review', exact: true }).click();
     await memberPage.getByText('Review requested.', { exact: true }).waitFor();
 
@@ -2293,6 +2302,12 @@ try {
       .getByRole('heading', { name: 'Review requests', exact: true })
       .waitFor();
     await ownerPage.getByRole('button', { name: 'Refresh reviews', exact: true }).click();
+    assert.equal(
+      await ownerPage
+        .getByRole('link', { name: 'Workshop outline document ↗', exact: true })
+        .getAttribute('href'),
+      'https://example.com/workshop-outline',
+    );
     await ownerPage.getByRole('button', { name: 'Approve', exact: true }).click();
     await ownerPage.getByText('Review decision saved.', { exact: true }).waitFor();
     await memberPage

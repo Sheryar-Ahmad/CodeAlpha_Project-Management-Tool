@@ -1,4 +1,19 @@
+import { validResourceUrl } from '../../shared/task.js';
 import mongoose from 'mongoose';
+
+const resource = new mongoose.Schema(
+  {
+    label: { type: String, required: true, trim: true, maxlength: 100 },
+    url: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 2048,
+      validate: validResourceUrl,
+    },
+  },
+  { _id: false },
+);
 const schema = new mongoose.Schema(
   {
     project: { type: mongoose.Schema.Types.ObjectId, ref: 'Project', required: true },
@@ -7,6 +22,7 @@ const schema = new mongoose.Schema(
     reviewer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     title: { type: String, required: true, maxlength: 120 },
     description: { type: String, maxlength: 1000, default: '' },
+    resources: { type: [resource], default: [], validate: (items) => items.length <= 8 },
     message: { type: String, maxlength: 500, default: '' },
     status: {
       type: String,

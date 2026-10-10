@@ -3,11 +3,12 @@ import { useEffect, useRef } from 'react';
 const openers = new WeakMap();
 
 // Capture the opener before React autofocus runs. Keep it through Strict Mode's replay.
-export default function useModal(ref) {
+export default function useModal(ref, { retainParent = false } = {}) {
   const active = document.activeElement;
   const parent = active?.closest('dialog');
   // A command or notebook can hand off to another dialog without losing its opener.
-  const opener = useRef((parent && openers.get(parent)) || active);
+  // A nested editor leaves its parent open and returns focus to that parent.
+  const opener = useRef((parent && !retainParent && openers.get(parent)) || active);
   useEffect(() => {
     const dialog = ref.current;
     openers.set(dialog, opener.current);

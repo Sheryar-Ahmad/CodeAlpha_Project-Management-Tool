@@ -1,3 +1,4 @@
+import { taskActivity, appendActivity } from '../lib/taskActivity.js';
 import { Router } from 'express';
 import mongoose from 'mongoose';
 import { z } from 'zod';
@@ -65,7 +66,10 @@ collaborationRouter.patch('/:taskId/assignee', async (req, res) => {
       ...taskScope(req),
       lifecycle: { $in: ['active', null] },
     },
-    { $set: { assignee } },
+    {
+      $set: { assignee },
+      $push: appendActivity(taskActivity(req.user, 'Assigned task')),
+    },
     { returnDocument: 'after', runValidators: true },
   ).lean();
   if (!task)

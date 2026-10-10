@@ -1,3 +1,4 @@
+import TaskDetails from './components/TaskDetails.jsx';
 import PublicRequest from './components/PublicRequest.jsx';
 import Portfolio from './components/Portfolio.jsx';
 import TeamWorkspace from './components/TeamWorkspace.jsx';
@@ -116,6 +117,7 @@ const workspaceViews = {
 function Workspace({ mode, user, onExit, onExpired, onDeleting }) {
   const workspace = useWorkspace(mode, onExpired);
   const [teamSelection, setTeamSelection] = useState({ id: '', panel: 'tasks' });
+  const [detailsTask, setDetailsTask] = useState(null);
   const [dialog, setDialog] = useState(null);
   const [projectDialog, setProjectDialog] = useState(null);
   const [notebookProject, setNotebookProject] = useState(null);
@@ -225,6 +227,7 @@ function Workspace({ mode, user, onExit, onExpired, onDeleting }) {
       <TaskCard
         key={task.id}
         task={task}
+        onDetails={mode === 'demo' ? undefined : setDetailsTask}
         busy={workspace.busy}
         attention={
           workspace.view === 'attention' ? attentionReasons(task, workspace.date) : []
@@ -243,6 +246,7 @@ function Workspace({ mode, user, onExit, onExpired, onDeleting }) {
             task: {
               ...task,
               id: undefined,
+              parentTask: null,
               title: task.title.slice(0, 113) + ' (copy)',
               status: 'todo',
               blockerReason: '',
@@ -830,6 +834,14 @@ function Workspace({ mode, user, onExit, onExpired, onDeleting }) {
           demo={mode === 'demo'}
           onClose={() => setProjectDialog(null)}
           onSave={workspace.saveProject}
+        />
+      )}
+      {detailsTask && (
+        <TaskDetails
+          taskId={detailsTask.id}
+          onClose={() => setDetailsTask(null)}
+          onExpired={onExpired}
+          onChanged={workspace.retry}
         />
       )}
       {dialog && (

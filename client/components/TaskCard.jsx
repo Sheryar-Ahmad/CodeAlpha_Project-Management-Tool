@@ -18,6 +18,7 @@ export default function TaskCard({
   task,
   attention = [],
   onEdit,
+  onDetails,
   onDelete,
   onStatus,
   onChecklist,
@@ -48,6 +49,19 @@ export default function TaskCard({
           {readOnly && <span className="small muted">{statuses[task.status]}</span>}
           <span className={'tag priority-' + task.priority}>{task.priority}</span>
         </div>
+
+        {task.parentTask && <span className="subtask-tag">Subtask</span>}
+        {onDetails && (
+          <button
+            type="button"
+            className="task-details-link"
+            disabled={busy}
+            aria-label={'Details for ' + task.title}
+            onClick={() => onDetails(task)}
+          >
+            {task.parentTask ? 'Parent & activity' : 'Subtasks & activity'}
+          </button>
+        )}
         {attention.length > 0 && (
           <ul
             className="attention-reasons"

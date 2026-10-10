@@ -2192,3 +2192,84 @@ textarea:disabled {
   height: 1px;
   overflow: hidden;
 }
+
+.task-details-link {
+  display: block;
+  padding: 4px 0;
+  background: none;
+  border: 0;
+  color: var(--purple);
+  font-size: 12px;
+  text-align: left;
+  margin: 6px 0;
+}
+.subtask-tag {
+  display: inline-block;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #f0edff;
+  color: var(--purple);
+}
+.task-details-dialog {
+  width: min(calc(100% - 24px), 760px);
+  padding: 0;
+}
+.task-details-content {
+  padding: 24px;
+}
+.task-details-content h3,
+.task-details-content h4 {
+  overflow-wrap: anywhere;
+}
+.task-details-content .team-tabs {
+  flex-wrap: wrap;
+}
+.subtask-list {
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 16px;
+}
+.subtask-list article {
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.subtask-list h4 {
+  margin: 0;
+  font-size: 16px;
+}
+.subtask-list label {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0;
+}
+.subtask-list select {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--line);
+  padding: 10px;
+  border-radius: 8px;
+}
+.task-history {
+  padding-left: 22px;
+}
+.task-history li {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+.task-history p {
+  margin: 4px 0;
+}
+.task-parent-panel {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+@media (max-width: 600px) {
+  .task-details-content {
+    padding: 16px;
+  }
+}

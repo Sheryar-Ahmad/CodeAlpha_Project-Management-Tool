@@ -53,6 +53,16 @@ export async function purgeAccount(user) {
     ProjectGoal.deleteMany({ createdBy: user }),
     WorkRequest.deleteMany({ requester: user }),
     Task.updateMany({ assignee: user }, { $set: { assignee: null } }),
+    Task.updateMany(
+      { 'activity.actor': user },
+      {
+        $set: {
+          'activity.$[entry].actor': null,
+          'activity.$[entry].name': 'Former account',
+        },
+      },
+      { arrayFilters: [{ 'entry.actor': user }] },
+    ),
   ]);
   const remaining = await Project.exists({ owner: user });
   if (remaining) return false;

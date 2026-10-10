@@ -9,6 +9,7 @@ import { parse } from '../lib/validation.js';
 import { importFileSchema, importDrafts } from '../lib/taskImport.js';
 import { TaskImport } from '../models/TaskImport.js';
 import { Task } from '../models/Task.js';
+import { taskActivity } from '../lib/taskActivity.js';
 import { Project } from '../models/Project.js';
 export const importsRouter = Router();
 importsRouter.use(requireAuth);
@@ -114,6 +115,7 @@ importsRouter.post('/', limiter, async (req, res) => {
         {
           $setOnInsert: {
             ...item.draft,
+            activity: [taskActivity(req.user, 'Imported task')],
             owner: req.user._id,
             projectId: job.project,
           },

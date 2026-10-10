@@ -15,6 +15,10 @@ import { User } from '../server/models/User.js';
 import { Session } from '../server/models/Session.js';
 import { Task } from '../server/models/Task.js';
 import { Project } from '../server/models/Project.js';
+import { randomUUID, createHash } from 'node:crypto';
+import { taskSchema } from '../server/lib/validation.js';
+import { familyFence } from '../server/lib/taskFamily.js';
+import { purgeAccount } from '../server/lib/accountDeletion.js';
 
 import { MongoRateStore } from '../server/lib/rateStore.js';
 import { RateBucket } from '../server/models/RateBucket.js';
@@ -2525,6 +2529,7 @@ test('task backup import validates preview and retries a private restore without
     .expect(201);
   const file = (await agent.get('/api/tasks/export').expect(200)).body;
   const originalId = file.tasks[0].id;
+  file.tasks[0].parentTask = 'source-parent-id';
   assert.equal(
     (
       await agent
@@ -2554,6 +2559,7 @@ test('task backup import validates preview and retries a private restore without
   assert.equal(tasks[0].notes, 'A safe backup note');
   assert.equal(tasks[0].estimateMinutes, 30);
   assert.equal(tasks[0].recurrence, 'none');
+  assert.equal(tasks[0].parentTask, null);
   assert.notEqual(tasks[0].checklist[0].id, 'old-step');
   await Task.deleteOne({ _id: tasks[0].id });
   const retry = (
@@ -3662,4 +3668,405 @@ test('resource reviews capture safe task links and keep later file-link edits se
   const pending = (await ownerAgent.get(endpoint + '?status=pending').expect(200)).body
     .reviews[0];
   assert.deepEqual(pending.resources, []);
+});
+
+// Each fixture owns its records, so these checks never depend on earlier accounts.
+async function subtaskFixture(name) {
+  const agent = request.agent(app);
+  const user = (
+    await agent
+      .post('/api/auth/register')
+      .set('Origin', origin)
+      .send({
+        name,
+        email: name + '@subtasks.example',
+        password: 'subtask-test-long-passphrase',
+      })
+      .expect(201)
+  ).body.user;
+  const project = await Project.create({ owner: user.id, name });
+  const root = await Task.create({
+    owner: user.id,
+    projectId: project._id,
+    project: name,
+    title: 'Parent task',
+  });
+  const endpoint = '/api/projects/' + project.id + '/tasks/';
+  const post = (path, body) =>
+    agent
+      .post(endpoint + path)
+      .set('Origin', origin)
+      .send(body);
+  const patch = (path, body) =>
+    agent
+      .patch(endpoint + path)
+      .set('Origin', origin)
+      .send(body);
+  const remove = (path) => agent.delete(endpoint + path).set('Origin', origin);
+  return { agent, user, project, root, endpoint, post, patch, remove };
+}
+
+test('subtasks retry safely, retain independent status and enforce parent lifecycle rules', async () => {
+  const f = await subtaskFixture('SubtaskRules');
+  const draft = {
+    key: randomUUID(),
+    task: {
+      title: 'Child task',
+      project: f.project.name,
+      due: '2026-10-25',
+      blockerReason: 'An obsolete reason',
+    },
+  };
+  const child = (await f.post(f.root.id + '/subtasks', draft).expect(201)).body.task;
+  assert.equal(child.parentTask, f.root.id);
+  assert.equal(child.projectId, f.project.id);
+  assert.equal(child.blockerReason, '');
+  const retry = (await f.post(f.root.id + '/subtasks', draft).expect(200)).body.task;
+  assert.equal(retry.id, child.id);
+  await f
+    .post(f.root.id + '/subtasks', {
+      ...draft,
+      task: { ...draft.task, title: 'Changed retry' },
+    })
+    .expect(409);
+  await f.post(child.id + '/subtasks', { ...draft, key: randomUUID() }).expect(409);
+  await f
+    .post(f.root.id + '/subtasks', {
+      key: randomUUID(),
+      task: { ...draft.task, owner: f.user.id },
+    })
+    .expect(400);
+  await f.patch(child.id, { status: 'done' }).expect(200);
+  assert.equal((await Task.findById(f.root._id).lean()).status, 'todo');
+  await f.patch(child.id, { status: 'todo' }).expect(200);
+  await f.patch(f.root.id, { status: 'done' }).expect(200);
+  assert.equal((await Task.findById(child.id).lean()).status, 'todo');
+  await f.patch(child.id, { recurrence: 'weekly', due: '2026-10-25' }).expect(409);
+  await f.agent
+    .patch('/api/tasks/' + child.id)
+    .set('Origin', origin)
+    .send({ project: 'Other subtask project' })
+    .expect(409);
+  await f.agent
+    .patch('/api/tasks/' + f.root.id)
+    .set('Origin', origin)
+    .send({ project: 'Other parent project' })
+    .expect(409);
+  await f.patch(f.root.id + '/lifecycle', { action: 'archive' }).expect(200);
+  assert.equal((await Task.findById(child.id).lean()).lifecycle, 'active');
+  await f.post(f.root.id + '/subtasks', { ...draft, key: randomUUID() }).expect(409);
+  await f.remove(f.root.id).expect(204);
+  await f.remove(f.root.id + '/permanent').expect(409);
+  await f.remove(child.id).expect(204);
+  await f.remove(f.root.id + '/permanent').expect(409);
+  await f.remove(child.id + '/permanent').expect(204);
+  await f.patch(f.root.id + '/lifecycle', { action: 'restore' }).expect(200);
+  const removedRetry = (await f.post(f.root.id + '/subtasks', draft).expect(200)).body;
+  assert.equal(removedRetry.previouslyRemoved, true);
+  assert.equal(removedRetry.task, null);
+  assert.equal(await Task.countDocuments({ parentTask: f.root._id }), 0);
+  const nextDraft = { ...draft, key: randomUUID() };
+  const next = (await f.post(f.root.id + '/subtasks', nextDraft).expect(201)).body.task;
+  await f.patch(next.id + '/subtasks/detach', {}).expect(200);
+  assert.equal(
+    (await f.post(f.root.id + '/subtasks', nextDraft).expect(200)).body.previouslyRemoved,
+    true,
+  );
+  assert.equal((await Task.findById(next.id).lean()).parentTask, null);
+  await f.agent
+    .patch('/api/tasks/' + f.root.id)
+    .set('Origin', origin)
+    .send({ project: 'Moved parent safely' })
+    .expect(200);
+  const details = (await f.agent.get('/api/tasks/' + f.root.id + '/details').expect(200))
+    .body;
+  assert.equal(details.activity.length, 1);
+  assert.equal(details.activity[0].action, 'Moved project');
+});
+
+test('subtask reservations recover interrupted saves and reject stale parent versions', async () => {
+  const f = await subtaskFixture('SubtaskRecovery');
+  const key = randomUUID(),
+    childId = new mongoose.Types.ObjectId();
+  const draft = taskSchema.parse({ title: 'Reserved child', project: f.project.name });
+  const digest = createHash('sha256').update(JSON.stringify(draft)).digest('hex');
+  await Task.updateOne(
+    { _id: f.root._id },
+    {
+      $set: {
+        subtaskPending: {
+          key,
+          task: childId,
+          draft,
+          worker: 'another-worker',
+          workerUntil: new Date(Date.now() + 60000),
+        },
+        subtaskReceipts: [{ key, task: childId, digest }],
+      },
+    },
+  );
+  await f.post(f.root.id + '/subtasks/resume', {}).expect(409);
+  await f.remove(f.root.id).expect(409);
+  await f.patch(f.root.id + '/lifecycle', { action: 'archive' }).expect(409);
+  await Task.updateOne(
+    { _id: f.root._id },
+    { $set: { 'subtaskPending.workerUntil': new Date(0) } },
+  );
+  // Simulate an earlier worker that saved its child but stopped before clearing the reservation.
+  await Task.create({
+    ...draft,
+    _id: childId,
+    owner: f.user.id,
+    projectId: f.project._id,
+    parentTask: f.root._id,
+    title: 'Already saved edit',
+  });
+  await f.patch(String(childId) + '/subtasks/detach', {}).expect(409);
+  await f.remove(String(childId)).expect(409);
+  const resumed = (await f.post(f.root.id + '/subtasks/resume', {}).expect(200)).body
+    .task;
+  assert.equal(resumed.id, String(childId));
+  assert.equal(resumed.title, 'Already saved edit');
+  assert.equal(await Task.countDocuments({ parentTask: f.root._id }), 1);
+  assert.equal(
+    (await Task.findById(f.root._id).select('+subtaskPending').lean()).subtaskPending,
+    null,
+  );
+  await f.post(f.root.id + '/subtasks/resume', {}).expect(409);
+  const snapshot = await Task.findById(f.root._id)
+    .select('+familyRevision +subtaskPending')
+    .lean();
+  const fence = await familyFence(snapshot);
+  await Task.updateOne({ _id: f.root._id }, { $inc: { familyRevision: 1 } });
+  const stale = await Task.updateOne(
+    { _id: f.root._id, ...fence },
+    { $set: { lifecycle: 'trashed' } },
+  );
+  assert.equal(stale.modifiedCount, 0);
+});
+
+test('subtask details scope permissions, paginate children and keep activity bounded and private', async () => {
+  const f = await subtaskFixture('SubtaskPrivacy');
+  const memberAgent = request.agent(app);
+  const member = (
+    await memberAgent
+      .post('/api/auth/register')
+      .set('Origin', origin)
+      .send({
+        name: 'SubtaskMember',
+        email: 'member@subtasks.example',
+        password: 'subtask-member-long-passphrase',
+      })
+      .expect(201)
+  ).body.user;
+  await memberAgent.get(f.endpoint + f.root.id + '/details').expect(404);
+  const membership = await ProjectMember.create({
+    project: f.project._id,
+    user: member.id,
+    status: 'active',
+  });
+  const draft = {
+    key: randomUUID(),
+    task: { title: 'Member child', project: f.project.name },
+  };
+  const child = (
+    await memberAgent
+      .post(f.endpoint + f.root.id + '/subtasks')
+      .set('Origin', origin)
+      .send(draft)
+      .expect(201)
+  ).body.task;
+  await memberAgent
+    .patch('/api/projects/' + f.project.id + '/collaboration/' + child.id + '/assignee')
+    .set('Origin', origin)
+    .send({ assignee: member.id })
+    .expect(200);
+  await f
+    .patch(child.id, { notes: 'Private note body never belongs in activity' })
+    .expect(200);
+  const details = (await f.agent.get(f.endpoint + child.id + '/details').expect(200))
+    .body;
+  assert.equal(details.parent.title, 'Parent task');
+  assert.ok(details.activity.some((event) => event.action === 'Assigned task'));
+  assert.ok(details.activity.some((event) => event.fields.includes('notes')));
+  assert.equal(JSON.stringify(details.activity).includes('Private note body'), false);
+  assert.equal(JSON.stringify(details.activity).includes(member.id), false);
+  const ordinary = (await f.agent.get(f.endpoint).expect(200)).body.tasks.find(
+    (task) => task.id === child.id,
+  );
+  assert.equal(ordinary.activity, undefined);
+  assert.equal(ordinary.subtaskReceipts, undefined);
+  await ProjectMember.updateOne({ _id: membership._id }, { $set: { role: 'guest' } });
+  await memberAgent.get(f.endpoint + child.id + '/details').expect(404);
+  await memberAgent
+    .post(f.endpoint + f.root.id + '/subtasks')
+    .set('Origin', origin)
+    .send({ ...draft, key: randomUUID() })
+    .expect(404);
+  await ProjectMember.deleteOne({ _id: membership._id });
+  await memberAgent.get(f.endpoint + child.id + '/details').expect(404);
+  await f.agent.get(f.endpoint + child.id + '/details?page[$ne]=1').expect(400);
+  await Task.insertMany(
+    Array.from({ length: 30 }, (_, i) => ({
+      owner: f.user.id,
+      projectId: f.project._id,
+      project: f.project.name,
+      parentTask: f.root._id,
+      title: 'Page child ' + i,
+    })),
+  );
+  const firstPage = (await f.agent.get(f.endpoint + f.root.id + '/details').expect(200))
+    .body;
+  assert.equal(firstPage.children.length, 30);
+  assert.equal(firstPage.hasMore, true);
+  const lastPage = (
+    await f.agent.get(f.endpoint + f.root.id + '/details?page=2').expect(200)
+  ).body;
+  assert.equal(lastPage.children.length, 1);
+  assert.equal(lastPage.hasMore, false);
+  // A near-limit fixture exercises the real API's atomic $slice rather than a loop of 50 HTTP calls.
+  await Task.updateOne(
+    { _id: child.id },
+    {
+      $set: {
+        activity: Array.from({ length: 50 }, () => ({
+          actor: member.id,
+          name: member.name,
+          action: 'Earlier edit',
+          fields: [],
+          at: new Date(),
+        })),
+      },
+    },
+  );
+  await f.patch(child.id, { title: 'Most recent child title' }).expect(200);
+  const bounded = (await f.agent.get(f.endpoint + child.id + '/details').expect(200)).body
+    .activity;
+  assert.equal(bounded.length, 50);
+  assert.equal(bounded[0].action, 'Updated task');
+  await User.updateOne({ _id: member.id }, { $set: { deleting: true } });
+  await purgeAccount(member.id);
+  const redacted = (await f.agent.get(f.endpoint + child.id + '/details').expect(200))
+    .body.activity;
+  assert.equal(
+    redacted.some((event) => event.name === 'SubtaskMember'),
+    false,
+  );
+  assert.ok(redacted.some((event) => event.name === 'Former account'));
+  const hiddenParent = await Task.create({
+    owner: f.user.id,
+    project: 'Private context',
+    title: 'Do not expose this title',
+  });
+  await Task.updateOne({ _id: child.id }, { $set: { parentTask: hiddenParent._id } });
+  assert.equal(
+    (await f.agent.get(f.endpoint + child.id + '/details').expect(200)).body.parent,
+    null,
+  );
+});
+
+test('subtask creation enforces retained-child and lifetime-receipt caps and rejects recurring parents', async () => {
+  const f = await subtaskFixture('SubtaskLimits');
+  const payload = () => ({
+    key: randomUUID(),
+    task: { title: 'Extra child', project: f.project.name },
+  });
+  await Task.updateOne(
+    { _id: f.root._id },
+    { $set: { recurrence: 'weekly', due: '2026-10-25' } },
+  );
+  await f.post(f.root.id + '/subtasks', payload()).expect(409);
+  await Task.updateOne({ _id: f.root._id }, { $set: { recurrence: 'none' } });
+  await Task.insertMany(
+    Array.from({ length: 100 }, (_, i) => ({
+      owner: f.user.id,
+      projectId: f.project._id,
+      project: f.project.name,
+      parentTask: f.root._id,
+      title: 'Retained ' + i,
+      lifecycle: 'trashed',
+    })),
+  );
+  await f.post(f.root.id + '/subtasks', payload()).expect(400);
+  await Task.deleteMany({ parentTask: f.root._id });
+  await Task.updateOne(
+    { _id: f.root._id },
+    {
+      $set: {
+        subtaskReceipts: Array.from({ length: 200 }, () => ({
+          key: randomUUID(),
+          digest: 'old-content-digest',
+          task: new mongoose.Types.ObjectId(),
+        })),
+      },
+    },
+  );
+  await f.post(f.root.id + '/subtasks', payload()).expect(400);
+  assert.equal(await Task.countDocuments({ parentTask: f.root._id }), 0);
+});
+
+test('an old full edit cannot move a parent back after a concurrent transfer and subtask creation', async () => {
+  const f = await subtaskFixture('SubtaskTransferRace');
+  const originalUpdate = Task.findOneAndUpdate;
+  let release, markStarted;
+  const gate = new Promise((resolve) => {
+    release = resolve;
+  });
+  const started = new Promise((resolve) => {
+    markStarted = resolve;
+  });
+  // Pause just the stale edit at the write boundary; other database operations
+  // remain real. This makes the problematic ordering deterministic.
+  Task.findOneAndUpdate = function (...args) {
+    const query = originalUpdate.apply(this, args);
+    if (
+      String(args[0]._id) === f.root.id &&
+      args[1].$set?.notes === 'Stale edit content'
+    ) {
+      const lean = query.lean.bind(query);
+      query.lean = async (...options) => {
+        markStarted();
+        await gate;
+        return lean(...options);
+      };
+    }
+    return query;
+  };
+  let staleRequest;
+  try {
+    staleRequest = f.agent
+      .patch('/api/tasks/' + f.root.id)
+      .set('Origin', origin)
+      .send({ project: f.project.name, notes: 'Stale edit content' })
+      .then((response) => response);
+    await started;
+    const moved = (
+      await f.agent
+        .patch('/api/tasks/' + f.root.id)
+        .set('Origin', origin)
+        .send({ project: 'Transfer destination' })
+        .expect(200)
+    ).body.task;
+    const child = (
+      await f.agent
+        .post('/api/tasks/' + f.root.id + '/subtasks')
+        .set('Origin', origin)
+        .send({
+          key: randomUUID(),
+          task: { title: 'Destination child', project: moved.project },
+        })
+        .expect(201)
+    ).body.task;
+    release();
+    assert.equal((await staleRequest).status, 404);
+    const current = await Task.findById(f.root._id).lean();
+    assert.equal(String(current.projectId), moved.projectId);
+    assert.equal(current.project, 'Transfer destination');
+    assert.equal(current.notes, '');
+    assert.equal(child.projectId, moved.projectId);
+  } finally {
+    release();
+    await staleRequest;
+    Task.findOneAndUpdate = originalUpdate;
+  }
 });

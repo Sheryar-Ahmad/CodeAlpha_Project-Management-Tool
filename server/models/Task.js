@@ -24,8 +24,51 @@ const resource = new mongoose.Schema(
   { _id: false },
 );
 
+const activityEntry = new mongoose.Schema(
+  {
+    actor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    name: { type: String, maxlength: 60, required: true },
+    action: { type: String, maxlength: 60, required: true },
+    fields: { type: [String], default: [], validate: (fields) => fields.length <= 20 },
+    at: { type: Date, required: true },
+  },
+  { _id: false },
+);
+const receipt = new mongoose.Schema(
+  {
+    key: { type: String, required: true },
+    digest: { type: String, required: true },
+    task: { type: mongoose.Schema.Types.ObjectId, required: true },
+  },
+  { _id: false },
+);
+const pending = new mongoose.Schema(
+  {
+    key: String,
+    task: mongoose.Schema.Types.ObjectId,
+    draft: mongoose.Schema.Types.Mixed,
+    worker: { type: String, default: '' },
+    workerUntil: { type: Date, default: () => new Date(0) },
+  },
+  { _id: false },
+);
 const schema = new mongoose.Schema(
   {
+    parentTask: { type: mongoose.Schema.Types.ObjectId, ref: 'Task', default: null },
+    activity: {
+      type: [activityEntry],
+      default: [],
+      select: false,
+      validate: (items) => items.length <= 50,
+    },
+    familyRevision: { type: Number, default: 0 },
+    subtaskReceipts: {
+      type: [receipt],
+      default: [],
+      select: false,
+      validate: (items) => items.length <= 200,
+    },
+    subtaskPending: { type: pending, default: null, select: false },
     owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     lifecycle: {
       type: String,
@@ -86,6 +129,7 @@ const schema = new mongoose.Schema(
   },
   { timestamps: true, versionKey: false },
 );
+schema.index({ owner: 1, parentTask: 1, projectId: 1 });
 schema.index({ owner: 1, updatedAt: -1, _id: -1 });
 schema.index({ owner: 1, lifecycle: 1, updatedAt: -1, _id: -1 });
 schema.index({ owner: 1, project: 1 });

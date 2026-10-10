@@ -10,6 +10,7 @@ import {
 } from '../middleware/projectAccess.js';
 import { Project } from '../models/Project.js';
 import { Task } from '../models/Task.js';
+import { taskActivity } from '../lib/taskActivity.js';
 import { projectTemplates } from '../../shared/projectTemplates.js';
 export const workflowRouter = Router({ mergeParams: true });
 workflowRouter.use(requireProjectAccess);
@@ -60,6 +61,7 @@ workflowRouter.post('/template', requireProjectOwner, async (req, res) => {
         {
           $setOnInsert: {
             owner: project.owner,
+            activity: [taskActivity(req.user, 'Created from project template')],
             projectId: project._id,
             project: project.name,
             title: starter.title,

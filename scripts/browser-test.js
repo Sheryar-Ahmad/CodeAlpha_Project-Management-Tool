@@ -185,14 +185,18 @@ try {
     await page
       .getByRole('searchbox', { name: 'Search tasks' })
       .fill('No matching task exists');
-    await page.waitForTimeout(450);
+    await page.waitForFunction(
+      () => document.querySelectorAll('.task-card').length === 0,
+    );
     assert.equal(await page.locator('.task-card').count(), 0);
     await page.getByRole('searchbox', { name: 'Search tasks' }).fill('');
     await page.waitForTimeout(450);
     await page
       .getByLabel('Filter by project', { exact: true })
       .selectOption('QA project');
-    await page.waitForTimeout(150);
+    await page.waitForFunction(
+      () => document.querySelectorAll('.task-card').length === 1,
+    );
     assert.equal(await page.locator('.task-card').count(), 1);
     await page
       .getByRole('button', { name: 'Duplicate Renamed browser task', exact: true })
@@ -2423,6 +2427,78 @@ try {
     await visitorContext.close();
     console.log(
       'PASS: account-free intake, private owner triage, acceptance and disabled-link revocation.',
+    );
+    await ownerPage.getByRole('button', { name: 'Shared tasks', exact: true }).click();
+    await ownerPage
+      .getByRole('button', {
+        name: 'Details for Prepare the workshop outline',
+        exact: true,
+      })
+      .click();
+    const taskDetails = ownerPage.getByRole('dialog', {
+      name: 'Task details',
+      exact: true,
+    });
+    await taskDetails.getByRole('button', { name: 'Add subtask', exact: true }).click();
+    await ownerPage
+      .getByLabel('Task title', { exact: true })
+      .fill('Draft volunteer instructions');
+    assert.equal(
+      await ownerPage.getByLabel('Project', { exact: true }).getAttribute('readonly'),
+      '',
+    );
+    assert.equal(
+      await ownerPage.getByLabel('Repeat', { exact: true }).locator('option').count(),
+      1,
+    );
+    await ownerPage.getByRole('button', { name: 'Save task', exact: true }).click();
+    await taskDetails
+      .getByRole('heading', { name: 'Draft volunteer instructions', exact: true })
+      .waitFor();
+    assert.equal(
+      await ownerPage.evaluate(() => document.activeElement?.textContent?.trim()),
+      'Add subtask',
+    );
+    await taskDetails
+      .getByLabel('Assignee for subtask Draft volunteer instructions', { exact: true })
+      .selectOption({ label: 'Omar' });
+    await taskDetails.getByText('Subtask assignment saved.', { exact: true }).waitFor();
+    await taskDetails.getByRole('button', { name: 'Edit subtask', exact: true }).click();
+    await ownerPage.getByLabel('Status', { exact: true }).selectOption('done');
+    await ownerPage.getByRole('button', { name: 'Save task', exact: true }).click();
+    await taskDetails.getByText('Subtask updated.', { exact: true }).waitFor();
+    for (const width of [320, 375, 768, 1024, 1440]) {
+      await ownerPage.setViewportSize({ width, height: 1000 });
+      assert.equal(
+        await ownerPage.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+        true,
+        'Details page overflow at ' + width,
+      );
+      assert.equal(
+        await taskDetails.evaluate(
+          (element) => element.scrollWidth <= element.clientWidth + 1,
+        ),
+        true,
+        'Details dialog overflow at ' + width,
+      );
+    }
+    await ownerPage.screenshot({
+      path: 'docs/screenshots/task-details-desktop.png',
+      fullPage: false,
+    });
+    await taskDetails
+      .getByRole('button', { name: 'Open subtask details', exact: true })
+      .click();
+    await taskDetails.getByRole('button', { name: 'Activity', exact: true }).click();
+    await taskDetails.getByText('Changed status', { exact: true }).waitFor();
+    await taskDetails.getByText('Assigned task', { exact: true }).waitFor();
+    await taskDetails
+      .getByRole('button', { name: 'Close task details', exact: true })
+      .click();
+    console.log(
+      'PASS: independent subtasks, assignment, bounded history, nested focus and responsive details.',
     );
     await ownerPage.getByRole('button', { name: 'Refresh', exact: true }).click();
     await ownerPage.getByRole('button', { name: 'Remove access', exact: true }).waitFor();

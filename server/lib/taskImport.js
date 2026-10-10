@@ -4,6 +4,7 @@ import { z } from 'zod';
 const rowSchema = taskSchema
   .safeExtend({
     id: z.string().max(100).optional(),
+    parentTask: z.string().max(100).nullable().optional(),
     lifecycle: z.enum(['active', 'archived', 'trashed']).default('active'),
     repeatDay: z.number().int().min(1).max(31).optional(),
     repeatSource: z.string().max(100).optional(),

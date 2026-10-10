@@ -7,6 +7,7 @@ export function createTaskExport(tasks, scope) {
     scope,
     tasks: tasks.map((task) => ({
       id: task.id,
+      ...(task.parentTask ? { parentTask: task.parentTask } : {}),
       lifecycle: task.lifecycle ?? 'active',
       title: task.title,
       project: task.project,

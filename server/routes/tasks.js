@@ -1,3 +1,7 @@
+import { subtaskRouter, taskDetails } from './subtasks.js';
+import { familyFields, familyFence } from '../lib/taskFamily.js';
+import { taskActivity, appendActivity } from '../lib/taskActivity.js';
+import { serializeTask as serialize } from '../lib/serializeTask.js';
 import { createCalendarExport } from '../../shared/calendarExport.js';
 import { Project } from '../models/Project.js';
 import { TaskComment } from '../models/TaskComment.js';
@@ -26,33 +30,6 @@ export const taskRouter = Router();
 taskRouter.use(requireAuth);
 // Missing lifecycle fields are older active records; no destructive migration is needed.
 const activeRecords = { lifecycle: { $in: ['active', null] } };
-const serialize = (task) => ({
-  id: String(task._id),
-  lifecycle: task.lifecycle ?? 'active',
-  title: task.title,
-  assignee: task.assignee ? String(task.assignee) : null,
-  project: task.project,
-  projectId: task.projectId ? String(task.projectId) : undefined,
-  description: task.description,
-  notes: task.notes ?? '',
-  links: (task.links ?? []).map(({ label, url }) => ({ label, url })),
-  priority: task.priority,
-  estimateMinutes: task.estimateMinutes ?? 0,
-  durationDays: task.durationDays ?? 1,
-  status: task.status,
-  blockerReason: task.blockerReason ?? '',
-  due: task.due,
-  recurrence: task.recurrence ?? 'none',
-  repeatDay: task.repeatDay,
-  repeatSource: task.repeatSource ? String(task.repeatSource) : undefined,
-  createdAt: task.createdAt,
-  updatedAt: task.updatedAt,
-  checklist: (task.checklist ?? []).map((item) => ({
-    id: item.id,
-    text: item.text,
-    done: item.done,
-  })),
-});
 const exportLimit = rateLimit({
   windowMs: 60 * 60 * 1000,
   limit: 5,
@@ -262,6 +239,7 @@ taskRouter.post('/', async (req, res) => {
     ...data,
     projectId: project._id,
     owner: project.owner,
+    activity: [taskActivity(req.user, 'Created task')],
   });
   const nextTask =
     task.status === 'done' && task.recurrence !== 'none'
@@ -277,6 +255,9 @@ taskRouter.param('id', (req, res, next, id) => {
     return res.status(400).json({ message: 'Invalid task ID.' });
   next();
 });
+taskRouter.use('/:id/subtasks', subtaskRouter);
+taskRouter.get('/:id/details', taskDetails);
+
 taskRouter.patch('/:id', async (req, res) => {
   const data = parse(taskUpdateSchema, req.body);
   if (req.sharedProject && data.project && data.project !== req.sharedProject.name)
@@ -343,18 +324,52 @@ taskRouter.patch('/:id', async (req, res) => {
       autoComplete = true;
     }
   }
+
+  const before = await Task.findOne({
+    _id: req.params.id,
+    ...taskScope(req),
+    ...activeRecords,
+  })
+    .select(familyFields)
+    .lean();
+  if (!before) return res.status(404).json({ message: 'Task not found.' });
+  const moving = data.projectId && String(before.projectId) !== String(data.projectId);
+  const repeating = data.recurrence && data.recurrence !== 'none';
+  const fence =
+    moving || repeating ? await familyFence(before, { moving, repeating }) : {};
+  const event = taskActivity(
+    req.user,
+    moving
+      ? 'Moved project'
+      : autoComplete
+        ? 'Completed through checklist rule'
+        : data.status
+          ? 'Changed status'
+          : data.checklist
+            ? 'Updated checklist'
+            : 'Updated task',
+    Object.keys(data),
+  );
   // Include ownership in the query; never trust a client-supplied owner.
   const task = await Task.findOneAndUpdate(
     {
       _id: req.params.id,
       ...taskScope(req),
       ...activeRecords,
+      ...fence,
+      // An edit read in the old project must not move a task back after a
+      // concurrent transfer, bypassing the family's child/history safeguards.
+      projectId: before.projectId ?? null,
       ...(autoComplete ? { status: { $in: ['todo', 'progress'] } } : {}),
       ...(data.due === '' && !data.recurrence
         ? { recurrence: { $in: ['none', null] } }
         : {}),
     },
-    { $set: data },
+    {
+      $set: { ...data, ...(moving ? { activity: [event] } : {}) },
+      ...(!moving ? { $push: appendActivity(event) } : {}),
+      ...(moving || repeating ? { $inc: { familyRevision: 1 } } : {}),
+    },
     { returnDocument: 'after', runValidators: true },
   ).lean();
   if (!task) return res.status(404).json({ message: 'Task not found.' });
@@ -374,9 +389,21 @@ taskRouter.patch('/:id/lifecycle', async (req, res) => {
     action === 'archive'
       ? activeRecords
       : { lifecycle: action === 'unarchive' ? 'archived' : 'trashed' };
+
+  const before = await Task.findOne({ _id: req.params.id, ...taskScope(req), ...from })
+    .select(familyFields)
+    .lean();
+  if (!before) return res.status(404).json({ message: 'Task not found in that state.' });
+  const fence = await familyFence(before);
   const task = await Task.findOneAndUpdate(
-    { _id: req.params.id, ...taskScope(req), ...from },
-    { $set: { lifecycle: action === 'archive' ? 'archived' : 'active' } },
+    { _id: req.params.id, ...taskScope(req), ...from, ...fence },
+    {
+      $set: { lifecycle: action === 'archive' ? 'archived' : 'active' },
+      $inc: { familyRevision: 1 },
+      $push: appendActivity(
+        taskActivity(req.user, action === 'archive' ? 'Archived task' : 'Restored task'),
+      ),
+    },
     { returnDocument: 'after', runValidators: true },
   ).lean();
   if (!task) return res.status(404).json({ message: 'Task not found in that state.' });
@@ -384,13 +411,23 @@ taskRouter.patch('/:id/lifecycle', async (req, res) => {
 });
 
 taskRouter.delete('/:id', async (req, res) => {
+  const before = await Task.findOne({ _id: req.params.id, ...taskScope(req) })
+    .select(familyFields)
+    .lean();
+  if (!before) return res.status(404).json({ message: 'Task not found.' });
+  const fence = await familyFence(before);
   const task = await Task.findOneAndUpdate(
     {
       _id: req.params.id,
       ...taskScope(req),
       lifecycle: { $in: ['active', 'archived', null] },
+      ...fence,
     },
-    { $set: { lifecycle: 'trashed' } },
+    {
+      $set: { lifecycle: 'trashed' },
+      $inc: { familyRevision: 1 },
+      $push: appendActivity(taskActivity(req.user, 'Moved to Trash')),
+    },
     { returnDocument: 'after' },
   );
   if (!task) return res.status(404).json({ message: 'Task not found.' });
@@ -402,10 +439,20 @@ taskRouter.delete('/:id/permanent', async (req, res) => {
     return res
       .status(403)
       .json({ message: 'Only the project owner can permanently delete shared tasks.' });
+  const before = await Task.findOne({
+    _id: req.params.id,
+    ...taskScope(req),
+    lifecycle: 'trashed',
+  })
+    .select(familyFields)
+    .lean();
+  if (!before) return res.status(404).json({ message: 'Task not found in Trash.' });
+  const fence = await familyFence(before, { deleting: true });
   const result = await Task.deleteOne({
     _id: req.params.id,
     ...taskScope(req),
     lifecycle: 'trashed',
+    ...fence,
   });
   if (!result.deletedCount)
     return res.status(404).json({ message: 'Task not found in Trash.' });

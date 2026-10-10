@@ -1,3 +1,4 @@
+import TaskDetails from './TaskDetails.jsx';
 import GuestPortal from './GuestPortal.jsx';
 import ProjectRequests from './ProjectRequests.jsx';
 import ProjectDependencies from './ProjectDependencies.jsx';
@@ -39,6 +40,7 @@ export default function TeamWorkspace({
     [notice, setNotice] = useState('');
   const [email, setEmail] = useState(''),
     [dialog, setDialog] = useState(null);
+  const [detailsTask, setDetailsTask] = useState(null);
   const [discussion, setDiscussion] = useState(null);
   const [reviewInbox, setReviewInbox] = useState([]),
     [inboxTruncated, setInboxTruncated] = useState(false);
@@ -86,12 +88,13 @@ export default function TeamWorkspace({
           setDialog(null);
           setNotebook(false);
           setDiscussion(null);
-          setDiscussion(null);
+          setDetailsTask(null);
           setNotice('Project access changed. Choose an available project.');
           return;
         }
         if (!selected) return;
         if (teams.projects.find((item) => item.id === selected)?.role === 'guest') {
+          setDetailsTask(null);
           setDirectory(null);
           setTasks([]);
           setOverview(null);
@@ -126,6 +129,7 @@ export default function TeamWorkspace({
           setError(failure.message);
           // Avoid displaying stale project records after access was removed.
           if (failure.status === 404) {
+            setDetailsTask(null);
             setTasks([]);
             setDirectory(null);
             setOverview(null);
@@ -164,6 +168,7 @@ export default function TeamWorkspace({
     action().catch(() => {});
   }
   function choose(id, nextPanel = 'tasks') {
+    setDetailsTask(null);
     setPanel(nextPanel);
     setSelected(id);
     setMine(false);
@@ -534,6 +539,7 @@ export default function TeamWorkspace({
                 <li key={task.id}>
                   <TaskCard
                     task={task}
+                    onDetails={setDetailsTask}
                     busy={busy}
                     canPurge={directory.role === 'owner'}
                     onEdit={(item) => setDialog({ task: item })}
@@ -542,6 +548,7 @@ export default function TeamWorkspace({
                         task: {
                           ...item,
                           id: undefined,
+                          parentTask: null,
                           title: item.title.slice(0, 110) + ' (copy)',
                           status: 'todo',
                           blockerReason: '',
@@ -723,6 +730,15 @@ export default function TeamWorkspace({
           ].filter((person) => person && person.id !== viewerId)}
           onExpired={onExpired}
           onClose={() => setDiscussion(null)}
+        />
+      )}
+      {project && directory && detailsTask && (
+        <TaskDetails
+          taskId={detailsTask.id}
+          projectId={project.id}
+          onClose={() => setDetailsTask(null)}
+          onExpired={onExpired}
+          onChanged={() => setRevision((value) => value + 1)}
         />
       )}
       {project && dialog && (

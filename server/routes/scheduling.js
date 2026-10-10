@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { taskActivity, appendActivity } from '../lib/taskActivity.js';
 import mongoose from 'mongoose';
 import { z } from 'zod';
 import rateLimit from 'express-rate-limit';
@@ -125,7 +126,12 @@ schedulingRouter.post('/:planId/apply', async (req, res) => {
                 due: row.oldDue === '' ? { $in: ['', null] } : row.oldDue,
                 updatedAt: row.expectedUpdatedAt,
               },
-              { $set: { due: row.newDue, repeatDay: Number(row.newDue.slice(8)) } },
+              {
+                $set: { due: row.newDue, repeatDay: Number(row.newDue.slice(8)) },
+                $push: appendActivity(
+                  taskActivity(req.user, 'Applied dependency schedule', ['due']),
+                ),
+              },
               { returnDocument: 'after' },
             )
               .select('_id')

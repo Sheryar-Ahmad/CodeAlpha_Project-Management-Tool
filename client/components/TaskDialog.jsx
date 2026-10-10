@@ -13,6 +13,7 @@ export default function TaskDialog({
   onClose,
   onSave,
 }) {
+  const isSubtask = Boolean(task?.parentTask);
   const ref = useRef(null);
   const [busy, setBusy] = useState(false);
   const [title, setTitle] = useState(task?.title ?? '');
@@ -24,7 +25,7 @@ export default function TaskDialog({
   const [links, setLinks] = useState(task?.links ?? []);
   const [status, setStatus] = useState(task?.status || 'todo');
   const [blockerReason, setBlockerReason] = useState(task?.blockerReason ?? '');
-  useModal(ref);
+  useModal(ref, { retainParent: isSubtask });
   function applyTemplate() {
     if (!template) return;
     if (
@@ -46,6 +47,7 @@ export default function TaskDialog({
     const data = Object.fromEntries(new FormData(event.currentTarget));
     data.title = data.title.trim();
     data.project = data.project.trim();
+    if (isSubtask) data.recurrence = 'none';
     data.description = data.description.trim();
     data.notes = data.notes.trim();
     data.estimateMinutes = Number(data.estimateMinutes);
@@ -175,7 +177,7 @@ export default function TaskDialog({
             required
             maxLength={60}
             defaultValue={task?.project}
-            readOnly={lockedProject}
+            readOnly={lockedProject || isSubtask}
             disabled={busy}
             placeholder="e.g. Website launch"
           />
@@ -283,11 +285,13 @@ export default function TaskDialog({
             defaultValue={task?.recurrence ?? 'none'}
             disabled={busy}
           >
-            {Object.entries(recurrenceLabels).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
+            {Object.entries(recurrenceLabels)
+              .filter(([value]) => !isSubtask || value === 'none')
+              .map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
           </select>
           <span className="small muted">
             Completing this task keeps it as history and creates the next occurrence from

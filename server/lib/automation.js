@@ -1,6 +1,7 @@
 import { Task } from '../models/Task.js';
 import { Project } from '../models/Project.js';
 import { User } from '../models/User.js';
+import { taskActivity, appendActivity } from './taskActivity.js';
 export async function runProjectRules(
   project,
   date = new Date().toISOString().slice(0, 10),
@@ -33,7 +34,12 @@ export async function runProjectRules(
       priority: { $ne: 'high' },
       due: { $gt: '', $lt: date },
     },
-    { $set: { priority: 'high' } },
+    {
+      $set: { priority: 'high' },
+      $push: appendActivity(
+        taskActivity(null, 'Elevated overdue priority', ['priority']),
+      ),
+    },
   );
   await Project.updateOne(
     { _id: project._id },

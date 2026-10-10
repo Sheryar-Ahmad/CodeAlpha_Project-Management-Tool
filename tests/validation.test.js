@@ -239,6 +239,9 @@ test('exports allowlist task data and strip internal fields at every nesting lev
     [
       {
         id: 'export-1',
+        parentTask: 'parent-1',
+        activity: [{ name: 'Private actor' }],
+        subtaskPending: { draft: 'Private draft' },
         title: 'My task',
         project: 'Home',
         lifecycle: 'archived',
@@ -259,6 +262,9 @@ test('exports allowlist task data and strip internal fields at every nesting lev
   assert.equal(data.format, 'orbit-task-export');
   assert.equal(data.tasks[0].lifecycle, 'archived');
   assert.equal(data.tasks[0].notes, 'My notes');
+  assert.equal(data.tasks[0].parentTask, 'parent-1');
+  assert.equal(data.tasks[0].activity, undefined);
+  assert.equal(data.tasks[0].subtaskPending, undefined);
   assert.equal(data.tasks[0].owner, undefined);
   assert.equal(data.tasks[0].passwordHash, undefined);
   assert.deepEqual(data.tasks[0].links, [

@@ -2,6 +2,7 @@ import { ensurePrivateProject } from './projects.js';
 import { randomUUID } from 'node:crypto';
 import { nextRecurringDraft } from '../../shared/recurrence.js';
 import { Task } from '../models/Task.js';
+import { taskActivity } from './taskActivity.js';
 
 export async function ensureNextOccurrence(task) {
   // A deliberately deleted successor must not reappear on a completion retry.
@@ -18,7 +19,13 @@ export async function ensureNextOccurrence(task) {
   try {
     nextTask = await Task.findOneAndUpdate(
       filter,
-      { $setOnInsert: { ...draft, owner: task.owner } },
+      {
+        $setOnInsert: {
+          ...draft,
+          owner: task.owner,
+          activity: [taskActivity(null, 'Created recurring occurrence')],
+        },
+      },
       { upsert: true, returnDocument: 'after', runValidators: true },
     ).lean();
   } catch (error) {

@@ -62,7 +62,7 @@ export default function TaskImportDialog({ user, onClose, onImported, onExpired 
     if (
       !frozen &&
       !window.confirm(
-        'Import these tasks into a new private project? Existing work stays saved.',
+        'Import these tasks into a new private project? Subtasks become independent tasks. Existing work stays saved.',
       )
     )
       return;

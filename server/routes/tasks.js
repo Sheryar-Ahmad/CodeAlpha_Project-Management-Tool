@@ -35,6 +35,7 @@ const serialize = (task) => ({
   notes: task.notes ?? '',
   links: (task.links ?? []).map(({ label, url }) => ({ label, url })),
   priority: task.priority,
+  estimateMinutes: task.estimateMinutes ?? 0,
   status: task.status,
   blockerReason: task.blockerReason ?? '',
   due: task.due,

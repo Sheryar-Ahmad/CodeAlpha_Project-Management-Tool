@@ -12,11 +12,11 @@ Orbit already has private accounts, a task board, priorities, deadlines, search,
 
 Important distinctions:
 
-- Private project records now hold a brief, dates, and planning status. New tasks also have stable private project references; older groups can be connected explicitly. Shared project membership is not implemented.
+- Private project records now hold a brief, dates, and planning status. New tasks also have stable private project references; older groups can be connected explicitly. Accepted memberships, assignments and shared tasks are implemented.
 - A checklist step is not an independently assigned subtask.
 - The focus timer is separate from persisted manual work logs and weekly timesheets. Neither proves billable hours or available capacity.
 - A progress percentage is a completed-task ratio, not a delivery forecast.
-- Ownership protects each account's records; it does not implement team roles.
+- Ownership protects private records; shared project routes enforce owner/member/guest roles.
 
 ## Compact additions worth prioritizing
 
@@ -89,7 +89,7 @@ The proposal, excluding AI assistance at the user's request, is authorized for i
 | 3. Dependencies                                                        | Implemented: scoped prerequisite links, whole-graph cycle checks and safe concurrent mutations; automatic scheduling pending                                                                                                        |
 | 4. Milestones                                                          | Implemented: private project checkpoints with dates and completion                                                                                                                                                                  |
 | 5. Useful dashboard                                                    | Personal overview and shared project counters implemented; cross-team reporting pending                                                                                                                                             |
-| 6. Workload and capacity                                               | Pending                                                                                                                                                                                                                             |
+| 6. Workload and capacity                                               | Implemented: task estimates, weekly project capacity, due/overdue workload, undated and unestimated warnings                                                                                                                        |
 | 7. Time tracking                                                       | Local focus timer and persisted manual work logs/weekly timesheets implemented; billing integrations pending                                                                                                                        |
 | 8. Notifications and digest                                            | In-app invitations and bounded pending-review inbox implemented; email/push delivery and digests pending                                                                                                                            |
 | 9. Contextual team communication                                       | Implemented: paginated task discussion, safe text and owner moderation; mentions/live sockets pending                                                                                                                               |

@@ -2187,3 +2187,120 @@ test('guest portal allowlists project summaries and rejects team reads, mutation
     .expect(204);
   await guest.get(base + '/guest').expect(404);
 });
+
+test('workload measures scoped due estimates and enforces per-week capacity permissions', async () => {
+  await RateBucket.deleteMany({ key: /^(api|auth):/ });
+  const owner = request.agent(app),
+    member = request.agent(app),
+    outsider = request.agent(app);
+  const users = [];
+  for (const [agent, email] of [
+    [owner, 'capacity-owner@example.com'],
+    [member, 'capacity-member@example.com'],
+    [outsider, 'capacity-other@example.com'],
+  ])
+    users.push(
+      (
+        await agent
+          .post('/api/auth/register')
+          .set('Origin', origin)
+          .send({
+            name: email.split('@')[0],
+            email,
+            password: 'capacity-test-passphrase',
+          })
+          .expect(201)
+      ).body.user,
+    );
+  const task = (
+    await owner
+      .post('/api/tasks')
+      .set('Origin', origin)
+      .send({
+        title: 'Estimated overdue',
+        project: 'Capacity project',
+        due: '2026-10-01',
+        estimateMinutes: 90,
+      })
+      .expect(201)
+  ).body.task;
+  const base = '/api/projects/' + task.projectId;
+  await owner
+    .post(base + '/members')
+    .set('Origin', origin)
+    .send({ email: users[1].email })
+    .expect(201);
+  const invitation = (await member.get('/api/teams').expect(200)).body.invitations[0];
+  await member
+    .patch('/api/teams/invitations/' + invitation.id)
+    .set('Origin', origin)
+    .send({ action: 'accept' })
+    .expect(204);
+  for (const body of [
+    { title: 'Missing estimate', due: '2026-10-09' },
+    { title: 'Undated', estimateMinutes: 45 },
+    { title: 'Future', due: '2026-10-19', estimateMinutes: 120 },
+    { title: 'Completed', due: '2026-10-09', status: 'done', estimateMinutes: 60 },
+  ])
+    await owner
+      .post(base + '/tasks')
+      .set('Origin', origin)
+      .send({ project: 'Capacity project', ...body })
+      .expect(201);
+  await owner
+    .patch(base + '/collaboration/' + task.id + '/assignee')
+    .set('Origin', origin)
+    .send({ assignee: users[1].id })
+    .expect(200);
+  const endpoint = base + '/workload';
+  await outsider.get(endpoint + '?date=2026-10-10').expect(404);
+  await member
+    .patch(endpoint + '/capacity')
+    .set('Origin', origin)
+    .send({ date: '2026-10-10', user: users[0].id, minutes: 120 })
+    .expect(403);
+  await member
+    .patch(endpoint + '/capacity')
+    .set('Origin', origin)
+    .send({ date: '2026-10-10', user: users[1].id, minutes: 0 })
+    .expect(204);
+  var report = (await owner.get(endpoint + '?date=2026-10-10').expect(200)).body;
+  assert.deepEqual(report.week, { start: '2026-10-05', end: '2026-10-11' });
+  const row = report.rows.find((item) => item.id === users[1].id);
+  assert.equal(row.minutes, 90);
+  assert.equal(row.capacity, 0);
+  assert.equal(row.tasks, 1);
+  assert.equal(report.unassigned.tasks, 1);
+  assert.equal(report.unassigned.unestimated, 1);
+  assert.equal(report.unassigned.undated, 1);
+  await member
+    .patch(endpoint + '/capacity')
+    .set('Origin', origin)
+    .send({ date: '2026-10-06', user: users[1].id, minutes: null })
+    .expect(204);
+  assert.equal(
+    (await owner.get(endpoint + '?date=2026-10-10').expect(200)).body.rows.find(
+      (item) => item.id === users[1].id,
+    ).capacity,
+    null,
+  );
+  await owner.get(endpoint + '?date=2026-02-30').expect(400);
+  await owner
+    .patch(base + '/tasks/' + task.id)
+    .set('Origin', origin)
+    .send({ estimateMinutes: -1 })
+    .expect(400);
+  assert.equal(
+    (await owner.get('/api/tasks/export').expect(200)).body.tasks.find(
+      (item) => item.id === task.id,
+    ).estimateMinutes,
+    90,
+  );
+  await owner
+    .delete(base + '/members/' + invitation.id)
+    .set('Origin', origin)
+    .expect(204);
+  await member.get(endpoint + '?date=2026-10-10').expect(404);
+  report = (await owner.get(endpoint + '?date=2026-10-10').expect(200)).body;
+  assert.equal(report.otherAssignments.minutes, 90);
+});

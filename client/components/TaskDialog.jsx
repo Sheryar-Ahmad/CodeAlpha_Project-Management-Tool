@@ -48,6 +48,7 @@ export default function TaskDialog({
     data.project = data.project.trim();
     data.description = data.description.trim();
     data.notes = data.notes.trim();
+    data.estimateMinutes = Number(data.estimateMinutes);
     if (data.recurrence !== 'none' && !data.due) {
       setError('Repeating tasks need a due date.');
       return;
@@ -222,6 +223,23 @@ export default function TaskDialog({
             />
           </label>
         </div>
+        <label>
+          Estimated work (minutes)
+          <input
+            name="estimateMinutes"
+            aria-label="Estimated work (minutes)"
+            type="number"
+            min="0"
+            max="60000"
+            step="1"
+            defaultValue={task?.estimateMinutes || ''}
+            disabled={busy}
+          />
+          <span className="small muted">
+            Leave blank for unestimated work. This is a planning estimate, not recorded
+            time.
+          </span>
+        </label>
         <label>
           Status
           <select

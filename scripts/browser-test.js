@@ -1971,6 +1971,22 @@ try {
       memberId,
     );
 
+    await memberPage.getByRole('button', { name: 'Workload', exact: true }).click();
+    await memberPage
+      .getByRole('heading', { name: 'Plan a manageable week', exact: true })
+      .waitFor();
+    await memberPage.getByLabel('Capacity for Omar', { exact: true }).fill('240');
+    await memberPage.getByRole('button', { name: 'Save capacity', exact: true }).click();
+    await memberPage
+      .getByText('Capacity saved for this project and week.', { exact: true })
+      .waitFor();
+    await memberPage
+      .getByRole('button', { name: 'Refresh workload', exact: true })
+      .click();
+    assert.equal(
+      await memberPage.getByLabel('Capacity for Omar', { exact: true }).inputValue(),
+      '240',
+    );
     await memberPage.getByRole('button', { name: 'Dependencies', exact: true }).click();
     await memberPage
       .getByLabel('Finish this first', { exact: true })
@@ -2015,6 +2031,7 @@ try {
     for (const [tab, heading] of [
       ['Shared tasks', 'Shared project tasks'],
       ['Dependencies', 'What needs to happen first?'],
+      ['Workload', 'Plan a manageable week'],
       ['Reviews', 'Review requests'],
       ['Work requests', 'Propose a next step'],
     ]) {

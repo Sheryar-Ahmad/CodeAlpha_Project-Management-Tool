@@ -1,6 +1,7 @@
 import GuestPortal from './GuestPortal.jsx';
 import ProjectRequests from './ProjectRequests.jsx';
 import ProjectDependencies from './ProjectDependencies.jsx';
+import ProjectWorkload from './ProjectWorkload.jsx';
 import ProjectReviews from './ProjectReviews.jsx';
 import TaskDiscussion from './TaskDiscussion.jsx';
 import { useEffect, useRef, useState } from 'react';
@@ -122,7 +123,6 @@ export default function TeamWorkspace({ demo, onExpired }) {
             setOverview(null);
             setDialog(null);
             setNotebook(false);
-            setDiscussion(null);
             setDiscussion(null);
           }
         }
@@ -443,6 +443,7 @@ export default function TeamWorkspace({ demo, onExpired }) {
           {[
             ['tasks', 'Shared tasks'],
             ['dependencies', 'Dependencies'],
+            ['workload', 'Workload'],
             ['reviews', 'Reviews'],
             ['requests', 'Work requests'],
           ].map(([value, label]) => (
@@ -657,6 +658,9 @@ export default function TeamWorkspace({ demo, onExpired }) {
             </nav>
           )}
         </section>
+      )}
+      {project && directory && panel === 'workload' && (
+        <ProjectWorkload key={project.id} project={project} onExpired={onExpired} />
       )}
       {project && directory && panel === 'dependencies' && (
         <ProjectDependencies

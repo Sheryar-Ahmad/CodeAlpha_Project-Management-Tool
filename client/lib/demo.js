@@ -99,6 +99,10 @@ function isTask(task) {
             link.url.length <= 2048 &&
             validResourceUrl(link.url),
         ))) &&
+    (task.estimateMinutes === undefined ||
+      (Number.isInteger(task.estimateMinutes) &&
+        task.estimateMinutes >= 0 &&
+        task.estimateMinutes <= 60000)) &&
     Object.hasOwn(taskStatuses, task.status) &&
     (task.blockerReason === undefined ||
       (typeof task.blockerReason === 'string' && task.blockerReason.length <= 500)) &&

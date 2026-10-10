@@ -1,3 +1,4 @@
+import { workloadRouter } from './workload.js';
 import { guestPortalRouter } from './guestPortal.js';
 import { workRequestRouter } from './workRequests.js';
 import { dependencyRouter } from './dependencies.js';
@@ -16,6 +17,7 @@ import { parse, projectSchema, projectUpdateSchema } from '../lib/validation.js'
 export const projectRouter = Router();
 projectRouter.use(requireAuth);
 projectRouter.use('/:id/guest', guestPortalRouter);
+projectRouter.use('/:id/workload', workloadRouter);
 projectRouter.use('/:id/members', memberRouter);
 projectRouter.use('/:id/collaboration', collaborationRouter);
 projectRouter.use('/:id/reviews', reviewRouter);

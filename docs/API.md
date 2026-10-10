@@ -154,3 +154,9 @@ GET /projects/:id/requests supports page and pending/accepted/declined/cancelled
 ## Guest portal
 
 Owner invitations accept role=member (default) or guest. A guest must accept the invitation through their own account. GET /projects/:id/guest returns project name/brief/status/dates/milestones and 30 active task summaries per page, searchable by literal title. Task fields are limited to ID/title/description/priority/status/due. Guests cannot access team tasks, notes, discussions, reviews, request intake, dependencies, directories, assignments, exports, or mutations. Pending/removed guests receive 404. Guest accounts have their own separate personal workspace.
+
+### Weekly project workload
+
+- `GET /api/projects/:id/workload?date=YYYY-MM-DD`: Monday–Sunday totals of unfinished active tasks due through Sunday, including overdue carry-in. Undated tasks are separate; completed/archived/trashed/future tasks are excluded. Estimates use `estimateMinutes` (0 means missing).
+- `PATCH /api/projects/:id/workload/capacity`: `{ date, user, minutes }` where minutes is 0–10080 or null to clear. Owners may edit eligible teammates; members edit themselves. Each budget applies only to this project and week. Guests cannot access either route.
+- Up to 100 active teammates plus the owner are named; other/former assignments are grouped, not leaked through private user lookups. Private work logs are never read.

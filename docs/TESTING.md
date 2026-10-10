@@ -160,3 +160,5 @@ Dependency checks cover direct/indirect cycles, same-task and foreign-task rejec
 Work requests: use a member account to submit a proposal, confirm only owners can triage, accept into the shared board, reload, and verify exactly one task. Decline another with an explanation; cancel a pending request as its requester. API tests cover concurrent acceptance, acceptance-vs-cancel, field injection, removed users, and repair of an interrupted accepting record. Tool tabs keep tasks, dependencies, reviews, and requests separate; test each at mobile widths.
 
 Guest checks: invite as Guest, accept with a separate account, verify the read-only project brief and active tasks, search literal brackets, and remove access. API tests verify omitted task notes/links/ownership, blocked team endpoints, assignment/reviewer exclusion, mutation denial and revoked membership. Browser coverage includes guest widths 320–1440px.
+
+Workload regression checks due/overdue estimates, unestimated and undated work, omitted future/completed work, zero versus unset capacity, member/owner authorization, revocation and export. Chromium verifies capacity save/refresh and 320–1440px layouts.

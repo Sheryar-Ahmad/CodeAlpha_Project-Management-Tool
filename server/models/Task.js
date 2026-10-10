@@ -54,6 +54,13 @@ const schema = new mongoose.Schema(
         return this.status === 'blocked';
       },
     },
+    estimateMinutes: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 60000,
+      validate: Number.isInteger,
+    },
     due: { type: String, default: '', validate: validDate },
     recurrence: {
       type: String,

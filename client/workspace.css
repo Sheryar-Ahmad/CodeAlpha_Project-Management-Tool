@@ -1901,3 +1901,26 @@ textarea:disabled {
   background: white;
   color: inherit;
 }
+
+.workload-list {
+  list-style: none;
+  padding: 0;
+}
+.workload-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 280px);
+  gap: 1.5rem;
+  padding: 1.25rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.workload-row form {
+  min-width: 0;
+}
+.workload-row h3 {
+  margin-top: 0;
+}
+@media (max-width: 600px) {
+  .workload-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

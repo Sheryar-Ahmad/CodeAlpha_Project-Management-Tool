@@ -19,7 +19,7 @@ The local demo uses a different adapter. It never sends demo tasks to the accoun
 
 **Cookie sessions:** the browser keeps an HTTP-only token, while MongoDB stores its SHA-256 digest. JavaScript cannot read the cookie. Authentication is checked on every protected request, including expiry even before MongoDB’s TTL cleanup.
 
-**Password hashing:** Node’s scrypt derives a salted password hash. Plaintext passwords are never persisted. Reset and email verification are not implemented yet.
+**Password hashing:** Node's scrypt derives a salted password hash. Plaintext passwords are never persisted. One-time recovery codes support password resets, and session versions invalidate old sessions after password changes. Email-based recovery and verification are not implemented yet.
 
 **PATCH validation:** create defaults must not be applied to partial updates. Changing a status should not clear a description or replace priority.
 
@@ -45,7 +45,7 @@ The local demo uses a different adapter. It never sends demo tasks to the accoun
 
 ## Current scope
 
-Projects are task group labels, not separate project entities. There are no memberships, invitations, roles, shared boards, or real-time synchronization in this milestone. Those require separate authorization rules and tests.
+Projects are separate records with stable task references, dates, milestones and planning status. Shared projects use explicit invitations and owner/member/guest permissions. Accepted members can collaborate through project-scoped routes; guests use a restricted read-only portal. Team views refresh through polling, rather than live sockets. Checklists remain embedded steps; independently assigned subtasks are pending.
 
 ## Task lifecycle
 

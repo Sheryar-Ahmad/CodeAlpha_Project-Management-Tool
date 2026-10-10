@@ -319,20 +319,20 @@ There is no background scheduler or automatic catch-up. An overdue completion st
 
 Use **Export tasks** in the workspace footer to download a JSON file containing your task content, including Archive and Trash. Current search/project filters do not restrict the export. Account exports support up to 1,000 tasks and five requests per hour; an oversized account receives an explicit error instead of a partial file. The local demo supports up to 500 tasks.
 
-The file contains your written task data, so keep it private. It excludes passwords, session tokens, and database credentials. Importing an export is a future feature; the download is not a complete database backup. Project metadata, milestones, notebook entries, and work logs are not included in this task-only export.
+The file contains your written task data, so keep it private. It excludes passwords, session tokens, and database credentials. Validated imports restore task exports into a new owned project; the download is not a complete database backup. Project metadata, milestones, notebook entries, and work logs are not included in this task-only export.
 
 ## Next milestones
 
-Current work is kept locally without committing or pushing each milestone, as requested. We will commit and push the reviewed changes together.
+Verified milestones are committed and pushed individually, following the latest project instruction. The saved baseline tag remains unchanged.
 
 AI assistance is excluded from the project scope. The remaining roadmap focuses on ordinary MERN workflows, collaboration, planning, and integrations.
 
-See [the product direction review](docs/PRODUCT_DIRECTION.md) for which proposed features fit this release and which require a shared-project architecture first.
+See [the delivery tracker](docs/PRODUCT_DIRECTION.md) for implemented capabilities, their limits, and remaining work.
 
 - [x] Recurring tasks with completion-driven scheduling rules
 - [x] Task notes and useful resource links
 - [x] Private task export
-- [ ] Validated import for task recovery
+- [x] Validated import for task recovery
 - [x] Private project records with briefs, dates, and planning status
 - [x] Stable task-to-project references and explicit legacy linking
 - [x] Deadline calendar, recorded project timeline, and Action Center
@@ -340,9 +340,14 @@ See [the product direction review](docs/PRODUCT_DIRECTION.md) for which proposed
 - [x] Project notebook, decisions, and meeting follow-ups
 - [x] Persisted manual work logs and weekly timesheets
 - [x] Keyboard command bar and full-board task search
-- [ ] Shared workspace memberships
-- [ ] Invitations and role-based authorization
-- [ ] Email verification, password reset, and account deletion
+- [x] Shared project memberships
+- [x] Invitations and owner/member/guest authorization
+- [x] Recovery-code password reset, password changes, and account deletion
+- [x] Portfolio, work digest, and targeted discussion notifications
+- [x] Optional public work requests and resource-link reviews
+- [ ] Independent assigned subtasks
+- [ ] Email verification and email-based recovery/delivery
+- [ ] Live Google Calendar OAuth integration
 - [ ] Activity history and optional live task updates
 - [ ] Accessibility audit and measured production performance
 - [ ] Live deployment link and LinkedIn walkthrough

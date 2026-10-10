@@ -58,3 +58,35 @@ Transitions use one owner-scoped conditional update that includes the expected s
 Pure calendar functions live in shared/recurrence.js so the API and demo calculate the same dates. Monthly tasks retain an anchor day rather than drifting from January 31 to March 28. The next occurrence has independent checklist IDs and preserves the previous completed record.
 
 MongoDB uses a unique sparse repeatSource index and upsert to ensure one successor. The source also stores repeatNext to remember intentionally removed successors. Completion, successor creation, and the marker update are separate writes for compatibility with local standalone MongoDB. If a database failure interrupts this sequence, retrying the explicit Done update repairs the successor/marker without resetting completed history. This is not an all-or-nothing multi-document transaction.
+
+## Private project records: first foundation milestone
+
+Project documents store owner, exact name, description, start/target dates, and planning status. A unique owner/name index prevents duplicate records while letting separate accounts choose the same name. Partial updates never apply creation defaults, and both dates are validated together. The client combines metadata with existing task-group summaries; records with no tasks receive zero totals rather than NaN progress.
+
+Tasks still group by owner plus exact name; names cannot be renamed in this step. This deliberately avoids automatic database migration or exposure to other users. New tasks now receive stable project references, and explicit legacy linking is implemented. Invitations and membership authorization are implemented through explicit shared routes. The demo keeps project details under orbit.projects.v1, validates them on read/write, and resets them alongside sample tasks.
+
+## Incremental private foundation
+
+ensurePrivateProject uses the unique owner/name index to make new task references stable even during concurrent creation. Project IDs are server-managed; ownership is verified before project resolution on task edits. Legacy linking is an explicit owner-scoped update across active/archive/trash, preserving all fields and existing references. Project resolution and task writes remain separate for standalone MongoDB support; an interrupted task write can leave an empty project record, without destructive rollback. Names and label summaries stay fixed during this transition.
+
+## Calendar, attention, and notebooks
+
+Calendar dates use date strings and UTC arithmetic; monthly reads are independent of the board page and capped with explicit overflow. Action Center eligibility is shared with the demo, and API search conditions are ANDed with eligibility. Milestones are small embedded project checkpoints; health checks explain concrete flags and do not forecast delivery. The command bar navigates existing views/projects and delegates task search to the full paginated board.
+
+Notebook entries live in a separate owner/project-indexed collection, loaded only when opened, 20 per page. Every route verifies the private parent project. Decision and meeting entries are plain text and editable. Follow-up tasks are explicit drafts. Work logs use a separate owner/date-indexed collection with bounded weekly reads and derived totals; they do not automatically trust timer sessions or calculate capacity/billing. Demo notebooks and work logs have validated separate browser keys and reset with the demo.
+
+All native dialogs share focus restoration that survives React Strict Mode and dialog hand-offs. Command shortcuts do not open over another active form. Shared project routes require accepted membership in addition to these stable IDs.
+
+**Project timeline:** the same private project records can be viewed as cards or monthly date spans. Missing start/target dates are never inferred; a single date is a checkpoint, off-month spans are identified, and overlapping ranges are clipped to the selected month. It is a recorded-date comparison, not a dependency planner or automatic rescheduler.
+
+## Explicit project sharing
+
+ProjectMember has a unique project/user pair and invited/active/declined/revoked states. Acceptance is an atomic expected-state update by the recipient. Owners alone invite/revoke. Invitation retries cannot create duplicate pairs. Shared requests re-check the project and current membership; an already-authorized request may finish concurrently with removal.
+
+taskScope supplies either the private session owner or the shared project's owner plus project ID. The existing task router is reused under /projects/:id/tasks with that trusted context; client owner/projectId injection remains rejected. Shared edits cannot move tasks to another project. Project metadata and legacy linking stay owner-only. The private owner can move a task out of a shared project, clearing its old assignment.
+
+Notebook visibility defaults to private, including legacy records. Team notes use separate endpoints and visibility=team; members edit their own notes, owners moderate all. Task discussions are paginated, plain text, and author-or-owner deleted. Reads always verify the parent task and membership. Permanent task deletion removes its comments separately; interrupted cleanup can leave inaccessible orphan comments, without exposing them.
+
+Assignments require an active task and owner/accepted assignee. Removal preserves historical work; stale assignments appear as Former member and can be cleared/reassigned. Checks and writes are separate documents for standalone MongoDB, so concurrent removal can leave a stale assignment that never grants access.
+
+TaskReview stores a captured title/description, requester, designated reviewer, message and one terminal decision. A partial unique index allows one pending request per task/reviewer. Decisions include expected pending status and actor authorization. Reviews approve the captured brief, never current mutable task state or files. History remains project-scoped after task deletion. The derived review inbox only includes currently accessible projects; it sends no external notifications.

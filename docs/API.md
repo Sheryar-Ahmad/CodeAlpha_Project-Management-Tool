@@ -89,3 +89,56 @@ recurrence defaults to none and accepts none, daily, weekly, monthly. A repeatin
 Creating a Done repeating task or explicitly PATCHing status=done ensures one next occurrence and may return nextTask alongside task. The next task retains context, starts To do, and uses fresh unchecked steps. Its unique source index prevents completion retries/concurrent requests from creating duplicate successors. A completed source retains a successor marker so deleting that successor deliberately does not recreate it on a later retry.
 
 Monthly calculations preserve the original day through short months; an explicitly changed due date establishes a new anchor. Scheduling advances by one interval from the previous due date, including overdue dates. No background worker creates missed occurrences, and recurrence stops at the supported date limit (2100-12-31).
+
+## Private project records
+
+GET /projects lists up to 1,000 owned project records, sorted by exact name, with hasMore if further records exist. POST /projects creates one with name (trimmed 1–60 characters), description (up to 1,000), optional startDate/targetDate (real calendar dates in the supported range), and status (planned, active, onhold, completed). Target cannot precede start. Duplicate exact names in one account return 409; separate accounts can use identical names.
+
+PATCH /projects/:id edits description, dates, status, or milestones, retaining omitted fields. Names are immutable in this first milestone because task grouping still uses exact labels. Changing either date requires both fields in that request so the range is validated as one update. Owner/unknown fields are rejected, all reads/writes are owner-scoped, and mutations require the trusted origin. This endpoint does not share projects or rewrite existing tasks.
+
+Project planning status is manually selected and does not mark tasks Done. Empty records appear in the client with zero task completion. Existing label groups can gain project details without data migration. Project metadata is not included in the current task-only export.
+
+## Calendar and Action Center
+
+GET /tasks/calendar?month=YYYY-MM&project=label returns active tasks due in the whole month, including Done tasks. The client hides completed work by default. It is independent of board pagination, sorted by date/ID, owner-scoped and capped at 1,000 with truncated=true for overflow. Missing/invalid months and unknown query fields return 400. Undated, archived, and trashed tasks are excluded.
+
+GET /tasks?view=attention&date=YYYY-MM-DD uses the normal pagination, search, and project filter. It includes unfinished active tasks that are blocked, high priority, overdue, or due within three calendar days. Search and attention conditions are combined; an overlapping task appears once.
+
+## Milestones and stable project references
+
+Project create/full edit supports milestones: up to 20 unique {id,title,due,done} records, title up to 120, optional valid date, Boolean completion. Omitted PATCH milestones are preserved. Health is derived by the client and is not a stored forecast.
+
+New task creation/project-label edits resolve an owner/name project record and store its stable projectId; this field is server-managed and rejected in task payloads. Recurring successors retain the reference. Existing records without it remain readable. PATCH /projects/:id/link-tasks with an empty payload connects only matching owner/name tasks without a reference, across all lifecycle states. It returns {linked}, is idempotent, never renames/reassigns records, and does not grant shared access.
+
+## Project notebook
+
+GET /projects/:id/notes?page=1&kind=decision lists 20 entries, sorted by update time/ID, with hasMore. Kind can be empty, note, decision, or meeting. Every operation checks ownership of the parent project and the entry. POST creates; PATCH /projects/:id/notes/:noteId replaces kind/title/body/date; DELETE permanently removes the owned entry. Payloads are strict: title 1–120, body 1–3,000, kind enum, nonempty valid date. Returned fields exclude owner/project references. Entries are editable and do not constitute an immutable audit log. Meeting follow-ups open an ordinary editable task draft; no automatic task or email is created.
+
+## Manual work logs
+
+GET /work-logs?date=YYYY-MM-DD&project=label returns logs for the Monday–Sunday week containing that date, plus range and truncated. It caps results at 1,000; client totals are explicitly partial on overflow. POST creates; PATCH /work-logs/:id replaces validated fields; DELETE permanently removes the owned log. Fields: activity 1–120, project label 1–60, valid nonempty date, integer minutes 1–1,440, optional notes up to 500. No owner or arbitrary query operators are accepted. Entries are manual, may overlap, and are independent of task completion/focus timers. Notebook entries, work logs, and project metadata are not part of the current task export.
+
+## Team projects and permissions
+
+All routes below require a session and trusted mutation origin.
+
+| Endpoint                                                       | Behavior                                                                                      |
+| -------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| GET /teams                                                     | Owned/accepted project list, recipient invitations, pending review inbox; explicit truncation |
+| PATCH /teams/invitations/:id                                   | {action: accept or decline}; recipient and invited state required                             |
+| GET /projects/:id/members                                      | Owner/accepted member directory; names only                                                   |
+| POST /projects/:id/members                                     | Owner-only {email}; existing account, not the owner                                           |
+| DELETE /projects/:id/members/:membershipId                     | Owner-only cancellation/revocation; preserves work                                            |
+| /projects/:id/tasks                                            | Same task CRUD/calendar/overview/export/lifecycle routes, bounded to connected project tasks  |
+| /projects/:id/team-notes                                       | Notebook CRUD with shared visibility; member edits own entries, owner manages all             |
+| PATCH /projects/:id/collaboration/:taskId/assignee             | {assignee: account ID or null}; accepted member/owner on active task                          |
+| GET /projects/:id/collaboration/:taskId/comments               | page-based comments, 20 per page                                                              |
+| POST /projects/:id/collaboration/:taskId/comments              | {body}; plain text, 1–2000 characters, active task                                            |
+| DELETE /projects/:id/collaboration/:taskId/comments/:commentId | Author or owner moderation                                                                    |
+| GET /projects/:id/reviews                                      | page and status filters, 20 per page; pending/approved/changes/cancelled                      |
+| POST /projects/:id/reviews                                     | {task,reviewer,message}; active connected task, another accepted member or owner              |
+| PATCH /projects/:id/reviews/:reviewId                          | {action: approve, changes, or cancel; response}; changes require explanation                  |
+
+Shared task lists accept assigned=me (or empty) to filter the session user's assignments. Private lists still return only owned tasks. Shared tasks cannot change project labels, and only owners permanently delete them. Pending/declined/revoked members and outsiders receive 404 for shared reads/writes. Shared access never grants private notebooks, work logs, project administration, or unrelated task access.
+
+Review requests capture title and description at creation, not a full task/file snapshot. Only the designated reviewer decides; the requester or owner can cancel pending requests. A second decision returns 409; duplicate pending requests return 409. History does not change task status and remains project-scoped after task deletion. Invitations and review inbox entries are in-app; no email provider is invoked.

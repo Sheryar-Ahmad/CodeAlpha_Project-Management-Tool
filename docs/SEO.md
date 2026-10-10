@@ -45,3 +45,5 @@ The supplied SEO checklist is tracked here; inapplicable features should not be 
 - [Google SEO starter guide](https://developers.google.com/search/docs/fundamentals/seo-starter-guide)
 - [Canonical URL guidance](https://developers.google.com/search/docs/crawling-indexing/consolidate-duplicate-urls)
 - [Sitemap guidance](https://developers.google.com/search/docs/crawling-indexing/sitemaps/build-sitemap)
+
+The public landing page describes the implemented calendar, Action Center, project milestones/timeline, notebook decisions/meeting follow-ups, recurring work and manual weekly logs. Private workspace records remain behind authentication or local demo storage, and app.html remains noindex. Public copy must not advertise team sharing or external integrations before they work.

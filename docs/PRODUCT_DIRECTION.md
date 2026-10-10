@@ -12,9 +12,9 @@ Orbit already has private accounts, a task board, priorities, deadlines, search,
 
 Important distinctions:
 
-- A project label is not a shared project entity.
+- Private project records now hold a brief, dates, and planning status. New tasks also have stable private project references; older groups can be connected explicitly. Shared project membership is not implemented.
 - A checklist step is not an independently assigned subtask.
-- The focus timer is not billable time tracking or a timesheet.
+- The focus timer is separate from persisted manual work logs and weekly timesheets. Neither proves billable hours or available capacity.
 - A progress percentage is a completed-task ratio, not a delivery forecast.
 - Ownership protects each account's records; it does not implement team roles.
 
@@ -40,7 +40,7 @@ Recurring scheduling needs decisions about timezone, missed runs, end-of-month d
 
 Shared projects require explicit agreement before implementation:
 
-1. Replace label-only groups with project records and migrate existing tasks safely.
+1. Private project records are implemented. Stable task references and explicit legacy linking are implemented. Next define membership authorization before sharing.
 2. Define workspace/project memberships and server-side authorization for every read/write.
 3. Decide invitation, revocation, and role rules.
 4. Add owner/member isolation tests before exposing shared content.
@@ -80,37 +80,45 @@ Before shipping another feature, name the problem, define the smallest useful wo
 
 ## Authorized expansion and delivery tracking
 
-The proposal, excluding AI assistance at the user's request, is authorized for incremental implementation after the saved baseline `orbit-snapshot-2026-10-09`. Each milestone must remain usable, validated, tested, and committed before the next. Integrations requiring external accounts will be identified explicitly.
+The proposal, excluding AI assistance at the user's request, is authorized for incremental implementation after the saved baseline `orbit-snapshot-2026-10-09`. Each milestone must remain usable, validated, and tested. Per the latest user instruction on October 10, push verified work in meaningful feature commits. Keep the saved baseline tag unchanged. Integrations requiring external accounts will be identified explicitly.
 
-| Proposal area                                                          | Current delivery status                                                                               |
-| ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| 1. Workspaces, projects, tasks, ownership, subtasks, context, recovery | Personal task foundation and context implemented; recovery implemented; team/project entities pending |
-| 2. Multiple views / My Work                                            | Board, list, Today, Upcoming implemented; calendar/timeline pending                                   |
-| 3. Dependencies                                                        | Pending                                                                                               |
-| 4. Milestones                                                          | Pending                                                                                               |
-| 5. Useful dashboard                                                    | Personal overview implemented; team reporting pending                                                 |
-| 6. Workload and capacity                                               | Pending                                                                                               |
-| 7. Time tracking                                                       | Local focus timer implemented; persisted work logs/timesheets pending                                 |
-| 8. Notifications and digest                                            | Pending                                                                                               |
-| 9. Contextual team communication                                       | Pending                                                                                               |
-| 10. Approvals                                                          | Pending                                                                                               |
-| 11. Blockers                                                           | Implemented: required reasons, dedicated view, and project counts                                     |
-| 12. Project health                                                     | Pending                                                                                               |
-| 13. Roles and permissions                                              | Private owner-scoped accounts implemented; team roles pending                                         |
-| 14. Guest/client portal                                                | Pending                                                                                               |
-| 15. Project templates                                                  | Curated task/checklist starters implemented; multi-task project templates pending                     |
-| 16. Recurring tasks                                                    | Implemented: daily/weekly/monthly next occurrence on completion; no background scheduler              |
-| 17. Forms / work requests                                              | Pending                                                                                               |
-| 18. Automation                                                         | Pending                                                                                               |
-| 19. Integrations                                                       | Pending; provider configuration required for live connections                                         |
-| 20. Command bar / global search                                        | Task search implemented; command bar pending                                                          |
-| 21. Team directory                                                     | Pending                                                                                               |
-| 22. Project notes / documentation                                      | Task notes and safe resource links implemented; project docs pending                                  |
-| 23. Decision log                                                       | Pending                                                                                               |
-| 24. Meeting action items                                               | Pending                                                                                               |
-| 25. AI assistance                                                      | Excluded at the user's request; no AI assistant or AI-generated features planned                      |
-| 26. Action Center                                                      | Daily planning implemented; unified attention view pending                                            |
-| 27. Portfolio                                                          | Personal label overview implemented; multi-project portfolio pending                                  |
-| 28. Goals / OKRs                                                       | Pending                                                                                               |
-| 29. Admin / export / account lifecycle                                 | Private task export implemented; import and account lifecycle pending                                 |
-| 30. UX                                                                 | Responsive baseline implemented; ongoing polish and verification                                      |
+| Proposal area                                                          | Current delivery status                                                                                                                                                                                                             |
+| ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1. Workspaces, projects, tasks, ownership, subtasks, context, recovery | Personal task foundation and context implemented; recovery and private project records implemented; stable references and explicit linking implemented; in-app invitations, accepted memberships and shared task access implemented |
+| 2. Multiple views / My Work                                            | Board, list, Today, Upcoming implemented; monthly deadline calendar and recorded project timeline implemented; dependency scheduling pending                                                                                        |
+| 3. Dependencies                                                        | Pending                                                                                                                                                                                                                             |
+| 4. Milestones                                                          | Implemented: private project checkpoints with dates and completion                                                                                                                                                                  |
+| 5. Useful dashboard                                                    | Personal overview and shared project counters implemented; cross-team reporting pending                                                                                                                                             |
+| 6. Workload and capacity                                               | Pending                                                                                                                                                                                                                             |
+| 7. Time tracking                                                       | Local focus timer and persisted manual work logs/weekly timesheets implemented; billing integrations pending                                                                                                                        |
+| 8. Notifications and digest                                            | In-app invitations and bounded pending-review inbox implemented; email/push delivery and digests pending                                                                                                                            |
+| 9. Contextual team communication                                       | Implemented: paginated task discussion, safe text and owner moderation; mentions/live sockets pending                                                                                                                               |
+| 10. Approvals                                                          | Implemented: captured task briefs, designated reviewers, approval/change/cancel decisions; file approvals pending                                                                                                                   |
+| 11. Blockers                                                           | Implemented: required reasons, dedicated view, and project counts                                                                                                                                                                   |
+| 12. Project health                                                     | Implemented: explained flags for blockers, overdue work, missed milestones, and planning conflicts                                                                                                                                  |
+| 13. Roles and permissions                                              | Owner/member permissions implemented per shared project; guest role pending                                                                                                                                                         |
+| 14. Guest/client portal                                                | Pending                                                                                                                                                                                                                             |
+| 15. Project templates                                                  | Curated task/checklist starters implemented; multi-task project templates pending                                                                                                                                                   |
+| 16. Recurring tasks                                                    | Implemented: daily/weekly/monthly next occurrence on completion; no background scheduler                                                                                                                                            |
+| 17. Forms / work requests                                              | Pending                                                                                                                                                                                                                             |
+| 18. Automation                                                         | Pending                                                                                                                                                                                                                             |
+| 19. Integrations                                                       | Pending; provider configuration required for live connections                                                                                                                                                                       |
+| 20. Command bar / global search                                        | Implemented: quick command bar, project/view navigation, and full-board task search                                                                                                                                                 |
+| 21. Team directory                                                     | Implemented: project owner and accepted member names; owner invitation management                                                                                                                                                   |
+| 22. Project notes / documentation                                      | Implemented: private project notebook notes plus task notes/resource links; rich-text/wiki collaboration pending                                                                                                                    |
+| 23. Decision log                                                       | Implemented: private, editable decision entries; not an immutable audit log                                                                                                                                                         |
+| 24. Meeting action items                                               | Implemented: meeting records and editable follow-up task creation; scheduling/invitations pending                                                                                                                                   |
+| 25. AI assistance                                                      | Excluded at the user's request; no AI assistant or AI-generated features planned                                                                                                                                                    |
+| 26. Action Center                                                      | Implemented: unified unfinished blocked/overdue/urgent/imminent work with reasons                                                                                                                                                   |
+| 27. Portfolio                                                          | Private multi-project cards/timeline, dates, progress, health and search implemented; cross-workspace/team portfolio pending                                                                                                        |
+| 28. Goals / OKRs                                                       | Pending                                                                                                                                                                                                                             |
+| 29. Admin / export / account lifecycle                                 | Private task export implemented; import and account lifecycle pending                                                                                                                                                               |
+| 30. UX                                                                 | Responsive baseline implemented; ongoing polish and verification                                                                                                                                                                    |
+
+### Local expansion verified in this batch
+
+The current local batch includes private projects, stable references/explicit linking, monthly calendars, Action Center, milestones/health flags, command search, project notebooks/decisions/meetings, follow-up drafts, and manual weekly timesheets. These capabilities remain owner-scoped. Team sharing, dependencies, capacity planning, approvals, guest access, notifications, automations, live external integrations, goals, import, and account lifecycle are still incomplete. No claim is made that the full catalogue is finished.
+
+### Team delivery limits
+
+Team projects are separate from private views. Only connected tasks and explicitly created team notes are shared. Invitations target existing accounts, with accept/decline and owner-controlled removal; no outbound emails are sent. Assignments accept only owners/active members, and former assignments show a reassign prompt. Team task updates poll every 30 seconds while the tab is visible. The pending-review inbox is derived from current access, not a durable notification feed. Reviews preserve title/description snapshots and never automatically complete or lock a task. Each request checks current membership; an already-authorized request may finish concurrently with removal.

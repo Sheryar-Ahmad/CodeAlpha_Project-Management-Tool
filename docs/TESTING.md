@@ -116,3 +116,41 @@ Automated browser coverage verifies the primary flows above; exhaustive accessib
 - Stop repetition on the active task. Archive/Trash must not generate tasks. Duplicate starts with repetition off.
 - An overdue date advances by one interval, not to the present day. There is no scheduled background generation. Supported dates stop at the end of 2100.
 - Verify account isolation and persistence, narrow screens, blocked storage, and API failures.
+
+## Project details
+
+- Open Projects → New project. Save a brief, optional start/target dates, and status. The record must remain visible before any tasks exist, with zero progress.
+- Target dates before start and impossible dates must be rejected. Duplicate exact names must not create extra records.
+- Add details to an existing task group: its tasks, totals, and progress must survive unchanged.
+- Edit description/status, refresh, and confirm persistence. Names are fixed in this milestone; a partial API update must preserve omitted fields.
+- View tasks from an empty project, add its first task, and return to Projects. The selected name and project statistics must agree.
+- Use two accounts: one cannot list or edit the other's project details. Demo records must not enter account storage.
+- Reset demo removes demo project details. Try corrupted/blocked storage and keyboard/Escape navigation. Check widths 320, 375, 768, 1024, and 1440 pixels.
+
+## Expanded private workflows
+
+- Calendar: select a month/day, create a dated task, edit its date, filter projects, toggle Done work, and test February 2028. Deadlines beyond the first board page must appear.
+- Action Center: verify blocked/high-priority/overdue/three-day work appears once; Done/archive/trash remain excluded. Search must narrow eligible work.
+- Milestones/health: add a dated checkpoint, mark complete, reload, and review explained flags. No current flags is not a delivery forecast.
+- Quick find: use the button or Ctrl+K/Command+K, navigate a view/project, search all tasks, and close with Escape. Forms must not receive a second command dialog.
+- Notebook: add/edit/filter notes, decisions and meetings; confirm plain-text rendering; create an editable meeting follow-up; cancel and confirm permanent entry deletion.
+- Work logs: record integer minutes, edit/delete, move between weeks, filter projects and check day/project totals. Reload account mode to verify MongoDB persistence.
+- Stable references: save project details for an older group, explicitly Connect existing tasks, repeat without duplicates, and verify unchanged status/checklists/context. New task labels should create/reuse a private project record.
+
+Automated browser checks cover these flows and 320–1920px layouts. Integration tests cover cross-account isolation, strict payloads, calendar/week boundaries, pagination/overflow, and legacy linking including Archive/Trash. Live production deployment and a full accessibility audit remain unverified.
+
+Project timeline: switch from cards, choose a month, verify clipped spans and single-date checkpoints, and open a project’s tasks. Projects without dates must say so; switching months must not invent scheduling dates.
+
+## Two-account team verification
+
+- Register owner/member accounts in separate browser profiles, invite/accept, refresh, and select the shared project.
+- Confirm pending/declined/removed users cannot load or update shared tasks, comments, notes, or reviews.
+- Create a shared task as the member. Assign to an accepted member, filter assigned-to-me, reload, then remove access and verify it disappears.
+- Private task lists, private notes, and work logs must not appear to teammates. Moving a task out clears its previous assignment.
+- Discuss a task with plain text; authors can delete their own comments, owners moderate all, other members cannot delete someone else's comment.
+- Keep private and team notebook entries separate; verify member-own entry edits and owner moderation.
+- Request a review from another member, verify pending inbox, request changes with an explanation, approve a later request, and reject repeated decisions.
+- Check reviewer self-selection, unaccepted reviewers, malformed IDs, payload field injection, and cross-project task IDs.
+- At widths 320, 375, 768, 1024, and 1440px, verify project selection, invitations, assignments, discussion, and review forms fit the viewport.
+
+npm run test:browser -- --teams-only runs the isolated two-account team regression. The full browser command also verifies all personal/demo workflows. API tests include role/access boundaries and review/assignment/discussion rules.

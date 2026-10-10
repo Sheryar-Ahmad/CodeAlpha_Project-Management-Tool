@@ -3,6 +3,12 @@ import { addDays, summarizeProjects } from '../../shared/planning.js';
 import { validDate } from '../../shared/date.js';
 import { taskStatuses, validResourceUrl } from '../../shared/task.js';
 import { recurrenceLabels } from '../../shared/recurrence.js';
+import {
+  projectStatuses,
+  validMilestones,
+  validProjectDates,
+  combineProjects,
+} from '../../shared/project.js';
 const key = 'orbit.tasks.v1';
 const samples = [
   {
@@ -65,6 +71,10 @@ function isTask(task) {
     task &&
     (task.lifecycle === undefined ||
       ['active', 'archived', 'trashed'].includes(task.lifecycle)) &&
+    (task.projectId === undefined ||
+      (typeof task.projectId === 'string' &&
+        task.projectId.length > 0 &&
+        task.projectId.length <= 100)) &&
     typeof task.id === 'string' &&
     typeof task.title === 'string' &&
     task.title.trim() &&
@@ -186,8 +196,11 @@ export function saveDemo(tasks) {
 }
 export function resetDemo() {
   saveDemo(seedTasks());
+  localStorage.removeItem('orbit.projects.v1');
+  localStorage.removeItem('orbit.project-notes.v1');
+  localStorage.removeItem('orbit.work-logs.v1');
 }
-export function demoOverview(all, date) {
+export function demoOverview(all, date, records = []) {
   const tasks = all.filter((task) => !task.lifecycle || task.lifecycle === 'active');
   return {
     archived: all.filter((task) => task.lifecycle === 'archived').length,
@@ -198,9 +211,79 @@ export function demoOverview(all, date) {
     completed: tasks.filter((task) => task.status === 'done').length,
     overdue: tasks.filter((task) => task.due && task.due < date && task.status !== 'done')
       .length,
-    projectSummaries: summarizeProjects(tasks, date),
-    projects: [...new Set(tasks.map((task) => task.project))].sort((a, b) =>
-      a.localeCompare(b),
-    ),
+    projectSummaries: combineProjects(summarizeProjects(tasks, date), records),
+    projects: [
+      ...new Set([
+        ...tasks.map((task) => task.project),
+        ...records.map((record) => record.name),
+      ]),
+    ].sort((a, b) => a.localeCompare(b)),
   };
+}
+
+function validProjectRecords(projects) {
+  return (
+    Array.isArray(projects) &&
+    projects.length <= 1000 &&
+    projects.every(
+      (project) =>
+        project &&
+        typeof project.id === 'string' &&
+        project.id.length > 0 &&
+        project.id.length <= 100 &&
+        typeof project.name === 'string' &&
+        project.name.trim().length > 0 &&
+        project.name.length <= 60 &&
+        typeof project.description === 'string' &&
+        project.description.length <= 1000 &&
+        typeof project.startDate === 'string' &&
+        typeof project.targetDate === 'string' &&
+        validProjectDates(project.startDate, project.targetDate) &&
+        (project.milestones === undefined || validMilestones(project.milestones)) &&
+        Object.hasOwn(projectStatuses, project.status),
+    ) &&
+    new Set(projects.map((project) => project.id)).size === projects.length &&
+    new Set(projects.map((project) => project.name)).size === projects.length
+  );
+}
+export function readDemoProjects() {
+  try {
+    const projects = JSON.parse(localStorage.getItem('orbit.projects.v1') ?? '[]');
+    if (!validProjectRecords(projects)) throw new Error('Invalid records');
+    return projects;
+  } catch {
+    throw new Error(
+      'Local project details could not be read. Reset the demo to recover.',
+    );
+  }
+}
+export function saveDemoProjects(projects) {
+  if (!validProjectRecords(projects))
+    throw new Error(
+      'Check project names, dates, and status. Names must be unique. The demo supports up to 1,000 project records.',
+    );
+  try {
+    localStorage.setItem('orbit.projects.v1', JSON.stringify(projects));
+  } catch {
+    throw new Error(
+      'Project details could not be saved. Browser storage may be disabled or full.',
+    );
+  }
+}
+
+export function ensureDemoProject(name) {
+  const records = readDemoProjects();
+  const existing = records.find((project) => project.name === name);
+  if (existing) return existing;
+  const project = {
+    id: crypto.randomUUID(),
+    name,
+    description: '',
+    startDate: '',
+    targetDate: '',
+    status: 'planned',
+    milestones: [],
+  };
+  saveDemoProjects([...records, project]);
+  return project;
 }

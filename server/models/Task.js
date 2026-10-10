@@ -33,6 +33,8 @@ const schema = new mongoose.Schema(
       default: 'active',
     },
     title: { type: String, required: true, trim: true, maxlength: 120 },
+    assignee: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    projectId: { type: mongoose.Schema.Types.ObjectId, ref: 'Project' },
     project: { type: String, required: true, trim: true, maxlength: 60 },
     description: { type: String, default: '', maxlength: 1000 },
     notes: { type: String, default: '', maxlength: 3000 },
@@ -73,6 +75,8 @@ const schema = new mongoose.Schema(
 schema.index({ owner: 1, updatedAt: -1, _id: -1 });
 schema.index({ owner: 1, lifecycle: 1, updatedAt: -1, _id: -1 });
 schema.index({ owner: 1, project: 1 });
+schema.index({ owner: 1, projectId: 1 });
+schema.index({ projectId: 1, assignee: 1, lifecycle: 1 });
 schema.index({ owner: 1, status: 1, due: 1 });
 schema.index({ owner: 1, due: 1, _id: -1 });
 schema.index({ repeatSource: 1 }, { unique: true, sparse: true });

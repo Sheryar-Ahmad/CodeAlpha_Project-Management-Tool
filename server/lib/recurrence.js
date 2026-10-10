@@ -1,3 +1,4 @@
+import { ensurePrivateProject } from './projects.js';
 import { randomUUID } from 'node:crypto';
 import { nextRecurringDraft } from '../../shared/recurrence.js';
 import { Task } from '../models/Task.js';
@@ -8,6 +9,8 @@ export async function ensureNextOccurrence(task) {
     return Task.findOne({ _id: task.repeatNext, owner: task.owner }).lean();
   const draft = nextRecurringDraft(task, randomUUID);
   if (!draft) return null;
+  if (!draft.projectId)
+    draft.projectId = (await ensurePrivateProject(task.owner, task.project))._id;
   // The unique source index makes completion retries and concurrent requests idempotent.
   await Task.init();
   const filter = { repeatSource: task._id, owner: task.owner };

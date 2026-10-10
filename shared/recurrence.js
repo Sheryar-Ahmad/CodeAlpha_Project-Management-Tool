@@ -30,6 +30,7 @@ export function nextRecurringDraft(task, makeId) {
   return {
     title: task.title,
     project: task.project,
+    ...(task.projectId ? { projectId: task.projectId } : {}),
     description: task.description,
     notes: task.notes ?? '',
     links: (task.links ?? []).map(({ label, url }) => ({ label, url })),

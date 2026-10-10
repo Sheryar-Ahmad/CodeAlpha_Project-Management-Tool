@@ -1,3 +1,8 @@
+import { TaskReview } from '../server/models/TaskReview.js';
+import { TaskComment } from '../server/models/TaskComment.js';
+import { ProjectMember } from '../server/models/ProjectMember.js';
+import { WorkLog } from '../server/models/WorkLog.js';
+import { ProjectNote } from '../server/models/ProjectNote.js';
 import { before, after, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { MongoMemoryServer } from 'mongodb-memory-server';
@@ -7,6 +12,7 @@ import { app } from '../server/app.js';
 import { User } from '../server/models/User.js';
 import { Session } from '../server/models/Session.js';
 import { Task } from '../server/models/Task.js';
+import { Project } from '../server/models/Project.js';
 
 import { MongoRateStore } from '../server/lib/rateStore.js';
 import { RateBucket } from '../server/models/RateBucket.js';
@@ -18,7 +24,18 @@ before(async () => {
   mongo = await MongoMemoryServer.create();
   process.env.MONGODB_URI = mongo.getUri();
   await mongoose.connect(process.env.MONGODB_URI);
-  await Promise.all([User.init(), Session.init(), Task.init(), RateBucket.init()]);
+  await Promise.all([
+    User.init(),
+    Session.init(),
+    Task.init(),
+    Project.init(),
+    ProjectMember.init(),
+    TaskComment.init(),
+    TaskReview.init(),
+    ProjectNote.init(),
+    WorkLog.init(),
+    RateBucket.init(),
+  ]);
   alice = request.agent(app);
   bob = request.agent(app);
 });
@@ -233,6 +250,7 @@ test('daily planning queries and project summaries remain owner-scoped', async (
   assert.equal(overview.body.projectSummaries.length, 1);
   assert.deepEqual(overview.body.projectSummaries[0], {
     name: 'Review',
+    unlinked: 7,
     blocked: 0,
     total: 7,
     completed: 1,
@@ -785,4 +803,1024 @@ test('recurrence requires dates and refuses internal successor injection', async
     .expect(200);
   assert.equal(stopped.body.task.recurrence, 'none');
   assert.equal(stopped.body.task.due, '');
+});
+
+test('private project creation, updates, and exact labels stay isolated between accounts', async () => {
+  await RateBucket.deleteMany({ key: /^(api|auth):/ });
+  await request(app).get('/api/projects').expect(401);
+  const owner = request.agent(app),
+    outsider = request.agent(app);
+  for (const [agent, name] of [
+    [owner, 'Project Owner'],
+    [outsider, 'Project Outsider'],
+  ])
+    await agent
+      .post('/api/auth/register')
+      .set('Origin', origin)
+      .send({
+        name,
+        email: name.replaceAll(' ', '').toLowerCase() + '@example.com',
+        password: 'project-test-passphrase',
+      })
+      .expect(201);
+  const data = {
+    name: 'Private project',
+    description: 'Keep this brief',
+    startDate: '2026-10-10',
+    targetDate: '2026-10-20',
+    status: 'active',
+  };
+  await owner
+    .post('/api/projects')
+    .set('Origin', 'https://foreign.example')
+    .send(data)
+    .expect(403);
+  const created = await owner
+    .post('/api/projects')
+    .set('Origin', origin)
+    .send(data)
+    .expect(201);
+  const id = created.body.project.id;
+  assert.equal(created.body.project.owner, undefined);
+  assert.equal((await owner.get('/api/projects').expect(200)).body.projects.length, 1);
+  assert.deepEqual((await outsider.get('/api/projects').expect(200)).body.projects, []);
+  await outsider
+    .patch('/api/projects/' + id)
+    .set('Origin', origin)
+    .send({ description: 'Stolen' })
+    .expect(404);
+  await owner.post('/api/projects').set('Origin', origin).send(data).expect(409);
+  await outsider.post('/api/projects').set('Origin', origin).send(data).expect(201);
+  await owner
+    .patch('/api/projects/' + id)
+    .set('Origin', origin)
+    .send({ owner: 'other' })
+    .expect(400);
+  await owner
+    .patch('/api/projects/' + id)
+    .set('Origin', origin)
+    .send({ name: 'Renamed' })
+    .expect(400);
+  await owner
+    .patch('/api/projects/' + id)
+    .set('Origin', origin)
+    .send({ startDate: '2026-10-21', targetDate: '2026-10-20' })
+    .expect(400);
+  const edited = await owner
+    .patch('/api/projects/' + id)
+    .set('Origin', origin)
+    .send({ description: 'Updated brief' })
+    .expect(200);
+  assert.equal(edited.body.project.name, data.name);
+  assert.equal(edited.body.project.status, 'active');
+  assert.equal(edited.body.project.targetDate, data.targetDate);
+  const counts = (await owner.get('/api/tasks/overview?date=2026-10-09').expect(200))
+    .body;
+  assert.equal(counts.total, 0);
+  await owner
+    .patch('/api/projects/not-an-id')
+    .set('Origin', origin)
+    .send({ status: 'completed' })
+    .expect(400);
+  assert.equal(await Project.countDocuments({ name: data.name }), 2);
+});
+
+test('calendar reads a whole bounded month and attention remains private with combined search', async () => {
+  await RateBucket.deleteMany({ key: /^(api|auth):/ });
+  await request(app).get('/api/tasks/calendar?month=2026-10').expect(401);
+  const owner = request.agent(app),
+    outsider = request.agent(app);
+  for (const [agent, name] of [
+    [owner, 'Calendar Owner'],
+    [outsider, 'Calendar Outsider'],
+  ])
+    await agent
+      .post('/api/auth/register')
+      .set('Origin', origin)
+      .send({
+        name,
+        email: name.replaceAll(' ', '') + '@example.com',
+        password: 'calendar-test-passphrase',
+      })
+      .expect(201);
+  const user = await User.findOne({ email: 'calendarowner@example.com' });
+  const other = await User.findOne({ email: 'calendaroutsider@example.com' });
+  const base = {
+    owner: user._id,
+    title: 'Normal work',
+    project: 'Calendar QA',
+    priority: 'low',
+    status: 'todo',
+    due: '2026-10-30',
+  };
+  await Task.insertMany([
+    ...Array.from({ length: 35 }, (_, index) => ({
+      ...base,
+      title: 'Month task ' + index,
+    })),
+    {
+      ...base,
+      title: 'Overdue urgent',
+      status: 'blocked',
+      blockerReason: 'Need access',
+      priority: 'high',
+      due: '2026-10-08',
+    },
+    { ...base, title: 'Due soon', due: '2026-10-12' },
+    { ...base, title: 'Completed', status: 'done', due: '2026-10-09' },
+    { ...base, title: 'Undated urgent', due: '', priority: 'high' },
+    { ...base, title: 'Other month', due: '2026-11-01' },
+    { ...base, title: 'Archived urgent', lifecycle: 'archived', priority: 'high' },
+    { ...base, title: 'Trashed urgent', lifecycle: 'trashed', priority: 'high' },
+    { ...base, owner: other._id, title: 'Private outsider task', priority: 'high' },
+  ]);
+  const calendar = (await owner.get('/api/tasks/calendar?month=2026-10').expect(200))
+    .body;
+  assert.equal(calendar.tasks.length, 38);
+  assert.equal(calendar.truncated, false);
+  assert.ok(calendar.tasks.some((task) => task.title === 'Completed'));
+  assert.ok(
+    calendar.tasks.every(
+      (task) => task.owner === undefined && task.title !== 'Private outsider task',
+    ),
+  );
+  assert.equal(
+    (await owner.get('/api/tasks/calendar?month=2026-10&project=Other').expect(200)).body
+      .tasks.length,
+    0,
+  );
+  assert.equal(
+    (await outsider.get('/api/tasks/calendar?month=2026-10').expect(200)).body.tasks
+      .length,
+    1,
+  );
+  for (const query of [
+    'month=2026-13',
+    'month=1999-12',
+    'month[$ne]=',
+    'month=2026-10&owner=other',
+  ])
+    await owner.get('/api/tasks/calendar?' + query).expect(400);
+  const attention = (
+    await owner.get('/api/tasks?view=attention&date=2026-10-09').expect(200)
+  ).body.tasks;
+  assert.deepEqual(
+    attention.map((task) => task.title).sort(),
+    ['Due soon', 'Overdue urgent', 'Undated urgent'].sort(),
+  );
+  assert.equal(
+    (
+      await owner
+        .get('/api/tasks?view=attention&date=2026-10-09&search=urgent')
+        .expect(200)
+    ).body.tasks.length,
+    2,
+  );
+  await Task.insertMany(
+    Array.from({ length: 1001 }, (_, index) => ({
+      ...base,
+      project: 'Large calendar',
+      title: 'Bounded ' + index,
+    })),
+  );
+  const bounded = (
+    await owner
+      .get('/api/tasks/calendar?month=2026-10&project=Large%20calendar')
+      .expect(200)
+  ).body;
+  assert.equal(bounded.tasks.length, 1000);
+  assert.equal(bounded.truncated, true);
+});
+
+test('milestone edits persist privately and omitted milestones are not erased', async () => {
+  await RateBucket.deleteMany({ key: /^(api|auth):/ });
+  const owner = request.agent(app),
+    outsider = request.agent(app);
+  for (const [agent, name] of [
+    [owner, 'Milestone Owner'],
+    [outsider, 'Milestone Outsider'],
+  ])
+    await agent
+      .post('/api/auth/register')
+      .set('Origin', origin)
+      .send({
+        name,
+        email: name.replaceAll(' ', '') + '@example.com',
+        password: 'milestone-long-passphrase',
+      })
+      .expect(201);
+  const milestone = {
+    id: 'launch-checkpoint',
+    title: 'Launch release',
+    due: '2026-10-30',
+    done: false,
+  };
+  const created = (
+    await owner
+      .post('/api/projects')
+      .set('Origin', origin)
+      .send({ name: 'Release milestones', milestones: [milestone] })
+      .expect(201)
+  ).body.project;
+  assert.deepEqual(created.milestones, [milestone]);
+  await outsider
+    .patch('/api/projects/' + created.id)
+    .set('Origin', origin)
+    .send({ milestones: [] })
+    .expect(404);
+  assert.deepEqual((await outsider.get('/api/projects').expect(200)).body.projects, []);
+  const edited = (
+    await owner
+      .patch('/api/projects/' + created.id)
+      .set('Origin', origin)
+      .send({ milestones: [{ ...milestone, done: true }] })
+      .expect(200)
+  ).body.project;
+  assert.equal(edited.milestones[0].done, true);
+  const untouched = (
+    await owner
+      .patch('/api/projects/' + created.id)
+      .set('Origin', origin)
+      .send({ description: 'Keep milestones' })
+      .expect(200)
+  ).body.project;
+  assert.equal(untouched.milestones[0].done, true);
+  await owner
+    .patch('/api/projects/' + created.id)
+    .set('Origin', origin)
+    .send({ milestones: [milestone, milestone] })
+    .expect(400);
+  await owner
+    .patch('/api/projects/' + created.id)
+    .set('Origin', origin)
+    .send({ milestones: [{ ...milestone, owner: 'other' }] })
+    .expect(400);
+});
+
+test('notebook CRUD, filtering and pagination always check the private parent project', async () => {
+  await RateBucket.deleteMany({ key: /^(api|auth):/ });
+  const owner = request.agent(app),
+    outsider = request.agent(app);
+  for (const [agent, name] of [
+    [owner, 'Notebook Owner'],
+    [outsider, 'Notebook Outsider'],
+  ])
+    await agent
+      .post('/api/auth/register')
+      .set('Origin', origin)
+      .send({
+        name,
+        email: name.replaceAll(' ', '') + '@example.com',
+        password: 'notebook-long-passphrase',
+      })
+      .expect(201);
+  const createProject = async (name) =>
+    (await owner.post('/api/projects').set('Origin', origin).send({ name }).expect(201))
+      .body.project;
+  const project = await createProject('Private notebook'),
+    another = await createProject('Other notebook');
+  const endpoint = '/api/projects/' + project.id + '/notes';
+  await request(app).get(endpoint).expect(401);
+  await outsider.get(endpoint).expect(404);
+  await owner.get('/api/projects/invalid/notes').expect(400);
+  const entry = {
+    kind: 'decision',
+    title: 'Choose the provider',
+    body: '<script>plain text</script>',
+    date: '2026-10-09',
+  };
+  const note = (await owner.post(endpoint).set('Origin', origin).send(entry).expect(201))
+    .body.note;
+  assert.equal(note.owner, undefined);
+  assert.equal(note.project, undefined);
+  assert.equal(note.body, entry.body);
+  await outsider
+    .patch(endpoint + '/' + note.id)
+    .set('Origin', origin)
+    .send(entry)
+    .expect(404);
+  await owner
+    .patch('/api/projects/' + another.id + '/notes/' + note.id)
+    .set('Origin', origin)
+    .send(entry)
+    .expect(404);
+  await owner
+    .delete('/api/projects/' + another.id + '/notes/' + note.id)
+    .set('Origin', origin)
+    .expect(404);
+  for (const change of [
+    { owner: 'other' },
+    { project: another.id },
+    { body: ' ' },
+    { date: '2026-02-30' },
+  ])
+    await owner
+      .post(endpoint)
+      .set('Origin', origin)
+      .send({ ...entry, ...change })
+      .expect(400);
+  const edited = (
+    await owner
+      .patch(endpoint + '/' + note.id)
+      .set('Origin', origin)
+      .send({ ...entry, body: 'Reviewed decision' })
+      .expect(200)
+  ).body.note;
+  assert.equal(edited.body, 'Reviewed decision');
+  const user = await User.findOne({ email: 'notebookowner@example.com' });
+  await ProjectNote.insertMany(
+    Array.from({ length: 21 }, (_, index) => ({
+      ...entry,
+      title: 'Reference ' + index,
+      kind: 'note',
+      project: project.id,
+      owner: user._id,
+    })),
+  );
+  const list = (await owner.get(endpoint).expect(200)).body;
+  assert.equal(list.notes.length, 20);
+  assert.equal(list.hasMore, true);
+  const second = (await owner.get(endpoint + '?page=2').expect(200)).body;
+  assert.equal(second.notes.length, 2);
+  assert.equal(
+    new Set([...list.notes, ...second.notes].map((entry) => entry.id)).size,
+    22,
+  );
+  assert.equal(
+    (await owner.get(endpoint + '?kind=decision').expect(200)).body.notes.length,
+    1,
+  );
+  await owner.get(endpoint + '?kind[$ne]=').expect(400);
+  await owner
+    .patch(endpoint + '/invalid')
+    .set('Origin', origin)
+    .send(entry)
+    .expect(400);
+  await owner
+    .delete(endpoint + '/' + note.id)
+    .set('Origin', 'https://foreign.example')
+    .expect(403);
+  await owner
+    .delete(endpoint + '/' + note.id)
+    .set('Origin', origin)
+    .expect(204);
+  await owner
+    .delete(endpoint + '/' + note.id)
+    .set('Origin', origin)
+    .expect(404);
+});
+
+test('weekly work logs persist, filter, bound responses and isolate accounts', async () => {
+  await RateBucket.deleteMany({ key: /^(api|auth):/ });
+  await request(app).get('/api/work-logs?date=2026-12-29').expect(401);
+  const owner = request.agent(app),
+    outsider = request.agent(app);
+  for (const [agent, name] of [
+    [owner, 'Worklog Owner'],
+    [outsider, 'Worklog Outsider'],
+  ])
+    await agent
+      .post('/api/auth/register')
+      .set('Origin', origin)
+      .send({
+        name,
+        email: name.replaceAll(' ', '') + '@example.com',
+        password: 'worklog-long-passphrase',
+      })
+      .expect(201);
+  const data = {
+    activity: 'Research',
+    project: 'Launch',
+    date: '2026-12-29',
+    minutes: 90,
+    notes: 'Keep context',
+  };
+  const log = (
+    await owner.post('/api/work-logs').set('Origin', origin).send(data).expect(201)
+  ).body.log;
+  assert.equal(log.owner, undefined);
+  const listed = (await owner.get('/api/work-logs?date=2026-12-29').expect(200)).body;
+  assert.deepEqual(listed.range, { start: '2026-12-28', end: '2027-01-03' });
+  assert.equal(listed.logs.length, 1);
+  assert.deepEqual(
+    (await outsider.get('/api/work-logs?date=2026-12-29').expect(200)).body.logs,
+    [],
+  );
+  await outsider
+    .patch('/api/work-logs/' + log.id)
+    .set('Origin', origin)
+    .send(data)
+    .expect(404);
+  await outsider
+    .delete('/api/work-logs/' + log.id)
+    .set('Origin', origin)
+    .expect(404);
+  assert.equal(
+    (await owner.get('/api/work-logs?date=2027-01-05').expect(200)).body.logs.length,
+    0,
+  );
+  assert.equal(
+    (await owner.get('/api/work-logs?date=2026-12-29&project=Other').expect(200)).body
+      .logs.length,
+    0,
+  );
+  const edited = (
+    await owner
+      .patch('/api/work-logs/' + log.id)
+      .set('Origin', origin)
+      .send({ ...data, minutes: 120 })
+      .expect(200)
+  ).body.log;
+  assert.equal(edited.minutes, 120);
+  for (const change of [
+    { minutes: 0 },
+    { minutes: 1.5 },
+    { minutes: 1441 },
+    { owner: 'other' },
+  ])
+    await owner
+      .post('/api/work-logs')
+      .set('Origin', origin)
+      .send({ ...data, ...change })
+      .expect(400);
+  await owner.get('/api/work-logs?date=2026-12-29&project[$ne]=').expect(400);
+  await owner
+    .delete('/api/work-logs/' + log.id)
+    .set('Origin', origin)
+    .expect(204);
+  const user = await User.findOne({ email: 'worklogowner@example.com' });
+  await WorkLog.insertMany(
+    Array.from({ length: 1001 }, (_, index) => ({
+      ...data,
+      owner: user._id,
+      activity: 'Bounded work ' + index,
+    })),
+  );
+  const bounded = (await owner.get('/api/work-logs?date=2026-12-29').expect(200)).body;
+  assert.equal(bounded.logs.length, 1000);
+  assert.equal(bounded.truncated, true);
+});
+
+test('stable project IDs are server-managed and legacy linking is explicit, private and repeatable', async () => {
+  await RateBucket.deleteMany({ key: /^(api|auth):/ });
+  const owner = request.agent(app),
+    outsider = request.agent(app);
+  for (const [agent, name] of [
+    [owner, 'Reference Owner'],
+    [outsider, 'Reference Outsider'],
+  ])
+    await agent
+      .post('/api/auth/register')
+      .set('Origin', origin)
+      .send({
+        name,
+        email: name.replaceAll(' ', '') + '@example.com',
+        password: 'reference-long-passphrase',
+      })
+      .expect(201);
+  const data = {
+    title: 'First task',
+    project: 'Stable project',
+    due: '2026-10-09',
+    recurrence: 'weekly',
+  };
+  const first = (
+    await owner.post('/api/tasks').set('Origin', origin).send(data).expect(201)
+  ).body.task;
+  const second = (
+    await owner
+      .post('/api/tasks')
+      .set('Origin', origin)
+      .send({ ...data, title: 'Second task' })
+      .expect(201)
+  ).body.task;
+  assert.ok(first.projectId);
+  assert.equal(second.projectId, first.projectId);
+  const foreign = (
+    await outsider.post('/api/tasks').set('Origin', origin).send(data).expect(201)
+  ).body.task;
+  assert.notEqual(foreign.projectId, first.projectId);
+  await owner
+    .post('/api/tasks')
+    .set('Origin', origin)
+    .send({ ...data, projectId: foreign.projectId })
+    .expect(400);
+  await owner
+    .patch('/api/tasks/' + first.id)
+    .set('Origin', origin)
+    .send({ projectId: foreign.projectId })
+    .expect(400);
+  const before = await Project.countDocuments({ name: 'Do not create' });
+  await outsider
+    .patch('/api/tasks/' + first.id)
+    .set('Origin', origin)
+    .send({ project: 'Do not create' })
+    .expect(404);
+  assert.equal(await Project.countDocuments({ name: 'Do not create' }), before);
+  const completed = (
+    await owner
+      .patch('/api/tasks/' + first.id)
+      .set('Origin', origin)
+      .send({ status: 'done' })
+      .expect(200)
+  ).body;
+  assert.equal(completed.nextTask.projectId, first.projectId);
+  const user = await User.findOne({ email: 'referenceowner@example.com' });
+  const other = await User.findOne({ email: 'referenceoutsider@example.com' });
+  const legacy = await Task.insertMany([
+    ...['active', 'archived', 'trashed'].map((lifecycle) => ({
+      owner: user._id,
+      title: 'Legacy ' + lifecycle,
+      project: data.project,
+      lifecycle,
+      status: 'todo',
+    })),
+    { owner: other._id, title: 'Private legacy', project: data.project, status: 'todo' },
+  ]);
+  assert.ok(legacy.slice(0, 3).every((task) => !task.projectId));
+  const endpoint = '/api/projects/' + first.projectId + '/link-tasks';
+  await outsider.patch(endpoint).set('Origin', origin).send({}).expect(404);
+  await owner.patch(endpoint).set('Origin', origin).send({ owner: other.id }).expect(400);
+  assert.equal(
+    (await owner.patch(endpoint).set('Origin', origin).send({}).expect(200)).body.linked,
+    3,
+  );
+  assert.equal(
+    (await owner.patch(endpoint).set('Origin', origin).send({}).expect(200)).body.linked,
+    0,
+  );
+  const linked = await Task.find({
+    _id: { $in: legacy.slice(0, 3).map((task) => task._id) },
+  }).lean();
+  assert.ok(linked.every((task) => String(task.projectId) === first.projectId));
+  assert.deepEqual(
+    linked.map((task) => task.lifecycle).sort(),
+    ['active', 'archived', 'trashed'].sort(),
+  );
+  assert.equal((await Task.findById(legacy[3]._id).lean()).projectId, undefined);
+  const moved = (
+    await owner
+      .patch('/api/tasks/' + second.id)
+      .set('Origin', origin)
+      .send({ project: 'Another stable project' })
+      .expect(200)
+  ).body.task;
+  assert.notEqual(moved.projectId, first.projectId);
+  assert.equal(moved.project, 'Another stable project');
+});
+
+test('team invitations, scoped tasks, private notes, and revocation preserve account boundaries', async () => {
+  await RateBucket.deleteMany({ key: /^(api|auth):/ });
+  const owner = request.agent(app),
+    member = request.agent(app),
+    outsider = request.agent(app);
+  const users = [];
+  for (const [agent, name] of [
+    [owner, 'Team owner'],
+    [member, 'Team member'],
+    [outsider, 'Team outsider'],
+  ]) {
+    users.push(
+      (
+        await agent
+          .post('/api/auth/register')
+          .set('Origin', origin)
+          .send({
+            name,
+            email: name.replaceAll(' ', '-') + '@example.com',
+            password: 'team-test-passphrase-long',
+          })
+          .expect(201)
+      ).body.user,
+    );
+  }
+  const project = (
+    await owner
+      .post('/api/projects')
+      .set('Origin', origin)
+      .send({ name: 'Team launch' })
+      .expect(201)
+  ).body.project;
+  const base = '/api/projects/' + project.id;
+  const shared = base + '/tasks';
+  const task = (
+    await owner
+      .post('/api/tasks')
+      .set('Origin', origin)
+      .send({
+        title: 'Shared planning',
+        project: project.name,
+        due: '2026-10-09',
+      })
+      .expect(201)
+  ).body.task;
+  const privateTask = (
+    await owner
+      .post('/api/tasks')
+      .set('Origin', origin)
+      .send({
+        title: 'Private work',
+        project: 'Private launch',
+      })
+      .expect(201)
+  ).body.task;
+  await request(app).get(shared).expect(401);
+  await outsider.get(shared).expect(404);
+  await member.get(base + '/members').expect(404);
+  await owner
+    .post(base + '/members')
+    .set('Origin', origin)
+    .send({ email: { $ne: null } })
+    .expect(400);
+  await owner
+    .post(base + '/members')
+    .set('Origin', origin)
+    .send({ email: users[1].email, role: 'owner' })
+    .expect(400);
+  await owner
+    .post(base + '/members')
+    .set('Origin', origin)
+    .send({ email: users[1].email })
+    .expect(201);
+  await owner
+    .post(base + '/members')
+    .set('Origin', origin)
+    .send({ email: users[1].email })
+    .expect(409);
+  const invitation = (await member.get('/api/teams').expect(200)).body.invitations[0];
+  assert.equal(invitation.project, project.name);
+  await member.get(shared).expect(404);
+  await outsider
+    .patch('/api/teams/invitations/' + invitation.id)
+    .set('Origin', origin)
+    .send({ action: 'accept' })
+    .expect(409);
+  await member
+    .patch('/api/teams/invitations/' + invitation.id)
+    .set('Origin', origin)
+    .send({ action: 'accept' })
+    .expect(204);
+  await member
+    .patch('/api/teams/invitations/' + invitation.id)
+    .set('Origin', origin)
+    .send({ action: 'accept' })
+    .expect(409);
+  const teams = (await member.get('/api/teams').expect(200)).body;
+  assert.equal(teams.projects.find((item) => item.id === project.id).role, 'member');
+  const directory = (await member.get(base + '/members').expect(200)).body;
+  assert.equal(directory.members.length, 1);
+  assert.equal(directory.members[0].user.email, undefined);
+  assert.equal(directory.owner.passwordHash, undefined);
+  const tasks = (await member.get(shared).expect(200)).body.tasks;
+  assert.deepEqual(
+    tasks.map((item) => item.id),
+    [task.id],
+  );
+  assert.equal((await member.get('/api/tasks').expect(200)).body.tasks.length, 0);
+  await member
+    .patch('/api/tasks/' + task.id)
+    .set('Origin', origin)
+    .send({ title: 'Wrong scope' })
+    .expect(404);
+  await member
+    .patch(shared + '/' + privateTask.id)
+    .set('Origin', origin)
+    .send({ title: 'Leak' })
+    .expect(404);
+  await member
+    .patch(shared + '/' + task.id)
+    .set('Origin', origin)
+    .send({ project: 'Stolen project' })
+    .expect(400);
+  await member
+    .patch(shared + '/' + task.id)
+    .set('Origin', origin)
+    .send({ owner: users[1].id })
+    .expect(400);
+  await member
+    .patch(shared + '/' + task.id)
+    .set('Origin', origin)
+    .send({ status: 'progress' })
+    .expect(200);
+  const created = (
+    await member
+      .post(shared)
+      .set('Origin', origin)
+      .send({ title: 'Member task', project: project.name })
+      .expect(201)
+  ).body.task;
+  assert.equal(String((await Task.findById(created.id)).owner), users[0].id);
+  assert.equal(created.projectId, project.id);
+  assert.equal(
+    (await member.get(shared + '/overview?date=2026-10-09').expect(200)).body.total,
+    2,
+  );
+  assert.equal(
+    (await member.get(shared + '/calendar?month=2026-10').expect(200)).body.tasks.length,
+    1,
+  );
+  const exported = (await member.get(shared + '/export').expect(200)).body;
+  assert.equal(exported.tasks.length, 2);
+  assert.ok(exported.tasks.every((item) => item.title !== 'Private work' && !item.owner));
+  await member
+    .patch(base)
+    .set('Origin', origin)
+    .send({ description: 'Take over' })
+    .expect(404);
+  await member
+    .post(base + '/members')
+    .set('Origin', origin)
+    .send({ email: users[2].email })
+    .expect(403);
+  await member
+    .patch(base + '/link-tasks')
+    .set('Origin', origin)
+    .send({})
+    .expect(404);
+  await member
+    .delete(shared + '/' + created.id)
+    .set('Origin', origin)
+    .expect(204);
+  await member
+    .delete(shared + '/' + created.id + '/permanent')
+    .set('Origin', origin)
+    .expect(403);
+  await member
+    .patch(shared + '/' + created.id + '/lifecycle')
+    .set('Origin', origin)
+    .send({ action: 'restore' })
+    .expect(200);
+  const noteData = {
+    kind: 'note',
+    title: 'Private notebook',
+    body: 'Never shared',
+    date: '2026-10-09',
+  };
+  const privateNote = (
+    await owner
+      .post(base + '/notes')
+      .set('Origin', origin)
+      .send(noteData)
+      .expect(201)
+  ).body.note;
+  assert.equal((await member.get(base + '/team-notes').expect(200)).body.notes.length, 0);
+  await member.get(base + '/notes').expect(404);
+  const teamNote = (
+    await member
+      .post(base + '/team-notes')
+      .set('Origin', origin)
+      .send({ ...noteData, title: 'Shared notebook' })
+      .expect(201)
+  ).body.note;
+  assert.equal((await owner.get(base + '/notes').expect(200)).body.notes.length, 1);
+  assert.equal(
+    (await owner.get(base + '/team-notes').expect(200)).body.notes[0].canEdit,
+    true,
+  );
+  await member
+    .patch(base + '/team-notes/' + privateNote.id)
+    .set('Origin', origin)
+    .send(noteData)
+    .expect(404);
+  await member
+    .patch(base + '/team-notes/' + teamNote.id)
+    .set('Origin', origin)
+    .send({ ...noteData, title: 'Edited shared note' })
+    .expect(200);
+  const ownerNote = (
+    await owner
+      .post(base + '/team-notes')
+      .set('Origin', origin)
+      .send(noteData)
+      .expect(201)
+  ).body.note;
+  const visibleNotes = (await member.get(base + '/team-notes').expect(200)).body.notes;
+  assert.equal(visibleNotes.find((item) => item.id === ownerNote.id).canEdit, false);
+  await member
+    .patch(base + '/team-notes/' + ownerNote.id)
+    .set('Origin', origin)
+    .send(noteData)
+    .expect(404);
+  await member
+    .delete(base + '/team-notes/' + ownerNote.id)
+    .set('Origin', origin)
+    .expect(404);
+  await owner
+    .delete(base + '/team-notes/' + teamNote.id)
+    .set('Origin', origin)
+    .expect(204);
+  const collaboration = base + '/collaboration/';
+  await member
+    .patch(collaboration + task.id + '/assignee')
+    .set('Origin', origin)
+    .send({ assignee: users[2].id })
+    .expect(400);
+  await member
+    .patch(collaboration + task.id + '/assignee')
+    .set('Origin', origin)
+    .send({ assignee: { $ne: null } })
+    .expect(400);
+  await member
+    .patch(collaboration + privateTask.id + '/assignee')
+    .set('Origin', origin)
+    .send({ assignee: users[1].id })
+    .expect(404);
+  await member
+    .patch(collaboration + task.id + '/assignee')
+    .set('Origin', origin)
+    .send({ assignee: users[1].id })
+    .expect(200);
+  assert.equal(
+    (await member.get(shared).expect(200)).body.tasks.find((item) => item.id === task.id)
+      .assignee,
+    users[1].id,
+  );
+  assert.deepEqual(
+    (await member.get(shared + '?assigned=me').expect(200)).body.tasks.map(
+      (item) => item.id,
+    ),
+    [task.id],
+  );
+  await member.get(shared + '?assigned=everyone').expect(400);
+  const comments = collaboration + task.id + '/comments';
+  await outsider.get(comments).expect(404);
+  await member
+    .post(comments)
+    .set('Origin', origin)
+    .send({ body: ' ', author: users[0].id })
+    .expect(400);
+  await member
+    .post(comments)
+    .set('Origin', origin)
+    .send({ body: '<img src=x onerror=alert(1)> plain text' })
+    .expect(201);
+  await owner
+    .post(comments)
+    .set('Origin', origin)
+    .send({ body: 'Owner review' })
+    .expect(201);
+  const discussion = (await member.get(comments).expect(200)).body.comments;
+  assert.equal(discussion.length, 2);
+  assert.equal(discussion.find((item) => item.body === 'Owner review').canDelete, false);
+  assert.ok(discussion.every((item) => !item.author.email));
+  await member
+    .delete(comments + '/' + discussion.find((item) => item.body === 'Owner review').id)
+    .set('Origin', origin)
+    .expect(404);
+  await member
+    .delete(comments + '/' + discussion.find((item) => item.author.id === users[1].id).id)
+    .set('Origin', origin)
+    .expect(204);
+  await owner
+    .delete(comments + '/' + discussion.find((item) => item.body === 'Owner review').id)
+    .set('Origin', origin)
+    .expect(204);
+  await member
+    .post(comments)
+    .set('Origin', origin)
+    .send({ body: 'Keep alongside this task' })
+    .expect(201);
+  await member
+    .patch(shared + '/' + task.id + '/lifecycle')
+    .set('Origin', origin)
+    .send({ action: 'archive' })
+    .expect(200);
+  await member
+    .post(comments)
+    .set('Origin', origin)
+    .send({ body: 'Archived write' })
+    .expect(409);
+  await member
+    .patch(collaboration + task.id + '/assignee')
+    .set('Origin', origin)
+    .send({ assignee: null })
+    .expect(409);
+  await member
+    .patch(shared + '/' + task.id + '/lifecycle')
+    .set('Origin', origin)
+    .send({ action: 'unarchive' })
+    .expect(200);
+
+  const reviewEndpoint = base + '/reviews';
+  await member
+    .post(reviewEndpoint)
+    .set('Origin', origin)
+    .send({ task: task.id, reviewer: users[1].id })
+    .expect(400);
+  await member
+    .post(reviewEndpoint)
+    .set('Origin', origin)
+    .send({ task: task.id, reviewer: users[2].id })
+    .expect(400);
+  await member
+    .post(reviewEndpoint)
+    .set('Origin', origin)
+    .send({ task: privateTask.id, reviewer: users[0].id })
+    .expect(404);
+  await member
+    .post(reviewEndpoint)
+    .set('Origin', origin)
+    .send({ task: task.id, reviewer: users[0].id, message: 'Check clarity' })
+    .expect(201);
+  await member
+    .post(reviewEndpoint)
+    .set('Origin', origin)
+    .send({ task: task.id, reviewer: users[0].id })
+    .expect(409);
+  const review = (await owner.get(reviewEndpoint).expect(200)).body.reviews[0];
+  assert.equal(review.title, task.title);
+  assert.equal(review.canDecide, true);
+  assert.equal((await owner.get('/api/teams').expect(200)).body.reviewInbox.length, 1);
+  assert.equal((await member.get('/api/teams').expect(200)).body.reviewInbox.length, 0);
+  assert.equal(
+    (await member.get(reviewEndpoint).expect(200)).body.reviews[0].canDecide,
+    false,
+  );
+  await member
+    .patch(reviewEndpoint + '/' + review.id)
+    .set('Origin', origin)
+    .send({ action: 'approve' })
+    .expect(409);
+  await owner
+    .patch(reviewEndpoint + '/' + review.id)
+    .set('Origin', origin)
+    .send({ action: 'changes', response: ' ' })
+    .expect(400);
+  await owner
+    .patch(reviewEndpoint + '/' + review.id)
+    .set('Origin', origin)
+    .send({ action: 'changes', response: 'Include acceptance criteria' })
+    .expect(204);
+  await owner
+    .patch(reviewEndpoint + '/' + review.id)
+    .set('Origin', origin)
+    .send({ action: 'approve' })
+    .expect(409);
+  assert.equal(
+    (await member.get(reviewEndpoint + '?status=changes').expect(200)).body.reviews[0]
+      .response,
+    'Include acceptance criteria',
+  );
+  await member
+    .post(reviewEndpoint)
+    .set('Origin', origin)
+    .send({ task: task.id, reviewer: users[0].id })
+    .expect(201);
+  const pendingReview = (await owner.get(reviewEndpoint + '?status=pending').expect(200))
+    .body.reviews[0];
+  const membership = directory.members[0].id;
+  await outsider
+    .delete(base + '/members/' + membership)
+    .set('Origin', origin)
+    .expect(404);
+  await owner
+    .delete(base + '/members/' + membership)
+    .set('Origin', origin)
+    .expect(204);
+  await member.get(shared).expect(404);
+  await member.get(comments).expect(404);
+  await member.get(reviewEndpoint).expect(404);
+  await member
+    .patch(collaboration + task.id + '/assignee')
+    .set('Origin', origin)
+    .send({ assignee: null })
+    .expect(404);
+  await member
+    .patch(shared + '/' + task.id)
+    .set('Origin', origin)
+    .send({ title: 'Stale save' })
+    .expect(404);
+  await member.get(base + '/team-notes').expect(404);
+  await member
+    .patch('/api/teams/invitations/' + invitation.id)
+    .set('Origin', origin)
+    .send({ action: 'accept' })
+    .expect(409);
+  assert.ok(
+    !(await member.get('/api/teams').expect(200)).body.projects.some(
+      (item) => item.id === project.id,
+    ),
+  );
+  assert.equal(
+    (await owner.get('/api/tasks').expect(200)).body.tasks.find(
+      (item) => item.id === task.id,
+    ).title,
+    task.title,
+  );
+  await owner
+    .patch(reviewEndpoint + '/' + pendingReview.id)
+    .set('Origin', origin)
+    .send({ action: 'cancel' })
+    .expect(204);
+  await owner
+    .post(base + '/members')
+    .set('Origin', origin)
+    .send({ email: users[1].email })
+    .expect(201);
+  await member
+    .patch('/api/teams/invitations/' + invitation.id)
+    .set('Origin', origin)
+    .send({ action: 'decline' })
+    .expect(204);
+  await member.get(shared).expect(404);
 });

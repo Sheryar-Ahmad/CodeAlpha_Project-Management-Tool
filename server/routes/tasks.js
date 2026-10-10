@@ -1,3 +1,7 @@
+import { TaskComment } from '../models/TaskComment.js';
+import { taskScope } from '../middleware/projectAccess.js';
+import { ensurePrivateProject } from '../lib/projects.js';
+import { monthBounds } from '../../shared/calendar.js';
 import { Router } from 'express';
 import mongoose from 'mongoose';
 import rateLimit from 'express-rate-limit';
@@ -14,6 +18,7 @@ import {
   querySchema,
   validDate,
   lifecycleSchema,
+  calendarQuerySchema,
 } from '../lib/validation.js';
 export const taskRouter = Router();
 taskRouter.use(requireAuth);
@@ -23,7 +28,9 @@ const serialize = (task) => ({
   id: String(task._id),
   lifecycle: task.lifecycle ?? 'active',
   title: task.title,
+  assignee: task.assignee ? String(task.assignee) : null,
   project: task.project,
+  projectId: task.projectId ? String(task.projectId) : undefined,
   description: task.description,
   notes: task.notes ?? '',
   links: (task.links ?? []).map(({ label, url }) => ({ label, url })),
@@ -54,7 +61,7 @@ const exportLimit = rateLimit({
 
 taskRouter.get('/export', exportLimit, async (req, res) => {
   // One extra record detects oversize exports without loading an unbounded account.
-  const tasks = await Task.find({ owner: req.user._id })
+  const tasks = await Task.find({ ...taskScope(req) })
     .sort({ _id: 1 })
     .limit(1001)
     .lean();
@@ -66,31 +73,53 @@ taskRouter.get('/export', exportLimit, async (req, res) => {
   res.json(createTaskExport(tasks.map(serialize), 'account'));
 });
 
+// Fetch the full selected month, independently of the board's 30-task page.
+taskRouter.get('/calendar', async (req, res) => {
+  const { month, project } = parse(calendarQuerySchema, req.query);
+  const { start, end } = monthBounds(month);
+  const tasks = await Task.find({
+    ...taskScope(req),
+    ...activeRecords,
+    due: { $gte: start, $lte: end },
+    ...(project ? { project } : {}),
+  })
+    .sort({ due: 1, _id: 1 })
+    .limit(1001)
+    .lean();
+  res.json({
+    tasks: tasks.slice(0, 1000).map(serialize),
+    truncated: tasks.length > 1000,
+  });
+});
+
 taskRouter.get('/overview', async (req, res) => {
   const date = typeof req.query.date === 'string' ? req.query.date : '';
   if (!date || !validDate(date))
     return res.status(400).json({ message: 'A valid local date is required.' });
-  const owner = req.user._id;
+  const scope = taskScope(req);
   const [total, active, completed, overdue, blocked, archived, trashed, projects] =
     await Promise.all([
-      Task.countDocuments({ owner, ...activeRecords }),
-      Task.countDocuments({ owner, ...activeRecords, status: 'progress' }),
-      Task.countDocuments({ owner, ...activeRecords, status: 'done' }),
+      Task.countDocuments({ ...scope, ...activeRecords }),
+      Task.countDocuments({ ...scope, ...activeRecords, status: 'progress' }),
+      Task.countDocuments({ ...scope, ...activeRecords, status: 'done' }),
       Task.countDocuments({
-        owner,
+        ...scope,
         ...activeRecords,
         status: { $ne: 'done' },
         due: { $ne: '', $lt: date },
       }),
-      Task.countDocuments({ owner, ...activeRecords, status: 'blocked' }),
-      Task.countDocuments({ owner, lifecycle: 'archived' }),
-      Task.countDocuments({ owner, lifecycle: 'trashed' }),
+      Task.countDocuments({ ...scope, ...activeRecords, status: 'blocked' }),
+      Task.countDocuments({ ...scope, lifecycle: 'archived' }),
+      Task.countDocuments({ ...scope, lifecycle: 'trashed' }),
       Task.aggregate([
-        { $match: { owner, ...activeRecords } },
+        { $match: { ...scope, ...activeRecords } },
         {
           $group: {
             _id: '$project',
             total: { $sum: 1 },
+            unlinked: {
+              $sum: { $cond: [{ $eq: [{ $ifNull: ['$projectId', null] }, null] }, 1, 0] },
+            },
             completed: { $sum: { $cond: [{ $eq: ['$status', 'done'] }, 1, 0] } },
             active: { $sum: { $cond: [{ $eq: ['$status', 'progress'] }, 1, 0] } },
             blocked: { $sum: { $cond: [{ $eq: ['$status', 'blocked'] }, 1, 0] } },
@@ -137,9 +166,12 @@ taskRouter.get('/overview', async (req, res) => {
   });
 });
 taskRouter.get('/', async (req, res) => {
-  const { page, limit, search, project, view, date } = parse(querySchema, req.query);
+  const { page, limit, search, project, view, date, assigned } = parse(
+    querySchema,
+    req.query,
+  );
   const filter = {
-    owner: req.user._id,
+    ...taskScope(req),
     ...(view === 'archived'
       ? { lifecycle: 'archived' }
       : view === 'trash'
@@ -147,6 +179,19 @@ taskRouter.get('/', async (req, res) => {
         : activeRecords),
   };
   if (project) filter.project = project;
+  if (assigned === 'me') filter.assignee = req.user._id;
+  if (view === 'attention') {
+    filter.status = { $ne: 'done' };
+    filter.$and = [
+      {
+        $or: [
+          { status: 'blocked' },
+          { priority: 'high' },
+          { due: { $ne: '', $lte: addDays(date, 3) } },
+        ],
+      },
+    ];
+  }
   if (view === 'blocked') filter.status = 'blocked';
   else if (['today', 'upcoming'].includes(view)) {
     filter.status = { $ne: 'done' };
@@ -183,7 +228,15 @@ taskRouter.post('/', async (req, res) => {
   const data = parse(taskSchema, req.body);
   if (data.status !== 'blocked') data.blockerReason = '';
   if (data.due) data.repeatDay = Number(data.due.slice(8));
-  const task = await Task.create({ ...data, owner: req.user._id });
+  if (req.sharedProject && data.project !== req.sharedProject.name)
+    return res.status(400).json({ message: 'Shared tasks must stay in this project.' });
+  const project =
+    req.sharedProject ?? (await ensurePrivateProject(req.user._id, data.project));
+  const task = await Task.create({
+    ...data,
+    projectId: project._id,
+    owner: project.owner,
+  });
   const nextTask =
     task.status === 'done' && task.recurrence !== 'none'
       ? await ensureNextOccurrence(task.toObject())
@@ -200,12 +253,33 @@ taskRouter.param('id', (req, res, next, id) => {
 });
 taskRouter.patch('/:id', async (req, res) => {
   const data = parse(taskUpdateSchema, req.body);
+  if (req.sharedProject && data.project && data.project !== req.sharedProject.name)
+    return res.status(400).json({ message: 'Shared tasks must stay in this project.' });
+  if (data.project) {
+    // Verify the task before creating any project records for an edit.
+    if (!(await Task.exists({ _id: req.params.id, ...taskScope(req), ...activeRecords })))
+      return res.status(404).json({ message: 'Task not found.' });
+    data.projectId = (
+      req.sharedProject ?? (await ensurePrivateProject(req.user._id, data.project))
+    )._id;
+    if (!req.sharedProject) {
+      const current = await Task.findOne({
+        _id: req.params.id,
+        ...taskScope(req),
+        ...activeRecords,
+      })
+        .select('projectId')
+        .lean();
+      if (current && String(current.projectId) !== String(data.projectId))
+        data.assignee = null;
+    }
+  }
   // Leaving Blocked clears the obsolete reason in the same write.
   if (data.status && data.status !== 'blocked') data.blockerReason = '';
   if (data.due) {
     const current = await Task.findOne({
       _id: req.params.id,
-      owner: req.user._id,
+      ...taskScope(req),
       ...activeRecords,
     })
       .select('due repeatDay')
@@ -219,7 +293,7 @@ taskRouter.patch('/:id', async (req, res) => {
   const task = await Task.findOneAndUpdate(
     {
       _id: req.params.id,
-      owner: req.user._id,
+      ...taskScope(req),
       ...activeRecords,
       ...(data.due === '' && !data.recurrence
         ? { recurrence: { $in: ['none', null] } }
@@ -246,7 +320,7 @@ taskRouter.patch('/:id/lifecycle', async (req, res) => {
       ? activeRecords
       : { lifecycle: action === 'unarchive' ? 'archived' : 'trashed' };
   const task = await Task.findOneAndUpdate(
-    { _id: req.params.id, owner: req.user._id, ...from },
+    { _id: req.params.id, ...taskScope(req), ...from },
     { $set: { lifecycle: action === 'archive' ? 'archived' : 'active' } },
     { returnDocument: 'after', runValidators: true },
   ).lean();
@@ -258,7 +332,7 @@ taskRouter.delete('/:id', async (req, res) => {
   const task = await Task.findOneAndUpdate(
     {
       _id: req.params.id,
-      owner: req.user._id,
+      ...taskScope(req),
       lifecycle: { $in: ['active', 'archived', null] },
     },
     { $set: { lifecycle: 'trashed' } },
@@ -269,12 +343,17 @@ taskRouter.delete('/:id', async (req, res) => {
 });
 
 taskRouter.delete('/:id/permanent', async (req, res) => {
+  if (req.sharedProject && req.projectRole !== 'owner')
+    return res
+      .status(403)
+      .json({ message: 'Only the project owner can permanently delete shared tasks.' });
   const result = await Task.deleteOne({
     _id: req.params.id,
-    owner: req.user._id,
+    ...taskScope(req),
     lifecycle: 'trashed',
   });
   if (!result.deletedCount)
     return res.status(404).json({ message: 'Task not found in Trash.' });
+  await TaskComment.deleteMany({ task: req.params.id });
   res.status(204).end();
 });

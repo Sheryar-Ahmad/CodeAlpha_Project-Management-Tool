@@ -1975,6 +1975,7 @@ try {
     await ownerPage
       .getByLabel('Project template', { exact: true })
       .selectOption('workshop-v1');
+    ownerPage.once('dialog', (dialog) => dialog.accept());
     await ownerPage
       .getByRole('button', { name: 'Apply project template', exact: true })
       .click();

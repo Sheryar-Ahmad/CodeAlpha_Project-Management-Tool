@@ -2089,3 +2089,101 @@ test('work intake enforces owner triage and repairs acceptance without duplicate
     .expect(204);
   await member.get(endpoint).expect(404);
 });
+
+test('guest portal allowlists project summaries and rejects team reads, mutations and assignment', async () => {
+  await RateBucket.deleteMany({ key: /^(api|auth):/ });
+  const owner = request.agent(app),
+    guest = request.agent(app);
+  const users = [];
+  for (const [agent, email] of [
+    [owner, 'portal-owner@example.com'],
+    [guest, 'portal-guest@example.com'],
+  ])
+    users.push(
+      (
+        await agent
+          .post('/api/auth/register')
+          .set('Origin', origin)
+          .send({ name: 'Portal user', email, password: 'portal-test-passphrase-long' })
+          .expect(201)
+      ).body.user,
+    );
+  const task = (
+    await owner
+      .post('/api/tasks')
+      .set('Origin', origin)
+      .send({
+        title: 'Release [draft]',
+        project: 'Client delivery',
+        notes: 'Private context',
+        links: [{ label: 'Internal', url: 'https://example.com/internal' }],
+        description: 'Public delivery brief',
+      })
+      .expect(201)
+  ).body.task;
+  const base = '/api/projects/' + task.projectId;
+  await owner
+    .post(base + '/members')
+    .set('Origin', origin)
+    .send({ email: users[1].email, role: 'guest' })
+    .expect(201);
+  await guest.get(base + '/guest').expect(404);
+  const invitation = (await guest.get('/api/teams').expect(200)).body.invitations[0];
+  assert.equal(invitation.role, 'guest');
+  await guest
+    .patch('/api/teams/invitations/' + invitation.id)
+    .set('Origin', origin)
+    .send({ action: 'accept' })
+    .expect(204);
+  const portal = (await guest.get(base + '/guest').expect(200)).body;
+  assert.equal(portal.total, 1);
+  assert.equal(portal.tasks[0].description, 'Public delivery brief');
+  assert.equal(portal.tasks[0].notes, undefined);
+  assert.equal(portal.tasks[0].links, undefined);
+  assert.equal(portal.tasks[0].owner, undefined);
+  assert.equal(portal.project.owner, undefined);
+  assert.equal(
+    (await guest.get(base + '/guest?search=%5Bdraft%5D').expect(200)).body.tasks.length,
+    1,
+  );
+  for (const path of [
+    '/tasks',
+    '/team-notes',
+    '/notes',
+    '/members',
+    '/reviews',
+    '/requests',
+    '/dependencies',
+    '/collaboration/' + task.id + '/comments',
+  ])
+    await guest.get(base + path).expect(404);
+  await guest
+    .patch(base + '/tasks/' + task.id)
+    .set('Origin', origin)
+    .send({ status: 'done' })
+    .expect(404);
+  await guest
+    .post(base + '/guest')
+    .set('Origin', origin)
+    .send({})
+    .expect(404);
+  await owner
+    .patch(base + '/collaboration/' + task.id + '/assignee')
+    .set('Origin', origin)
+    .send({ assignee: users[1].id })
+    .expect(400);
+  await owner
+    .post(base + '/reviews')
+    .set('Origin', origin)
+    .send({ task: task.id, reviewer: users[1].id })
+    .expect(400);
+  assert.equal(
+    (await guest.get('/api/teams').expect(200)).body.projects[0].role,
+    'guest',
+  );
+  await owner
+    .delete(base + '/members/' + invitation.id)
+    .set('Origin', origin)
+    .expect(204);
+  await guest.get(base + '/guest').expect(404);
+});

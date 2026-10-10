@@ -3,6 +3,7 @@ const schema = new mongoose.Schema(
   {
     project: { type: mongoose.Schema.Types.ObjectId, ref: 'Project', required: true },
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    role: { type: String, enum: ['member', 'guest'], default: 'member' },
     status: {
       type: String,
       enum: ['invited', 'active', 'declined', 'revoked'],

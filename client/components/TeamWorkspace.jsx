@@ -1,3 +1,4 @@
+import GuestPortal from './GuestPortal.jsx';
 import ProjectRequests from './ProjectRequests.jsx';
 import ProjectDependencies from './ProjectDependencies.jsx';
 import ProjectReviews from './ProjectReviews.jsx';
@@ -34,6 +35,7 @@ export default function TeamWorkspace({ demo, onExpired }) {
     [inboxTruncated, setInboxTruncated] = useState(false);
   const [mine, setMine] = useState(false);
   const [panel, setPanel] = useState('tasks');
+  const [inviteRole, setInviteRole] = useState('member');
   const [notebook, setNotebook] = useState(false),
     [truncated, setTruncated] = useState(false);
   const lock = useRef(false);
@@ -80,6 +82,12 @@ export default function TeamWorkspace({ demo, onExpired }) {
           return;
         }
         if (!selected) return;
+        if (teams.projects.find((item) => item.id === selected)?.role === 'guest') {
+          setDirectory(null);
+          setTasks([]);
+          setOverview(null);
+          return;
+        }
         const params = new URLSearchParams({
           page: String(page),
           view: lifecycle,
@@ -304,6 +312,9 @@ export default function TeamWorkspace({ demo, onExpired }) {
           </p>
         </div>
       )}
+      {project?.role === 'guest' && (
+        <GuestPortal key={project.id} projectId={project.id} onExpired={onExpired} />
+      )}
       {project && directory && (
         <section className="team-panel" aria-labelledby="team-heading">
           <h2 id="team-heading">{project.name}</h2>
@@ -318,7 +329,12 @@ export default function TeamWorkspace({ demo, onExpired }) {
                 <span>
                   {item.user.name}{' '}
                   <small className="muted">
-                    · {item.status === 'active' ? 'Member' : 'Invited'}
+                    ·{' '}
+                    {item.status === 'active'
+                      ? item.role === 'guest'
+                        ? 'Guest'
+                        : 'Member'
+                      : 'Invited'}
                   </small>
                 </span>
                 {directory.role === 'owner' && (
@@ -363,7 +379,7 @@ export default function TeamWorkspace({ demo, onExpired }) {
                   await mutate(
                     endpoint + '/members',
                     'POST',
-                    { email },
+                    { email, role: inviteRole },
                     'Invitation sent in Orbit. Your teammate can accept it in Team projects.',
                   );
                   setEmail('');
@@ -384,12 +400,26 @@ export default function TeamWorkspace({ demo, onExpired }) {
                   autoComplete="off"
                 />
               </label>
+              <label>
+                Invitation role
+                <select
+                  aria-label="Invitation role"
+                  value={inviteRole}
+                  disabled={busy}
+                  onChange={(event) => setInviteRole(event.target.value)}
+                >
+                  <option value="member">Member — collaborate</option>
+                  <option value="guest">Guest — read-only portal</option>
+                </select>
+              </label>
               <button className="button" disabled={busy}>
                 Invite teammate
               </button>
               <p className="small muted">
-                Use an existing Orbit account. This sends an in-app invitation, without
-                email delivery.
+                Guests see the project brief, milestones, and task
+                titles/descriptions/dates. Notes and conversations stay restricted. Use an
+                existing Orbit account. This sends an in-app invitation, without email
+                delivery.
               </p>
             </form>
           )}
@@ -569,7 +599,9 @@ export default function TeamWorkspace({ demo, onExpired }) {
                           </option>
                         )}
                         {directory.members
-                          .filter((item) => item.status === 'active')
+                          .filter(
+                            (item) => item.status === 'active' && item.role !== 'guest',
+                          )
                           .map((item) => (
                             <option key={item.id} value={item.user.id}>
                               {item.user.name}
@@ -579,7 +611,9 @@ export default function TeamWorkspace({ demo, onExpired }) {
                           task.assignee !== directory.owner?.id &&
                           !directory.members.some(
                             (item) =>
-                              item.status === 'active' && item.user.id === task.assignee,
+                              item.status === 'active' &&
+                              item.role !== 'guest' &&
+                              item.user.id === task.assignee,
                           ) && (
                             <option value={task.assignee}>
                               Former member · Reassign this task

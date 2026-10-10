@@ -42,6 +42,7 @@ collaborationRouter.patch('/:taskId/assignee', async (req, res) => {
       project: req.sharedProject._id,
       user: assignee,
       status: 'active',
+      role: { $in: ['member', null] },
     }))
   )
     return res

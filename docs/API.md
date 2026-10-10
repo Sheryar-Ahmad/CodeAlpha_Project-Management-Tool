@@ -150,3 +150,7 @@ GET /projects/:id/dependencies returns at most 200 directed links and current sc
 ## Project work requests
 
 GET /projects/:id/requests supports page and pending/accepted/declined/cancelled status filters, 20 per page. Pending includes interrupted accepting records. POST accepts {title,description,priority,due} from an owner/accepted member. PATCH /:requestId accepts {action: accept, decline, or cancel; response}; owners accept/decline, requesters or owners cancel pending requests. Decline needs an explanation. Acceptance reserves state=accepting, creates one task using a preallocated ID, then records accepted. Retrying an interrupted accepting record repairs it without duplicate tasks. Accepted retries return its recorded task ID without recreating a deliberately deleted task. Requests are project-visible, authenticated intake, not public anonymous forms.
+
+## Guest portal
+
+Owner invitations accept role=member (default) or guest. A guest must accept the invitation through their own account. GET /projects/:id/guest returns project name/brief/status/dates/milestones and 30 active task summaries per page, searchable by literal title. Task fields are limited to ID/title/description/priority/status/due. Guests cannot access team tasks, notes, discussions, reviews, request intake, dependencies, directories, assignments, exports, or mutations. Pending/removed guests receive 404. Guest accounts have their own separate personal workspace.

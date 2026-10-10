@@ -98,3 +98,7 @@ One ProjectDependencies document holds up to 200 edges and a revision counter. K
 ## Retry-safe intake
 
 WorkRequest reserves accepting state before writing a task. Pending cancellation/decline uses an expected-state update and cannot race past that reservation. The preallocated task ID supports idempotent upsert, scoped to the project owner. A final accepted update records completion; accepting records remain visible to the owner for explicit retry after interruption. These are separate writes for standalone MongoDB, not a transaction. Terminal accepted retries do not resurrect deleted tasks. Intake records remain project history after linked task removal.
+
+## Limited guest role
+
+Membership role defaults to member, including legacy records. Only the guest portal router opts into guest access; all existing team routers remain unavailable to guests. The portal uses an explicit field projection and response allowlist. Guest roles are excluded from assignment/reviewer eligibility and the pending-review inbox. Owners must revoke and re-invite to change roles, so a prior member cannot silently acquire a different permission state.

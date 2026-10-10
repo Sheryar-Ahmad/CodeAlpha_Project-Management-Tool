@@ -82,6 +82,7 @@ reviewRouter.post('/', async (req, res) => {
       project: req.sharedProject._id,
       user: data.reviewer,
       status: 'active',
+      role: { $in: ['member', null] },
     }))
   )
     return res

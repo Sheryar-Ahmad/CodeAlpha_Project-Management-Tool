@@ -14,7 +14,10 @@ import { parse } from '../lib/validation.js';
 export const teamRouter = Router();
 teamRouter.use(requireAuth);
 const inviteSchema = z
-  .object({ email: z.string().trim().toLowerCase().email().max(254) })
+  .object({
+    email: z.string().trim().toLowerCase().email().max(254),
+    role: z.enum(['member', 'guest']).default('member'),
+  })
   .strict();
 const responseSchema = z.object({ action: z.enum(['accept', 'decline']) }).strict();
 const person = (user) => ({ id: String(user._id), name: user.name });
@@ -36,7 +39,9 @@ teamRouter.get('/', async (req, res) => {
   const visible = memberships.slice(0, 1000).filter((item) => item.project);
   const accessibleIds = [
     ...owned.slice(0, 1000).map((item) => item._id),
-    ...visible.filter((item) => item.status === 'active').map((item) => item.project._id),
+    ...visible
+      .filter((item) => item.status === 'active' && item.role !== 'guest')
+      .map((item) => item.project._id),
   ];
   const reviewInbox = await TaskReview.find({
     project: { $in: accessibleIds },
@@ -61,7 +66,7 @@ teamRouter.get('/', async (req, res) => {
           id: String(item.project._id),
           name: item.project.name,
           description: item.project.description,
-          role: 'member',
+          role: item.role ?? 'member',
         })),
     ],
     reviewInbox: reviewInbox
@@ -76,7 +81,11 @@ teamRouter.get('/', async (req, res) => {
     inboxTruncated: reviewInbox.length > 100,
     invitations: visible
       .filter((item) => item.status === 'invited')
-      .map((item) => ({ id: String(item._id), project: item.project.name })),
+      .map((item) => ({
+        id: String(item._id),
+        project: item.project.name,
+        role: item.role ?? 'member',
+      })),
     truncated: memberships.length > 1000 || owned.length > 1000,
   });
 });
@@ -122,12 +131,13 @@ memberRouter.get('/', async (req, res) => {
         id: String(item._id),
         user: person(item.user),
         status: item.status,
+        role: item.role ?? 'member',
       })),
     truncated: members.length > 100,
   });
 });
 memberRouter.post('/', requireProjectOwner, async (req, res) => {
-  const { email } = parse(inviteSchema, req.body);
+  const { email, role } = parse(inviteSchema, req.body);
   const user = await User.findOne({ email }).select('_id').lean();
   if (!user || String(user._id) === String(req.sharedProject.owner))
     return res
@@ -145,7 +155,7 @@ memberRouter.post('/', requireProjectOwner, async (req, res) => {
   if (existing) {
     const result = await ProjectMember.updateOne(
       { _id: existing._id, status: existing.status },
-      { $set: { status: 'invited' } },
+      { $set: { status: 'invited', role } },
     );
     if (!result.modifiedCount)
       return res
@@ -154,7 +164,11 @@ memberRouter.post('/', requireProjectOwner, async (req, res) => {
   } else {
     await ProjectMember.init();
     try {
-      await ProjectMember.create({ project: req.sharedProject._id, user: user._id });
+      await ProjectMember.create({
+        project: req.sharedProject._id,
+        user: user._id,
+        role,
+      });
     } catch (error) {
       if (error.code !== 11000) throw error;
       return res

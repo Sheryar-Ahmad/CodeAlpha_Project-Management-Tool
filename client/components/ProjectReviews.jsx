@@ -122,7 +122,7 @@ export default function ProjectReviews({ project, directory, tasks, onExpired })
               <option value={directory.owner.id}>{directory.owner.name} · Owner</option>
             )}
             {directory.members
-              .filter((item) => item.status === 'active')
+              .filter((item) => item.status === 'active' && item.role !== 'guest')
               .map((item) => (
                 <option key={item.id} value={item.user.id}>
                   {item.user.name}

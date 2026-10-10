@@ -8,17 +8,23 @@ export async function requireProjectAccess(req, res, next) {
   const project = await Project.findById(req.params.id).lean();
   if (!project) return res.status(404).json({ message: 'Project not found.' });
   const isOwner = String(project.owner) === String(req.user._id);
-  if (
-    !isOwner &&
-    !(await ProjectMember.exists({
-      project: project._id,
-      user: req.user._id,
-      status: 'active',
-    }))
-  )
+  const membership = isOwner
+    ? null
+    : await ProjectMember.findOne({
+        project: project._id,
+        user: req.user._id,
+        status: 'active',
+      })
+        .select('role')
+        .lean();
+  if (!isOwner && !membership)
+    return res.status(404).json({ message: 'Project not found.' });
+  const role = isOwner ? 'owner' : (membership.role ?? 'member');
+  // Only the dedicated portal router opts into guest access.
+  if (role === 'guest' && !req.guestPortal)
     return res.status(404).json({ message: 'Project not found.' });
   req.sharedProject = project;
-  req.projectRole = isOwner ? 'owner' : 'member';
+  req.projectRole = role;
   next();
 }
 export function requireProjectOwner(req, res, next) {

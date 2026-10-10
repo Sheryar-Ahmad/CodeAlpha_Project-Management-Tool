@@ -2114,6 +2114,65 @@ try {
         .count(),
       0,
     );
+
+    await RateBucket.deleteMany({ key: /^api:/ });
+    await ownerPage.getByLabel('Invitation role', { exact: true }).selectOption('guest');
+    await ownerPage
+      .getByLabel('Teammate’s account email', { exact: true })
+      .fill('omar-browser@example.com');
+    await ownerPage.getByRole('button', { name: 'Invite teammate', exact: true }).click();
+    await ownerPage
+      .getByRole('button', { name: 'Cancel invitation', exact: true })
+      .waitFor();
+    await memberPage.getByRole('button', { name: 'Refresh', exact: true }).click();
+    await memberPage.getByRole('button', { name: 'Accept', exact: true }).click();
+    await memberPage
+      .getByLabel('Choose a project', { exact: true })
+      .selectOption(teamProject.id);
+    await memberPage
+      .getByRole('heading', { name: 'Guest project portal', exact: true })
+      .waitFor();
+    await memberPage
+      .getByRole('heading', { name: 'Prepare participant handouts', exact: true })
+      .waitFor();
+    assert.equal(
+      await memberPage
+        .getByRole('button', { name: 'New shared task', exact: true })
+        .count(),
+      0,
+    );
+    assert.equal(
+      await memberPage
+        .getByRole('navigation', { name: 'Project tools', exact: true })
+        .count(),
+      0,
+    );
+    assert.equal(
+      (
+        await memberContext.request.get(
+          origin + '/api/projects/' + teamProject.id + '/tasks',
+        )
+      ).status(),
+      404,
+    );
+    for (const width of [320, 375, 768, 1024, 1440]) {
+      await memberPage.setViewportSize({ width, height: 1000 });
+      assert.equal(
+        await memberPage.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+        true,
+        'Guest portal overflow at ' + width,
+      );
+    }
+    await memberPage.evaluate(() => window.scrollTo(0, 0));
+    await memberPage.screenshot({
+      path: 'docs/screenshots/guest-desktop.png',
+      fullPage: true,
+    });
+    console.log(
+      'PASS: guest invitation, read-only portal, restricted team access and mobile layouts.',
+    );
     await ownerContext.close();
     await memberContext.close();
     console.log(

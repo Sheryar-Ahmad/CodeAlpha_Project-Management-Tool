@@ -1,3 +1,4 @@
+import { workflowRouter } from './projectWorkflow.js';
 import { goalsRouter } from './goals.js';
 import { workloadRouter } from './workload.js';
 import { guestPortalRouter } from './guestPortal.js';
@@ -20,6 +21,7 @@ projectRouter.use(requireAuth);
 projectRouter.use('/:id/guest', guestPortalRouter);
 projectRouter.use('/:id/workload', workloadRouter);
 projectRouter.use('/:id/goals', goalsRouter);
+projectRouter.use('/:id/workflow', workflowRouter);
 projectRouter.use('/:id/members', memberRouter);
 projectRouter.use('/:id/collaboration', collaborationRouter);
 projectRouter.use('/:id/reviews', reviewRouter);

@@ -2416,3 +2416,84 @@ test('project objectives enforce authorship, bounded results and stale update pr
     .expect(204);
   await member.get(endpoint).expect(404);
 });
+
+test('project templates are owner-only, concurrency-safe and repair partial setup without overwrites', async () => {
+  await RateBucket.deleteMany({ key: /^(api|auth):/ });
+  const owner = request.agent(app),
+    member = request.agent(app);
+  for (const [agent, email] of [
+    [owner, 'template-owner@example.com'],
+    [member, 'template-member@example.com'],
+  ])
+    await agent
+      .post('/api/auth/register')
+      .set('Origin', origin)
+      .send({ name: 'Template user', email, password: 'template-test-passphrase' })
+      .expect(201);
+  const project = (
+    await owner
+      .post('/api/projects')
+      .set('Origin', origin)
+      .send({ name: 'Template project' })
+      .expect(201)
+  ).body.project;
+  const base = '/api/projects/' + project.id,
+    endpoint = base + '/workflow/template';
+  await owner
+    .post(base + '/members')
+    .set('Origin', origin)
+    .send({ email: 'template-member@example.com' })
+    .expect(201);
+  const invitation = (await member.get('/api/teams').expect(200)).body.invitations[0];
+  await member
+    .patch('/api/teams/invitations/' + invitation.id)
+    .set('Origin', origin)
+    .send({ action: 'accept' })
+    .expect(204);
+  await member
+    .post(endpoint)
+    .set('Origin', origin)
+    .send({ templateId: 'research-v1' })
+    .expect(403);
+  const responses = await Promise.all(
+    [1, 2].map(() =>
+      owner.post(endpoint).set('Origin', origin).send({ templateId: 'research-v1' }),
+    ),
+  );
+  assert.ok(responses.every((result) => result.status === 200));
+  assert.equal(await Task.countDocuments({ projectId: project.id }), 3);
+  const tasks = await Task.find({ projectId: project.id }).lean();
+  await Task.updateOne(
+    { _id: tasks[0]._id },
+    { $set: { title: 'Customized research step' } },
+  );
+  await Project.updateOne({ _id: project.id }, { $set: { templateReady: false } });
+  await Task.deleteOne({ _id: tasks[1]._id });
+  await owner
+    .post(endpoint)
+    .set('Origin', origin)
+    .send({ templateId: 'research-v1' })
+    .expect(200);
+  assert.equal(await Task.countDocuments({ projectId: project.id }), 3);
+  assert.equal(
+    (await Task.findById(tasks[0]._id).lean()).title,
+    'Customized research step',
+  );
+  await Task.deleteOne({ _id: tasks[1]._id });
+  await owner
+    .post(endpoint)
+    .set('Origin', origin)
+    .send({ templateId: 'research-v1' })
+    .expect(200);
+  assert.equal(await Task.countDocuments({ projectId: project.id }), 2);
+  await owner
+    .post(endpoint)
+    .set('Origin', origin)
+    .send({ templateId: 'launch-v1' })
+    .expect(409);
+  await owner
+    .post(endpoint)
+    .set('Origin', origin)
+    .send({ templateId: 'invented' })
+    .expect(400);
+});

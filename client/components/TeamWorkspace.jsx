@@ -3,6 +3,7 @@ import ProjectRequests from './ProjectRequests.jsx';
 import ProjectDependencies from './ProjectDependencies.jsx';
 import ProjectWorkload from './ProjectWorkload.jsx';
 import ProjectGoals from './ProjectGoals.jsx';
+import ProjectWorkflow from './ProjectWorkflow.jsx';
 import ProjectReviews from './ProjectReviews.jsx';
 import TaskDiscussion from './TaskDiscussion.jsx';
 import { useEffect, useRef, useState } from 'react';
@@ -446,6 +447,7 @@ export default function TeamWorkspace({ demo, onExpired }) {
             ['dependencies', 'Dependencies'],
             ['workload', 'Workload'],
             ['goals', 'Goals'],
+            ['workflow', 'Workflow'],
             ['reviews', 'Reviews'],
             ['requests', 'Work requests'],
           ].map(([value, label]) => (
@@ -666,6 +668,14 @@ export default function TeamWorkspace({ demo, onExpired }) {
       )}
       {project && directory && panel === 'goals' && (
         <ProjectGoals key={project.id} project={project} onExpired={onExpired} />
+      )}
+      {project && directory && panel === 'workflow' && (
+        <ProjectWorkflow
+          key={project.id}
+          project={project}
+          onExpired={onExpired}
+          onApplied={() => setRevision((value) => value + 1)}
+        />
       )}
       {project && directory && panel === 'dependencies' && (
         <ProjectDependencies

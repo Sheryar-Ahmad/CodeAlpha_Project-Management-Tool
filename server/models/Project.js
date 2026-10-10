@@ -15,6 +15,9 @@ const schema = new mongoose.Schema(
   {
     owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     name: { type: String, required: true, trim: true, maxlength: 60 },
+    templateId: { type: String, default: '' },
+    templateReady: { type: Boolean, default: false },
+    templateTasks: { type: [mongoose.Schema.Types.ObjectId], default: [] },
     milestones: { type: [milestone], default: [], validate: validMilestones },
     description: { type: String, trim: true, default: '', maxlength: 1000 },
     startDate: { type: String, default: '', validate: validDate },

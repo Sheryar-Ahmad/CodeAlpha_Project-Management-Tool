@@ -165,3 +165,7 @@ Owner invitations accept role=member (default) or guest. A guest must accept the
 
 `GET/POST /api/projects/:id/goals` lists 20 goals per page or creates `{ title, due, results }`. Each goal has 1–8 results `{ id, title, unit, baseline, current, target }`; numeric measures are bounded to ±1 billion. Members edit goals they create; owners edit any; guests have no access.
 `PATCH/DELETE /:goalId` requires the last-read `revision`, preventing silent stale overwrites. PATCH sends the complete goal; DELETE sends only revision. Result progress is a clamped baseline-to-target ratio (increasing or decreasing), and objective progress is an equal-weight average. No automatic task updates or forecast is implied.
+
+### Project starter workflows
+
+`GET /api/projects/:id/workflow/template` returns setup status. The owner can `POST { templateId }` using workshop-v1, launch-v1 or research-v1. Applying reserves fixed task IDs and adds three starter tasks without replacing existing work. Concurrent/repeated requests use those IDs. An interrupted setup is repairable with the same template; an already completed setup never recreates deliberately deleted tasks. A different template returns 409. Guests are excluded. The UI shows an explicit preview and confirmation.

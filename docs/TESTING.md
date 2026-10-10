@@ -164,3 +164,5 @@ Guest checks: invite as Guest, accept with a separate account, verify the read-o
 Workload regression checks due/overdue estimates, unestimated and undated work, omitted future/completed work, zero versus unset capacity, member/owner authorization, revocation and export. Chromium verifies capacity save/refresh and 320–1440px layouts.
 
 Goals checks cover member authorship/owner moderation, numeric limits, decreasing targets, bounded progress, concurrent revision conflicts and revocation. Chromium creates a 40% objective and refreshes it at mobile/desktop widths.
+
+Project-template tests race application, repair interrupted setup, preserve customized tasks and prevent deleted task recreation after completion. Chromium applies a workshop blueprint from its preview and finds the saved starter tasks.

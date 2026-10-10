@@ -1971,6 +1971,24 @@ try {
       memberId,
     );
 
+    await ownerPage.getByRole('button', { name: 'Workflow', exact: true }).click();
+    await ownerPage
+      .getByLabel('Project template', { exact: true })
+      .selectOption('workshop-v1');
+    await ownerPage
+      .getByRole('button', { name: 'Apply project template', exact: true })
+      .click();
+    await ownerPage
+      .getByText('Project starter tasks are ready. Open Shared tasks to adapt them.', {
+        exact: true,
+      })
+      .waitFor();
+    await ownerPage.getByText('Project template applied.', { exact: true }).waitFor();
+    await ownerPage.getByRole('button', { name: 'Shared tasks', exact: true }).click();
+    await ownerPage
+      .getByRole('heading', { name: 'Define the workshop outcome', exact: true })
+      .waitFor();
+    await RateBucket.deleteMany({ key: /^api:/ });
     await memberPage.getByRole('button', { name: 'Goals', exact: true }).click();
     await memberPage.getByRole('button', { name: 'New objective', exact: true }).click();
     await memberPage
@@ -2052,6 +2070,7 @@ try {
       ['Dependencies', 'What needs to happen first?'],
       ['Workload', 'Plan a manageable week'],
       ['Goals', 'Connect work to a clear outcome'],
+      ['Workflow', 'Give this project a useful starting point'],
       ['Reviews', 'Review requests'],
       ['Work requests', 'Propose a next step'],
     ]) {

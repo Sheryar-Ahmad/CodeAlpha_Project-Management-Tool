@@ -185,6 +185,11 @@ Use **127.0.0.1**, matching APP_ORIGIN. Switching to localhost without updating 
 
 The demo works without a database. Account features require MongoDB.
 
+For account testing without automatic API restarts, stop the existing development
+session with **Ctrl+C**, then run `npm run dev:stable`. The frontend still updates
+as you edit it; restart this session manually after changing server code or `.env`.
+The regular `npm run dev` command retains backend watch mode for coding sessions.
+
 ## How the pieces fit
 
 ```mermaid

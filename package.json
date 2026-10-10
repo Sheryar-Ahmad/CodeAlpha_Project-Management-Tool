@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "concurrently -k \"npm:dev:server\" \"npm:dev:client\"",
+    "dev:stable": "concurrently -k \"npm:start\" \"npm:dev:client\"",
     "dev:server": "node --watch server/index.js",
     "dev:client": "vite --host 127.0.0.1",
     "build": "vite build && node scripts/seo.js",

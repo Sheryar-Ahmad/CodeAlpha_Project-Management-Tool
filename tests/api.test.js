@@ -3464,3 +3464,113 @@ test('public submission limit survives retries across the shared database store'
     .expect(429);
   assert.equal(await WorkRequest.countDocuments({ project: project._id }), 8);
 });
+
+test('targeted discussion notifications follow current task access and recipient-only acknowledgements', async () => {
+  await RateBucket.deleteMany({});
+  const ownerAgent = request.agent(app),
+    memberAgent = request.agent(app);
+  const register = async (agent, name) =>
+    (
+      await agent
+        .post('/api/auth/register')
+        .set('Origin', origin)
+        .send({
+          name,
+          email: name + '@notification.example',
+          password: 'notification-long-passphrase',
+        })
+        .expect(201)
+    ).body.user;
+  const owner = await register(ownerAgent, 'NotificationOwner');
+  const member = await register(memberAgent, 'NotificationMember');
+  const guest = await User.create({
+    name: 'Guest recipient',
+    email: 'guest@notification.example',
+    passwordHash: 'unused',
+  });
+  const project = await Project.create({ owner: owner.id, name: 'Targeted discussions' });
+  const membership = await ProjectMember.create({
+    project: project._id,
+    user: member.id,
+    status: 'active',
+  });
+  await ProjectMember.create({
+    project: project._id,
+    user: guest._id,
+    status: 'active',
+    role: 'guest',
+  });
+  const task = await Task.create({
+    owner: owner.id,
+    projectId: project._id,
+    project: project.name,
+    title: 'Review the workshop plan',
+  });
+  const comments =
+    '/api/projects/' + project._id + '/collaboration/' + task._id + '/comments';
+  const notify = (data) => ownerAgent.post(comments).set('Origin', origin).send(data);
+  await notify({ body: 'Not myself', notified: owner.id }).expect(400);
+  await notify({ body: 'Not a guest', notified: String(guest._id) }).expect(400);
+  await notify({ body: 'No injected identities', notified: { $ne: null } }).expect(400);
+  await notify({ body: 'Private discussion details', notified: member.id }).expect(201);
+  const comment = await TaskComment.findOne({ task: task._id }).lean();
+  const reportPath = '/api/teams/portfolio?date=2026-10-10';
+  const report = (await memberAgent.get(reportPath).expect(200)).body;
+  assert.equal(report.digest.notifications.length, 1);
+  assert.equal(report.digest.notifications[0].title, task.title);
+  assert.ok(!JSON.stringify(report).includes('Private discussion details'));
+  const listing = (await memberAgent.get(comments).expect(200)).body.comments;
+  assert.equal(listing[0].notified.name, member.name);
+  const readPath = comments + '/' + comment._id + '/read';
+  await ownerAgent.patch(readPath).set('Origin', origin).send({}).expect(404);
+  await memberAgent
+    .patch(readPath)
+    .set('Origin', origin)
+    .send({ user: owner.id })
+    .expect(400);
+  await memberAgent.patch(readPath).set('Origin', origin).send({}).expect(204);
+  await memberAgent.patch(readPath).set('Origin', origin).send({}).expect(204);
+  assert.equal(
+    (await memberAgent.get(reportPath).expect(200)).body.digest.notifications.length,
+    0,
+  );
+  await TaskComment.updateOne({ _id: comment._id }, { $set: { seenAt: null } });
+  await ProjectMember.updateOne({ _id: membership._id }, { $set: { status: 'revoked' } });
+  assert.equal(
+    (await memberAgent.get(reportPath).expect(200)).body.digest.notifications.length,
+    0,
+  );
+  await memberAgent.patch(readPath).set('Origin', origin).send({}).expect(404);
+  await notify({ body: 'Revoked recipient', notified: member.id }).expect(400);
+  await ProjectMember.updateOne({ _id: membership._id }, { $set: { status: 'active' } });
+  await Task.updateOne(
+    { _id: task._id },
+    { $unset: { projectId: 1 }, $set: { project: 'Private destination' } },
+  );
+  assert.equal(
+    (await memberAgent.get(reportPath).expect(200)).body.digest.notifications.length,
+    0,
+  );
+  await memberAgent.patch(readPath).set('Origin', origin).send({}).expect(404);
+  await Task.updateOne(
+    { _id: task._id },
+    { $set: { projectId: project._id, project: project.name } },
+  );
+  assert.equal(
+    (await memberAgent.get(reportPath).expect(200)).body.digest.notifications.length,
+    1,
+  );
+  await ownerAgent
+    .delete(comments + '/' + comment._id)
+    .set('Origin', origin)
+    .expect(204);
+  assert.equal(
+    (await memberAgent.get(reportPath).expect(200)).body.digest.notifications.length,
+    0,
+  );
+  await notify({ body: 'Cleanup reference', notified: member.id }).expect(201);
+  await User.updateOne({ _id: member.id }, { $set: { deleting: true } });
+  const { purgeAccount } = await import('../server/lib/accountDeletion.js');
+  await purgeAccount(member.id);
+  assert.equal((await TaskComment.findOne({ task: task._id }).lean()).notified, null);
+});

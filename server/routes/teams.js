@@ -1,3 +1,4 @@
+import { TaskComment } from '../models/TaskComment.js';
 import { Task } from '../models/Task.js';
 import { WorkRequest } from '../models/WorkRequest.js';
 import { validDate } from '../../shared/date.js';
@@ -198,7 +199,7 @@ teamRouter.get('/portfolio', async (req, res) => {
         assignee: req.user._id,
       })),
   ];
-  const [tasks, reviews, requests, invitations] = await Promise.all([
+  const [tasks, reviews, requests, invitations, notifications] = await Promise.all([
     Task.find({ $and: [attention, { $or: assignmentScopes }] })
       .select('title project projectId owner status priority due lifecycle')
       .sort({ due: 1, _id: 1 })
@@ -223,6 +224,44 @@ teamRouter.get('/portfolio', async (req, res) => {
       .limit(31)
       .populate('project', 'name owner')
       .lean(),
+    TaskComment.aggregate([
+      { $match: { project: { $in: ids }, notified: req.user._id, seenAt: null } },
+      {
+        $lookup: {
+          from: Task.collection.name,
+          let: { task: '$task', project: '$project' },
+          pipeline: [
+            {
+              $match: {
+                lifecycle: 'active',
+                $expr: {
+                  $and: [
+                    { $eq: ['$_id', '$$task'] },
+                    { $eq: ['$projectId', '$$project'] },
+                  ],
+                },
+              },
+            },
+            { $project: { title: 1, owner: 1 } },
+          ],
+          as: 'linkedTask',
+        },
+      },
+      { $unwind: '$linkedTask' },
+      {
+        $lookup: {
+          from: Project.collection.name,
+          localField: 'project',
+          foreignField: '_id',
+          as: 'parent',
+        },
+      },
+      { $unwind: '$parent' },
+      { $match: { $expr: { $eq: ['$linkedTask.owner', '$parent.owner'] } } },
+      { $sort: { createdAt: -1, _id: -1 } },
+      { $limit: 31 },
+      { $project: { task: 1, project: 1, createdAt: 1, title: '$linkedTask.title' } },
+    ]),
   ]);
   const projectNames = new Map(projects.map((item) => [item.id, item.name]));
   const invitationOwners = await User.find({
@@ -239,6 +278,14 @@ teamRouter.get('/portfolio', async (req, res) => {
     projects,
     truncated: owned.length > 100 || memberships.length > 100,
     digest: {
+      notifications: notifications.slice(0, 30).map((item) => ({
+        id: String(item._id),
+        taskId: String(item.task),
+        projectId: String(item.project),
+        project: projectNames.get(String(item.project)),
+        title: item.title,
+        createdAt: item.createdAt,
+      })),
       tasks: tasks.slice(0, 30).map((item) => ({
         id: String(item._id),
         title: item.title,
@@ -272,6 +319,7 @@ teamRouter.get('/portfolio', async (req, res) => {
           role: item.role ?? 'member',
         })),
       truncated:
+        notifications.length > 30 ||
         tasks.length > 30 ||
         reviews.length > 30 ||
         requests.length > 30 ||

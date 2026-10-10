@@ -487,6 +487,7 @@ function Workspace({ mode, user, onExit, onExpired, onDeleting }) {
           <TeamWorkspace
             demo={mode === 'demo'}
             onExpired={onExpired}
+            viewerId={user?.id}
             initialProjectId={teamSelection.id}
             initialPanel={teamSelection.panel}
           />

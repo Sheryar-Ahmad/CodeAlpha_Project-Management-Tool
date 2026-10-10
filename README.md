@@ -47,6 +47,8 @@ Built by **Sheheryar Ahmad**, a Semester 5 Software Engineering student at **COM
 
 ![Weekly work logs with project filters and recorded-time summaries](docs/screenshots/work-log-desktop.png)
 
+![Owned and joined project portfolio with an actionable work digest](docs/screenshots/portfolio-desktop.png)
+
 ![Recorded project date ranges on a monthly timeline](docs/screenshots/timeline-desktop.png)
 
 ![Quiet focus timer with pause, reset, and session length controls](docs/screenshots/focus-desktop.png)
@@ -63,6 +65,7 @@ Screenshots are from the working local demo using illustrative sample tasks.
 
 | Feature                   | What it solves                                                                                 |
 | ------------------------- | ---------------------------------------------------------------------------------------------- |
+| Discussion notifications  | Flag a comment for one teammate and acknowledge it in the work digest                          |
 | Public request forms      | Optional revocable links, account-free proposals, bounded submissions and private owner triage |
 | Portfolio and work digest | Compare owned/joined project health and act on urgent work, reviews, invitations and intake    |
 | Guest portal              | Invite clients to read a project brief, milestones and active-task summaries without editing   |
@@ -255,7 +258,7 @@ npm run build
 npm run format:check
 ```
 
-**Verified locally:** 81 API/input/planning/timer/password/template/recovery/export/recurrence/project tests and Chromium browser flows covering demo CRUD, storage persistence, search, filters, safe text rendering, mobile overflow, dialog Escape, checklists, task duplication, template previews and replacement protection, list actions and pagination, blockers, archive/trash restoration, private downloads, daily views, overnight date changes, project progress, focus pause/refresh/completion, registration, database-backed persistence, logout, and login. Expanded checks cover whole-month calendar queries, leap years, Action Center rules, milestones, health explanations, command navigation, notebook decisions/meetings, follow-up drafts, weekly time totals, private APIs, and explicit legacy linking. Team checks cover invitation state transitions, cross-project isolation, removed/pending users, role restrictions, assignment eligibility, private/team note separation, discussion moderation, review decisions and inbox access. Browser tests exercise two separate authenticated accounts and team layouts at 320–1440px.
+**Verified locally:** 82 API/input/planning/timer/password/template/recovery/export/recurrence/project tests and Chromium browser flows covering demo CRUD, storage persistence, search, filters, safe text rendering, mobile overflow, dialog Escape, checklists, task duplication, template previews and replacement protection, list actions and pagination, blockers, archive/trash restoration, private downloads, daily views, overnight date changes, project progress, focus pause/refresh/completion, registration, database-backed persistence, logout, and login. Expanded checks cover whole-month calendar queries, leap years, Action Center rules, milestones, health explanations, command navigation, notebook decisions/meetings, follow-up drafts, weekly time totals, private APIs, and explicit legacy linking. Team checks cover invitation state transitions, cross-project isolation, removed/pending users, role restrictions, assignment eligibility, private/team note separation, discussion moderation, review decisions and inbox access. Browser tests exercise two separate authenticated accounts and team layouts at 320–1440px.
 
 For browser checks:
 

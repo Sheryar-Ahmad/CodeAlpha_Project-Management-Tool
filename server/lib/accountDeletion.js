@@ -44,6 +44,10 @@ export async function purgeAccount(user) {
     ProjectNote.deleteMany({ $or: [{ owner: user }, { createdBy: user }] }),
     ProjectMember.deleteMany({ user }),
     TaskComment.deleteMany({ author: user }),
+    TaskComment.updateMany(
+      { notified: user },
+      { $set: { notified: null, seenAt: null } },
+    ),
     TaskReview.deleteMany({ $or: [{ requester: user }, { reviewer: user }] }),
     ProjectCapacity.deleteMany({ user }),
     ProjectGoal.deleteMany({ createdBy: user }),

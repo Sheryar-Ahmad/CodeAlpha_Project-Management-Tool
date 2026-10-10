@@ -2001,6 +2001,9 @@ try {
     await memberPage
       .getByLabel('New comment', { exact: true })
       .fill('I will share the outline before our next meeting.');
+    await memberPage
+      .getByLabel('Notify a teammate (optional)', { exact: true })
+      .selectOption({ label: 'Iris' });
     await memberPage.getByRole('button', { name: 'Add comment', exact: true }).click();
     await memberPage
       .getByText('I will share the outline before our next meeting.', { exact: true })
@@ -2037,6 +2040,22 @@ try {
       memberId,
     );
 
+    await ownerPage.getByRole('button', { name: 'Portfolio', exact: true }).click();
+    await ownerPage
+      .getByRole('heading', { name: 'Discussion notifications (1)', exact: true })
+      .waitFor();
+    await ownerPage.getByRole('button', { name: 'Mark read', exact: true }).click();
+    await ownerPage
+      .getByRole('heading', { name: 'Discussion notifications (1)', exact: true })
+      .waitFor({ state: 'hidden' });
+    await ownerPage
+      .locator('.portfolio-card')
+      .filter({ hasText: teamProject.name })
+      .getByRole('button', { name: 'Open project', exact: true })
+      .click();
+    await ownerPage
+      .getByRole('heading', { name: 'Shared project tasks', exact: true })
+      .waitFor();
     await ownerPage.getByRole('button', { name: 'Workflow', exact: true }).click();
     await ownerPage
       .getByLabel('Project template', { exact: true })

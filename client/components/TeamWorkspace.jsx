@@ -19,6 +19,7 @@ export default function TeamWorkspace({
   onExpired,
   initialProjectId = '',
   initialPanel = 'tasks',
+  viewerId,
 }) {
   const [projects, setProjects] = useState([]),
     [invitations, setInvitations] = useState([]);
@@ -714,6 +715,12 @@ export default function TeamWorkspace({
         <TaskDiscussion
           projectId={project.id}
           task={discussion}
+          people={[
+            directory.owner,
+            ...directory.members
+              .filter((item) => item.status === 'active' && item.role !== 'guest')
+              .map((item) => item.user),
+          ].filter((person) => person && person.id !== viewerId)}
           onExpired={onExpired}
           onClose={() => setDiscussion(null)}
         />

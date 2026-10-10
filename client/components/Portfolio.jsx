@@ -1,9 +1,36 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { RefreshCw, ArrowUpRight } from 'lucide-react';
 import { request, today } from '../lib/api.js';
 import { projectStatuses } from '../../shared/project.js';
 
 export default function Portfolio({ demo, onExpired, onOpen, onPrivateTask, onTeams }) {
+  const lock = useRef(false);
+  const [busy, setBusy] = useState(false);
+  async function markRead(item) {
+    if (lock.current) return;
+    lock.current = true;
+    setBusy(true);
+    setError('');
+    try {
+      await request(
+        '/projects/' +
+          item.projectId +
+          '/collaboration/' +
+          item.taskId +
+          '/comments/' +
+          item.id +
+          '/read',
+        { method: 'PATCH', body: '{}' },
+      );
+      setRevision((value) => value + 1);
+    } catch (failure) {
+      if (failure.status === 401) onExpired();
+      else setError(failure.message);
+    } finally {
+      lock.current = false;
+      setBusy(false);
+    }
+  }
   const [report, setReport] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -120,12 +147,47 @@ export default function Portfolio({ demo, onExpired, onOpen, onPrivateTask, onTe
             A current snapshot of urgent owned work and shared tasks assigned to you.
             Refreshes while this tab is visible; no emails are sent.
           </p>
-          {!digest.tasks.length &&
+          {!digest.notifications.length &&
+            !digest.tasks.length &&
             !digest.reviews.length &&
             !digest.requests.length &&
             !digest.invitations.length && (
               <p className="empty-state">Nothing needs your attention right now.</p>
             )}
+
+          {digest.notifications.length > 0 && (
+            <div className="digest-group">
+              <h3>Discussion notifications ({digest.notifications.length})</h3>
+              <ul className="digest-list">
+                {digest.notifications.map((item) => (
+                  <li key={item.id}>
+                    <div>
+                      <strong>{item.title}</strong>
+                      <span>
+                        {item.project} · A teammate asked for your attention in the
+                        discussion.
+                      </span>
+                    </div>
+                    <div className="team-actions">
+                      <button
+                        className="button secondary"
+                        onClick={() => onOpen(item.projectId, 'tasks')}
+                      >
+                        View project
+                      </button>
+                      <button
+                        className="text-button"
+                        disabled={busy || loading}
+                        onClick={() => markRead(item)}
+                      >
+                        Mark read
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           {digest.invitations.length > 0 && (
             <div className="digest-group">
               <h3>Project invitations ({digest.invitations.length})</h3>

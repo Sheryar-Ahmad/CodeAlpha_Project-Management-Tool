@@ -18,7 +18,18 @@ const assignmentSchema = z
     ]),
   })
   .strict();
-const commentSchema = z.object({ body: z.string().trim().min(1).max(2000) }).strict();
+
+const commentSchema = z
+  .object({
+    body: z.string().trim().min(1).max(2000),
+    notified: z
+      .string()
+      .refine((value) => mongoose.isObjectIdOrHexString(value), 'Invalid recipient.')
+      .nullable()
+      .default(null),
+  })
+  .strict();
+
 const pageSchema = z
   .object({ page: z.coerce.number().int().min(1).max(10000).default(1) })
   .strict();
@@ -64,6 +75,9 @@ collaborationRouter.patch('/:taskId/assignee', async (req, res) => {
 const serialize = (comment, req) => ({
   id: String(comment._id),
   body: comment.body,
+  notified: comment.notified
+    ? { id: String(comment.notified._id), name: comment.notified.name }
+    : null,
   author: comment.author
     ? { id: String(comment.author._id), name: comment.author.name }
     : null,
@@ -81,6 +95,7 @@ collaborationRouter.get('/:taskId/comments', async (req, res) => {
     .skip((page - 1) * 20)
     .limit(21)
     .populate('author', 'name')
+    .populate('notified', 'name')
     .lean();
   res.json({
     comments: comments.slice(0, 20).map((comment) => serialize(comment, req)),
@@ -88,17 +103,51 @@ collaborationRouter.get('/:taskId/comments', async (req, res) => {
   });
 });
 collaborationRouter.post('/:taskId/comments', async (req, res) => {
-  const { body } = parse(commentSchema, req.body);
+  const { body, notified } = parse(commentSchema, req.body);
+  if (
+    notified &&
+    (notified === String(req.user._id) ||
+      (notified !== String(req.sharedProject.owner) &&
+        !(await ProjectMember.exists({
+          project: req.sharedProject._id,
+          user: notified,
+          status: 'active',
+          role: { $in: ['member', null] },
+        }))))
+  )
+    return res
+      .status(400)
+      .json({ message: 'Notify another accepted member or the project owner.' });
   if (req.discussionTask.lifecycle && req.discussionTask.lifecycle !== 'active')
     return res.status(409).json({ message: 'Restore the task before adding a comment.' });
   await TaskComment.create({
     project: req.sharedProject._id,
     task: req.params.taskId,
     author: req.user._id,
+    notified,
     body,
   });
   res.status(201).json({ message: 'Comment added.' });
 });
+
+collaborationRouter.patch('/:taskId/comments/:commentId/read', async (req, res) => {
+  if (!mongoose.isObjectIdOrHexString(req.params.commentId))
+    return res.status(400).json({ message: 'Invalid comment ID.' });
+  parse(z.object({}).strict(), req.body);
+  const result = await TaskComment.updateOne(
+    {
+      _id: req.params.commentId,
+      project: req.sharedProject._id,
+      task: req.params.taskId,
+      notified: req.user._id,
+    },
+    { $set: { seenAt: new Date() } },
+  );
+  if (!result.matchedCount)
+    return res.status(404).json({ message: 'Notification not found.' });
+  res.status(204).end();
+});
+
 collaborationRouter.delete('/:taskId/comments/:commentId', async (req, res) => {
   if (!mongoose.isObjectIdOrHexString(req.params.commentId))
     return res.status(400).json({ message: 'Invalid comment ID.' });

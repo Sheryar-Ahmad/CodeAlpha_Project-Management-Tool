@@ -2,12 +2,19 @@ import { useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import useModal from '../hooks/useModal.js';
 import { request } from '../lib/api.js';
-export default function TaskDiscussion({ projectId, task, onClose, onExpired }) {
+export default function TaskDiscussion({
+  projectId,
+  task,
+  onClose,
+  onExpired,
+  people = [],
+}) {
   const ref = useRef(null),
     lock = useRef(false);
   const [comments, setComments] = useState([]),
     [page, setPage] = useState(1),
     [hasMore, setHasMore] = useState(false);
+  const [notified, setNotified] = useState('');
   const [body, setBody] = useState(''),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false);
@@ -50,10 +57,11 @@ export default function TaskDiscussion({ projectId, task, onClose, onExpired }) 
     try {
       await request(endpoint + (id ? '/' + id : ''), {
         method: id ? 'DELETE' : 'POST',
-        ...(id ? {} : { body: JSON.stringify({ body }) }),
+        ...(id ? {} : { body: JSON.stringify({ body, notified: notified || null }) }),
       });
       if (!id) {
         setBody('');
+        setNotified('');
         setPage(1);
       }
       setRevision((value) => value + 1);
@@ -114,6 +122,26 @@ export default function TaskDiscussion({ projectId, task, onClose, onExpired }) 
                 onChange={(event) => setBody(event.target.value)}
               />
             </label>
+
+            <label>
+              Notify a teammate (optional)
+              <select
+                aria-label="Notify a teammate (optional)"
+                value={notified}
+                disabled={busy}
+                onChange={(event) => setNotified(event.target.value)}
+              >
+                <option value="">No notification</option>
+                {people.map((person) => (
+                  <option key={person.id} value={person.id}>
+                    {person.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <p className="small muted">
+              One targeted notification appears in their work digest. No email is sent.
+            </p>
             <button className="button" disabled={busy || !body.trim()}>
               Add comment
             </button>
@@ -139,6 +167,9 @@ export default function TaskDiscussion({ projectId, task, onClose, onExpired }) 
                     {new Date(comment.createdAt).toLocaleString()}
                   </time>
                   <p>{comment.body}</p>
+                  {comment.notified && (
+                    <p className="small muted">Notified: {comment.notified.name}</p>
+                  )}
                   {comment.canDelete && (
                     <button
                       type="button"

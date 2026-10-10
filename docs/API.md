@@ -160,3 +160,8 @@ Owner invitations accept role=member (default) or guest. A guest must accept the
 - `GET /api/projects/:id/workload?date=YYYY-MM-DD`: Monday–Sunday totals of unfinished active tasks due through Sunday, including overdue carry-in. Undated tasks are separate; completed/archived/trashed/future tasks are excluded. Estimates use `estimateMinutes` (0 means missing).
 - `PATCH /api/projects/:id/workload/capacity`: `{ date, user, minutes }` where minutes is 0–10080 or null to clear. Owners may edit eligible teammates; members edit themselves. Each budget applies only to this project and week. Guests cannot access either route.
 - Up to 100 active teammates plus the owner are named; other/former assignments are grouped, not leaked through private user lookups. Private work logs are never read.
+
+### Measurable project goals
+
+`GET/POST /api/projects/:id/goals` lists 20 goals per page or creates `{ title, due, results }`. Each goal has 1–8 results `{ id, title, unit, baseline, current, target }`; numeric measures are bounded to ±1 billion. Members edit goals they create; owners edit any; guests have no access.
+`PATCH/DELETE /:goalId` requires the last-read `revision`, preventing silent stale overwrites. PATCH sends the complete goal; DELETE sends only revision. Result progress is a clamped baseline-to-target ratio (increasing or decreasing), and objective progress is an equal-weight average. No automatic task updates or forecast is implied.

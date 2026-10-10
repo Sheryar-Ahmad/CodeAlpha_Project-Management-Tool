@@ -686,3 +686,13 @@ test('dependency cycle checks handle indirect loops, separate chains and empty g
     false,
   );
 });
+
+test('measurable result progress supports decreasing targets and clamps incomplete/out-of-range input', async () => {
+  const { resultProgress, goalProgress } = await import('../shared/goals.js');
+  assert.equal(resultProgress({ baseline: 0, current: 15, target: 10 }), 100);
+  assert.equal(resultProgress({ baseline: 20, current: 15, target: 10 }), 50);
+  assert.equal(resultProgress({ baseline: 20, current: 30, target: 10 }), 0);
+  assert.equal(resultProgress({ baseline: 1, current: 1, target: 1 }), 100);
+  assert.equal(resultProgress({ baseline: 1, current: 0, target: 1 }), 0);
+  assert.equal(goalProgress([]), 0);
+});

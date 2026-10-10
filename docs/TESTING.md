@@ -162,3 +162,5 @@ Work requests: use a member account to submit a proposal, confirm only owners ca
 Guest checks: invite as Guest, accept with a separate account, verify the read-only project brief and active tasks, search literal brackets, and remove access. API tests verify omitted task notes/links/ownership, blocked team endpoints, assignment/reviewer exclusion, mutation denial and revoked membership. Browser coverage includes guest widths 320–1440px.
 
 Workload regression checks due/overdue estimates, unestimated and undated work, omitted future/completed work, zero versus unset capacity, member/owner authorization, revocation and export. Chromium verifies capacity save/refresh and 320–1440px layouts.
+
+Goals checks cover member authorship/owner moderation, numeric limits, decreasing targets, bounded progress, concurrent revision conflicts and revocation. Chromium creates a 40% objective and refreshes it at mobile/desktop widths.

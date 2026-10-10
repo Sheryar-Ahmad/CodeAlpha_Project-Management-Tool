@@ -1971,6 +1971,25 @@ try {
       memberId,
     );
 
+    await memberPage.getByRole('button', { name: 'Goals', exact: true }).click();
+    await memberPage.getByRole('button', { name: 'New objective', exact: true }).click();
+    await memberPage
+      .getByLabel('Objective', { exact: true })
+      .fill('Welcome 10 participants');
+    await memberPage
+      .getByLabel('Result title 1', { exact: true })
+      .fill('Confirm attendance');
+    await memberPage.getByLabel('current result 1', { exact: true }).fill('4');
+    await memberPage.getByLabel('target result 1', { exact: true }).fill('10');
+    await memberPage.getByRole('button', { name: 'Save objective', exact: true }).click();
+    await memberPage.getByText('Objective saved.', { exact: true }).waitFor();
+    await memberPage.getByText('Due: Not set · 40% progress', { exact: true }).waitFor();
+    await memberPage
+      .getByRole('button', { name: 'Refresh objectives', exact: true })
+      .click();
+    await memberPage
+      .getByRole('heading', { name: 'Welcome 10 participants', exact: true })
+      .waitFor();
     await memberPage.getByRole('button', { name: 'Workload', exact: true }).click();
     await memberPage
       .getByRole('heading', { name: 'Plan a manageable week', exact: true })
@@ -2032,6 +2051,7 @@ try {
       ['Shared tasks', 'Shared project tasks'],
       ['Dependencies', 'What needs to happen first?'],
       ['Workload', 'Plan a manageable week'],
+      ['Goals', 'Connect work to a clear outcome'],
       ['Reviews', 'Review requests'],
       ['Work requests', 'Propose a next step'],
     ]) {

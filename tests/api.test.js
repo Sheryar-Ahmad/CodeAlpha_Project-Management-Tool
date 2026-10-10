@@ -2304,3 +2304,115 @@ test('workload measures scoped due estimates and enforces per-week capacity perm
   report = (await owner.get(endpoint + '?date=2026-10-10').expect(200)).body;
   assert.equal(report.otherAssignments.minutes, 90);
 });
+
+test('project objectives enforce authorship, bounded results and stale update protection', async () => {
+  await RateBucket.deleteMany({ key: /^(api|auth):/ });
+  const owner = request.agent(app),
+    member = request.agent(app);
+  for (const [agent, email] of [
+    [owner, 'goal-owner@example.com'],
+    [member, 'goal-member@example.com'],
+  ])
+    await agent
+      .post('/api/auth/register')
+      .set('Origin', origin)
+      .send({ name: 'Goal user', email, password: 'goal-test-passphrase-long' })
+      .expect(201);
+  const project = (
+    await owner
+      .post('/api/projects')
+      .set('Origin', origin)
+      .send({ name: 'Goal project' })
+      .expect(201)
+  ).body.project;
+  const base = '/api/projects/' + project.id,
+    endpoint = base + '/goals';
+  const data = {
+    title: 'Validate the workshop',
+    results: [
+      {
+        id: 'interviews',
+        title: 'Interview 10 participants',
+        unit: 'people',
+        baseline: 0,
+        current: 3,
+        target: 10,
+      },
+    ],
+  };
+  const goal = (await owner.post(endpoint).set('Origin', origin).send(data).expect(201))
+    .body.goal;
+  assert.equal(goal.progress, 30);
+  await member.get(endpoint).expect(404);
+  await owner
+    .post(base + '/members')
+    .set('Origin', origin)
+    .send({ email: 'goal-member@example.com' })
+    .expect(201);
+  const invitation = (await member.get('/api/teams').expect(200)).body.invitations[0];
+  await member
+    .patch('/api/teams/invitations/' + invitation.id)
+    .set('Origin', origin)
+    .send({ action: 'accept' })
+    .expect(204);
+  assert.equal((await member.get(endpoint).expect(200)).body.goals[0].canEdit, false);
+  await member
+    .patch(endpoint + '/' + goal.id)
+    .set('Origin', origin)
+    .send({ ...data, revision: 0 })
+    .expect(404);
+  const memberGoal = (
+    await member
+      .post(endpoint)
+      .set('Origin', origin)
+      .send({
+        ...data,
+        title: 'Reduce waiting',
+        results: [
+          {
+            id: 'wait',
+            title: 'Reduce wait time',
+            baseline: 20,
+            current: 15,
+            target: 10,
+          },
+        ],
+      })
+      .expect(201)
+  ).body.goal;
+  assert.equal(memberGoal.progress, 50);
+  const results = await Promise.all(
+    [1, 2].map((current) =>
+      owner
+        .patch(endpoint + '/' + goal.id)
+        .set('Origin', origin)
+        .send({ ...data, results: [{ ...data.results[0], current }], revision: 0 }),
+    ),
+  );
+  assert.deepEqual(results.map((item) => item.status).sort(), [200, 409]);
+  await owner
+    .delete(endpoint + '/' + goal.id)
+    .set('Origin', origin)
+    .send({ revision: 0 })
+    .expect(409);
+  await owner
+    .delete(endpoint + '/' + memberGoal.id)
+    .set('Origin', origin)
+    .send({ revision: 0 })
+    .expect(204);
+  await owner
+    .post(endpoint)
+    .set('Origin', origin)
+    .send({ ...data, results: [...data.results, ...data.results] })
+    .expect(400);
+  await owner
+    .post(endpoint)
+    .set('Origin', origin)
+    .send({ ...data, createdBy: 'spoof' })
+    .expect(400);
+  await owner
+    .delete(base + '/members/' + invitation.id)
+    .set('Origin', origin)
+    .expect(204);
+  await member.get(endpoint).expect(404);
+});

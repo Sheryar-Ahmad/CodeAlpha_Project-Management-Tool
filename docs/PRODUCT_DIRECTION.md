@@ -20,7 +20,7 @@ Important distinctions:
 
 ## Compact additions worth prioritizing
 
-These are the ordered extension milestones. Task notes/resource links, blocker reasons, curated task templates, the list view, archive/recovery, task export, and completion-driven recurrence are now implemented; the remaining items below are pending.
+These are the ordered extension milestones. Task notes/resource links, blocker reasons, curated task templates, the list view, archive/recovery, task export, and completion-driven recurrence are now implemented; the bounded versions below are implemented.
 
 | Addition                      | Genuine problem                                    | Bounded first version                                                                            |
 | ----------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
@@ -32,29 +32,17 @@ These are the ordered extension milestones. Task notes/resource links, blocker r
 | Recurring tasks               | “Weekly work is easy to forget.”                   | Choose explicit recurrence rules, preserve completion history, and prevent duplicate occurrences |
 | Backup/export                 | “I want a copy of my own work.”                    | Export owned data first; validate imports separately before allowing writes                      |
 
-Next implementation milestone: **shared-project entities and membership authorization**. Finish account recovery, deletion, and operational launch requirements before promoting broad public adoption.
+Shared-project authorization, account recovery and account deletion are implemented. Production configuration, provider connections and operational monitoring remain launch requirements.
 
 Recurring scheduling needs decisions about timezone, missed runs, end-of-month dates, and idempotency. It should not merely erase a completed task and reset its history.
 
-## Architecture decision before team features
+## Shared-project architecture
 
-Shared projects require explicit agreement before implementation:
+Project records, stable task references and explicit legacy linking are implemented. Server routes check current owner/member/guest permissions. Guests use a restricted read-only portal. Assignment, comments, shared notebooks, reviews, workload and goals build on the same authorization boundary.
 
-1. Private project records are implemented. Stable task references and explicit legacy linking are implemented. Next define membership authorization before sharing.
-2. Define workspace/project memberships and server-side authorization for every read/write.
-3. Decide invitation, revocation, and role rules.
-4. Add owner/member isolation tests before exposing shared content.
-5. Build assignment and contextual comments on that foundation.
+Dependencies reject cycles and cross-project links. Owner-reviewed date proposals use explicit calendar-day assumptions and conflict-safe batches. Workload uses estimates and project-scoped weekly capacity, keeping missing estimates and undated work visible.
 
-Approvals, mentions, workload reporting, guests, activity feeds, and team notifications depend on this work. A simple two-role owner/member model is a more manageable first decision than six overlapping enterprise roles.
-
-## Later milestones
-
-Gantt charts, critical paths, automatic rescheduling, enterprise workload planning, client portals, OKRs, custom-field builders, automation builders, and external integrations each introduce substantial behavior and maintenance costs.
-
-Dependencies also require cycle checks, same-project access rules, and deletion behavior. Workload reports need reliable estimates and capacity information; task counts alone do not prove someone is overloaded. Forecasts should explain their assumptions rather than implying unsupported certainty.
-
-Do not copy the proposed 15-item sidebar. Navigation should grow only when a shipped capability needs it.
+A checklist is still a sequence of steps inside one task; it is not a separate assigned subtask. External calendar handoff is a manual snapshot; it is not two-way synchronization.
 
 ## UI direction
 
@@ -88,10 +76,10 @@ The proposal, excluding AI assistance at the user's request, is authorized for i
 | 2. Multiple views / My Work                                            | Board, list, Today, Upcoming implemented; monthly deadline calendar and recorded project timeline implemented; owner-reviewed dependency date proposals and conflict-safe batches implemented                                       |
 | 3. Dependencies                                                        | Implemented: scoped prerequisite links, whole-graph cycle checks and safe concurrent mutations; owner-reviewed earliest-start scheduling implemented with explicit calendar-day assumptions                                         |
 | 4. Milestones                                                          | Implemented: private project checkpoints with dates and completion                                                                                                                                                                  |
-| 5. Useful dashboard                                                    | Personal overview and shared project counters implemented; cross-team reporting pending                                                                                                                                             |
+| 5. Useful dashboard                                                    | Implemented: personal overview plus bounded owned/joined project portfolio with health, progress and deadline summaries                                                                                                             |
 | 6. Workload and capacity                                               | Implemented: task estimates, weekly project capacity, due/overdue workload, undated and unestimated warnings                                                                                                                        |
 | 7. Time tracking                                                       | Local focus timer and persisted manual work logs/weekly timesheets implemented; billing integrations pending                                                                                                                        |
-| 8. Notifications and digest                                            | In-app invitations and bounded pending-review inbox implemented; email/push delivery and digests pending                                                                                                                            |
+| 8. Notifications and digest                                            | Implemented: invitations, review inbox and actionable in-app work digest; email/push delivery requires an external provider                                                                                                         |
 | 9. Contextual team communication                                       | Implemented: paginated task discussion, safe text and owner moderation; mentions/live sockets pending                                                                                                                               |
 | 10. Approvals                                                          | Implemented: captured task briefs, designated reviewers, approval/change/cancel decisions; file approvals pending                                                                                                                   |
 | 11. Blockers                                                           | Implemented: required reasons, dedicated view, and project counts                                                                                                                                                                   |
@@ -105,19 +93,19 @@ The proposal, excluding AI assistance at the user's request, is authorized for i
 | 19. Integrations                                                       | Implemented: private iCalendar exports and Google Calendar event handoff; live OAuth connections still require provider configuration                                                                                               |
 | 20. Command bar / global search                                        | Implemented: quick command bar, project/view navigation, and full-board task search                                                                                                                                                 |
 | 21. Team directory                                                     | Implemented: project owner and accepted member names; owner invitation management                                                                                                                                                   |
-| 22. Project notes / documentation                                      | Implemented: private project notebook notes plus task notes/resource links; rich-text/wiki collaboration pending                                                                                                                    |
-| 23. Decision log                                                       | Implemented: private, editable decision entries; not an immutable audit log                                                                                                                                                         |
+| 22. Project notes / documentation                                      | Implemented: private and shared project notes, decisions and meetings plus task notes/resource links; rich-text editing is outside the bounded version                                                                              |
+| 23. Decision log                                                       | Implemented: private and shared editable decision entries; not an immutable audit log                                                                                                                                               |
 | 24. Meeting action items                                               | Implemented: meeting records and editable follow-up task creation; scheduling/invitations pending                                                                                                                                   |
 | 25. AI assistance                                                      | Excluded at the user's request; no AI assistant or AI-generated features planned                                                                                                                                                    |
 | 26. Action Center                                                      | Implemented: unified unfinished blocked/overdue/urgent/imminent work with reasons                                                                                                                                                   |
-| 27. Portfolio                                                          | Private multi-project cards/timeline, dates, progress, health and search implemented; cross-workspace/team portfolio pending                                                                                                        |
+| 27. Portfolio                                                          | Implemented: private cards/timeline and owned/joined project portfolio with search, pagination and actionable digest                                                                                                                |
 | 28. Goals / OKRs                                                       | Implemented: project objectives, measurable results, increasing/decreasing targets and conflict-safe manual progress                                                                                                                |
 | 29. Admin / export / account lifecycle                                 | Private task export and validated retry-safe imports implemented; one-time recovery/password changes and resumable account deletion implemented; protected daily cleanup configured for deployment                                  |
 | 30. UX                                                                 | Responsive baseline implemented; ongoing polish and verification                                                                                                                                                                    |
 
-### Local expansion verified in this batch
+### Delivery scope
 
-The current local batch includes private projects, stable references/explicit linking, monthly calendars, Action Center, milestones/health flags, command search, project notebooks/decisions/meetings, follow-up drafts, and manual weekly timesheets. These capabilities remain owner-scoped. Team sharing, dependencies, capacity planning, approvals, guest access, notifications, automations, live external integrations, goals, import, and account lifecycle are still incomplete. No claim is made that the full catalogue is finished.
+The table distinguishes usable bounded implementations from larger service variants. AI assistance is excluded. Live OAuth sync, outbound email/push, live sockets, public intake and independently assigned subtasks are not shipped yet. File resources use validated external links rather than hosted uploads. No claim is made that every enterprise variant in the supplied catalogue is complete.
 
 ### Team delivery limits
 

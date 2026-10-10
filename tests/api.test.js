@@ -3114,3 +3114,180 @@ test('large schedules resume 25-row batches and safely repair an interrupted sav
     .send({})
     .expect(409);
 });
+
+test('portfolio and digest honor membership, guest roles, assignments and closed owners', async () => {
+  await RateBucket.deleteMany({});
+  const ownerAgent = request.agent(app),
+    memberAgent = request.agent(app);
+  const register = async (agent, name) =>
+    (
+      await agent
+        .post('/api/auth/register')
+        .set('Origin', origin)
+        .send({
+          name,
+          email: name + '@portfolio.example',
+          password: 'portfolio-long-passphrase',
+        })
+        .expect(201)
+    ).body.user;
+  const owner = await register(ownerAgent, 'PortfolioOwner');
+  const member = await register(memberAgent, 'PortfolioMember');
+  const project = await Project.create({
+    owner: owner.id,
+    name: 'Shared report',
+    targetDate: '2026-10-01',
+    status: 'active',
+  });
+  const empty = await Project.create({
+    owner: member.id,
+    name: 'Empty personal project',
+  });
+  const guestProject = await Project.create({
+    owner: owner.id,
+    name: 'Guest-only report',
+  });
+  const invitedProject = await Project.create({
+    owner: owner.id,
+    name: 'Pending invitation report',
+  });
+  const membership = await ProjectMember.create({
+    project: project._id,
+    user: member.id,
+    status: 'active',
+  });
+  await ProjectMember.create({
+    project: guestProject._id,
+    user: member.id,
+    status: 'active',
+    role: 'guest',
+  });
+  await ProjectMember.create({ project: invitedProject._id, user: member.id });
+  const assigned = await Task.create({
+    owner: owner.id,
+    projectId: project._id,
+    project: project.name,
+    title: 'Assigned urgent work',
+    assignee: member.id,
+    priority: 'high',
+    due: '2026-10-09',
+    notes: 'Never in digest',
+  });
+  await Task.create({
+    owner: owner.id,
+    projectId: project._id,
+    project: project.name,
+    title: 'Unassigned urgent work',
+    priority: 'high',
+  });
+  await Task.create({
+    owner: owner.id,
+    projectId: guestProject._id,
+    project: guestProject.name,
+    title: 'Guest urgent work',
+    assignee: member.id,
+    priority: 'high',
+  });
+  await Task.create({
+    owner: member.id,
+    project: 'Private label',
+    title: 'Private urgent work',
+    due: '2026-10-10',
+  });
+  await Task.create({
+    owner: member.id,
+    projectId: empty._id,
+    project: empty.name,
+    title: 'Archived private work',
+    lifecycle: 'archived',
+    priority: 'high',
+  });
+  await TaskReview.create({
+    project: project._id,
+    task: assigned._id,
+    requester: owner.id,
+    reviewer: member.id,
+    title: assigned.title,
+    description: 'Private review snapshot',
+  });
+  await WorkRequest.create({
+    project: project._id,
+    requester: member.id,
+    title: 'Intake decision',
+  });
+  const endpoint = '/api/teams/portfolio?date=2026-10-10';
+  await request(app).get(endpoint).expect(401);
+  await memberAgent.get('/api/teams/portfolio?date[$ne]=x').expect(400);
+  await memberAgent.get('/api/teams/portfolio?date=2026-02-30').expect(400);
+  const report = (await memberAgent.get(endpoint).expect(200)).body;
+  assert.equal(report.projects.length, 2);
+  const shared = report.projects.find((item) => item.id === String(project._id));
+  assert.equal(shared.total, 2);
+  assert.equal(shared.overdue, 1);
+  assert.equal(shared.nextDue, '2026-10-09');
+  assert.equal(shared.role, 'member');
+  assert.ok(shared.health.reasons.includes('Project target date has passed'));
+  assert.equal(report.projects.find((item) => item.id === String(empty._id)).total, 0);
+  assert.deepEqual(
+    new Set(report.digest.tasks.map((item) => item.title)),
+    new Set(['Assigned urgent work', 'Private urgent work']),
+  );
+  assert.equal(
+    report.digest.tasks.find((item) => item.title === assigned.title).shared,
+    true,
+  );
+  assert.equal(report.digest.reviews.length, 1);
+  assert.equal(report.digest.requests.length, 0);
+  assert.equal(report.digest.invitations.length, 1);
+  assert.ok(!JSON.stringify(report).includes('Never in digest'));
+  assert.ok(!JSON.stringify(report).includes('Private review snapshot'));
+  const ownerReport = (await ownerAgent.get(endpoint).expect(200)).body;
+  assert.equal(ownerReport.digest.requests.length, 1);
+  await ProjectMember.updateOne({ _id: membership._id }, { $set: { status: 'revoked' } });
+  const revoked = (await memberAgent.get(endpoint).expect(200)).body;
+  assert.equal(revoked.projects.length, 1);
+  assert.equal(revoked.digest.reviews.length, 0);
+  assert.ok(!revoked.digest.tasks.some((item) => item.shared));
+  await ProjectMember.updateOne({ _id: membership._id }, { $set: { status: 'active' } });
+  await User.updateOne({ _id: owner.id }, { $set: { deleting: true } });
+  const closed = (await memberAgent.get(endpoint).expect(200)).body;
+  assert.equal(closed.projects.length, 1);
+  assert.equal(closed.digest.invitations.length, 0);
+  assert.equal(closed.digest.tasks.length, 1);
+});
+
+test('digest groups and portfolio scope report their truncation without leaking unbounded records', async () => {
+  await RateBucket.deleteMany({});
+  const agent = request.agent(app);
+  const user = (
+    await agent
+      .post('/api/auth/register')
+      .set('Origin', origin)
+      .send({
+        name: 'Report bounds',
+        email: 'bounds@portfolio.example',
+        password: 'portfolio-long-passphrase',
+      })
+      .expect(201)
+  ).body.user;
+  await Project.insertMany(
+    Array.from({ length: 101 }, (_, index) => ({
+      owner: user.id,
+      name: 'Bound ' + index,
+    })),
+  );
+  await Task.insertMany(
+    Array.from({ length: 31 }, (_, index) => ({
+      owner: user.id,
+      project: 'Private group',
+      title: 'Urgent ' + index,
+      priority: 'high',
+    })),
+  );
+  const report = (await agent.get('/api/teams/portfolio?date=2026-10-10').expect(200))
+    .body;
+  assert.equal(report.projects.length, 100);
+  assert.equal(report.truncated, true);
+  assert.equal(report.digest.tasks.length, 30);
+  assert.equal(report.digest.truncated, true);
+});

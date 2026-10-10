@@ -176,3 +176,5 @@ Automation checks cover owner settings, stale revisions, explicit checklist trig
 Calendar handoff tests cover UTF-8 folding, escaped delimiter/newline injection, year-boundary all-day events, stable identifiers and private API scope. Chromium downloads and reads the actual .ics file and verifies the Google link URL; no external event is saved by automated tests.
 
 Scheduling checks cover longest prerequisite paths, completed/repeating/unavailable prerequisites, cycle/year bounds, owner-only proposals, scoped saves, stale graph rejection and task edit conflicts. Chromium previews and explicitly applies a schedule batch and verifies no overflow at 320–1440px.
+
+Portfolio: open the Portfolio view in an owner and accepted-member account. Check project progress, next deadlines, explained flags and empty projects. Search and page through cards, then open a project. Request a review and open it through the digest. Confirm guests/revoked members cannot see joined-project cards, closed owners disappear, archived tasks are excluded, and private task notes never appear in the report. Check 320–1440px layouts and refresh/error states.

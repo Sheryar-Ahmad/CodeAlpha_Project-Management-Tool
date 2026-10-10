@@ -63,6 +63,7 @@ Screenshots are from the working local demo using illustrative sample tasks.
 
 | Feature                   | What it solves                                                                               |
 | ------------------------- | -------------------------------------------------------------------------------------------- |
+| Portfolio and work digest | Compare owned/joined project health and act on urgent work, reviews, invitations and intake  |
 | Guest portal              | Invite clients to read a project brief, milestones and active-task summaries without editing |
 | Work requests             | Propose work for owner triage and accept it into the board without duplicate tasks           |
 | Dependencies              | Record prerequisites, reject circular chains, and identify unfinished prerequisites          |
@@ -124,7 +125,7 @@ Screenshots are from the working local demo using illustrative sample tasks.
 - **A freelancer preparing a delivery:** group tasks under the client project, see unfinished deadlines, and duplicate a reusable delivery checklist.
 - **Someone organizing a personal project:** keep the next steps visible and use a quiet focus session to make progress.
 
-Checklist completion and task status are separate: finishing the steps leaves you in control of when the whole task is done. Project percentages count completed tasks, not checklist steps. The timer stays in the same browser and does not send your written focus goal to the server.
+Checklist completion and task status are separate by default. Project owners can opt into the all-checked completion rule for eligible tasks. Project percentages count completed tasks, not checklist steps. The timer stays in the same browser and does not send your written focus goal to the server.
 
 ## Getting started
 
@@ -253,7 +254,7 @@ npm run build
 npm run format:check
 ```
 
-**Verified locally:** 77 API/input/planning/timer/password/template/recovery/export/recurrence/project tests and Chromium browser flows covering demo CRUD, storage persistence, search, filters, safe text rendering, mobile overflow, dialog Escape, checklists, task duplication, template previews and replacement protection, list actions and pagination, blockers, archive/trash restoration, private downloads, daily views, overnight date changes, project progress, focus pause/refresh/completion, registration, database-backed persistence, logout, and login. Expanded checks cover whole-month calendar queries, leap years, Action Center rules, milestones, health explanations, command navigation, notebook decisions/meetings, follow-up drafts, weekly time totals, private APIs, and explicit legacy linking. Team checks cover invitation state transitions, cross-project isolation, removed/pending users, role restrictions, assignment eligibility, private/team note separation, discussion moderation, review decisions and inbox access. Browser tests exercise two separate authenticated accounts and team layouts at 320–1440px.
+**Verified locally:** 79 API/input/planning/timer/password/template/recovery/export/recurrence/project tests and Chromium browser flows covering demo CRUD, storage persistence, search, filters, safe text rendering, mobile overflow, dialog Escape, checklists, task duplication, template previews and replacement protection, list actions and pagination, blockers, archive/trash restoration, private downloads, daily views, overnight date changes, project progress, focus pause/refresh/completion, registration, database-backed persistence, logout, and login. Expanded checks cover whole-month calendar queries, leap years, Action Center rules, milestones, health explanations, command navigation, notebook decisions/meetings, follow-up drafts, weekly time totals, private APIs, and explicit legacy linking. Team checks cover invitation state transitions, cross-project isolation, removed/pending users, role restrictions, assignment eligibility, private/team note separation, discussion moderation, review decisions and inbox access. Browser tests exercise two separate authenticated accounts and team layouts at 320–1440px.
 
 For browser checks:
 

@@ -14,10 +14,15 @@ import TaskDialog from './TaskDialog.jsx';
 import ProjectNotebook from './ProjectNotebook.jsx';
 
 // This view has its own explicit project scope. Personal task views never mix in shared work.
-export default function TeamWorkspace({ demo, onExpired }) {
+export default function TeamWorkspace({
+  demo,
+  onExpired,
+  initialProjectId = '',
+  initialPanel = 'tasks',
+}) {
   const [projects, setProjects] = useState([]),
     [invitations, setInvitations] = useState([]);
-  const [selected, setSelected] = useState(''),
+  const [selected, setSelected] = useState(initialProjectId),
     [directory, setDirectory] = useState(null);
   const [tasks, setTasks] = useState([]),
     [overview, setOverview] = useState(null);
@@ -37,7 +42,7 @@ export default function TeamWorkspace({ demo, onExpired }) {
   const [reviewInbox, setReviewInbox] = useState([]),
     [inboxTruncated, setInboxTruncated] = useState(false);
   const [mine, setMine] = useState(false);
-  const [panel, setPanel] = useState('tasks');
+  const [panel, setPanel] = useState(initialPanel);
   const [inviteRole, setInviteRole] = useState('member');
   const [notebook, setNotebook] = useState(false),
     [truncated, setTruncated] = useState(false);

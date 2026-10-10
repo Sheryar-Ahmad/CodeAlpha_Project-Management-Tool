@@ -1,3 +1,8 @@
+import { Task } from '../models/Task.js';
+import { WorkRequest } from '../models/WorkRequest.js';
+import { validDate } from '../../shared/date.js';
+import { addDays, attentionReasons } from '../../shared/planning.js';
+import { projectHealth } from '../../shared/project.js';
 import { TaskReview } from '../models/TaskReview.js';
 import { Router } from 'express';
 import mongoose from 'mongoose';
@@ -89,6 +94,192 @@ teamRouter.get('/', async (req, res) => {
     truncated: memberships.length > 1000 || owned.length > 1000,
   });
 });
+
+// A derived report: no notification history or email delivery is implied.
+teamRouter.get('/portfolio', async (req, res) => {
+  const date = req.query.date;
+  if (typeof date !== 'string' || !date || !validDate(date))
+    return res.status(400).json({ message: 'Use a valid calendar date.' });
+  const [owned, memberships] = await Promise.all([
+    Project.find({ owner: req.user._id }).sort({ name: 1, _id: 1 }).limit(101).lean(),
+    ProjectMember.find({ user: req.user._id, status: 'active', role: { $ne: 'guest' } })
+      .sort({ createdAt: 1, _id: 1 })
+      .limit(101)
+      .lean(),
+  ]);
+  const joined = await Project.find({
+    _id: { $in: memberships.slice(0, 100).map((item) => item.project) },
+    owner: { $ne: req.user._id },
+  }).lean();
+  const owners = await User.find({
+    _id: { $in: joined.map((item) => item.owner) },
+    deleting: { $ne: true },
+  })
+    .select('_id')
+    .lean();
+  const liveOwners = new Set(owners.map((item) => String(item._id)));
+  const records = [
+    ...owned.slice(0, 100).map((item) => ({ ...item, role: 'owner' })),
+    ...joined
+      .filter((item) => liveOwners.has(String(item.owner)))
+      .map((item) => ({ ...item, role: 'member' })),
+  ];
+  const scopes = records.map((item) => ({ projectId: item._id, owner: item.owner }));
+  const ownedIds = owned.slice(0, 100).map((item) => item._id);
+  const ids = records.map((item) => item._id);
+  const incomplete = { $ne: ['$status', 'done'] };
+  const sumIf = (condition) => ({ $sum: { $cond: [condition, 1, 0] } });
+  const summaries = scopes.length
+    ? await Task.aggregate([
+        { $match: { $or: scopes, lifecycle: 'active' } },
+        {
+          $group: {
+            _id: '$projectId',
+            total: { $sum: 1 },
+            completed: sumIf({ $eq: ['$status', 'done'] }),
+            blocked: sumIf({ $eq: ['$status', 'blocked'] }),
+            overdue: sumIf({
+              $and: [incomplete, { $gt: ['$due', ''] }, { $lt: ['$due', date] }],
+            }),
+            nextDue: {
+              $min: {
+                $cond: [{ $and: [incomplete, { $gt: ['$due', ''] }] }, '$due', null],
+              },
+            },
+          },
+        },
+      ])
+    : [];
+  // $min ignores null values in a group: an undated task cannot hide a dated one.
+  const stats = new Map(summaries.map((item) => [String(item._id), item]));
+  const projects = records
+    .map((item) => {
+      const summary = stats.get(String(item._id)) ?? {
+        total: 0,
+        completed: 0,
+        blocked: 0,
+        overdue: 0,
+        nextDue: null,
+      };
+      const project = {
+        id: String(item._id),
+        name: item.name,
+        role: item.role,
+        status: item.status,
+        startDate: item.startDate,
+        targetDate: item.targetDate,
+        milestones: item.milestones,
+        total: summary.total,
+        completed: summary.completed,
+        blocked: summary.blocked,
+        overdue: summary.overdue,
+        nextDue: summary.nextDue,
+      };
+      return { ...project, health: projectHealth(project, date) };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
+  const attention = {
+    lifecycle: 'active',
+    status: { $ne: 'done' },
+    $or: [
+      { status: 'blocked' },
+      { priority: 'high' },
+      { due: { $gt: '', $lte: addDays(date, 3) } },
+    ],
+  };
+  // Own work plus explicitly assigned shared work; never another person's private tasks.
+  const assignmentScopes = [
+    { owner: req.user._id },
+    ...records
+      .filter((item) => item.role === 'member')
+      .map((item) => ({
+        owner: item.owner,
+        projectId: item._id,
+        assignee: req.user._id,
+      })),
+  ];
+  const [tasks, reviews, requests, invitations] = await Promise.all([
+    Task.find({ $and: [attention, { $or: assignmentScopes }] })
+      .select('title project projectId owner status priority due lifecycle')
+      .sort({ due: 1, _id: 1 })
+      .limit(31)
+      .lean(),
+    TaskReview.find({ project: { $in: ids }, reviewer: req.user._id, status: 'pending' })
+      .select('title project')
+      .sort({ createdAt: 1, _id: 1 })
+      .limit(31)
+      .lean(),
+    WorkRequest.find({
+      project: { $in: ownedIds },
+      status: { $in: ['pending', 'accepting'] },
+    })
+      .select('title project status')
+      .sort({ createdAt: 1, _id: 1 })
+      .limit(31)
+      .lean(),
+    ProjectMember.find({ user: req.user._id, status: 'invited' })
+      .select('project role')
+      .sort({ createdAt: 1, _id: 1 })
+      .limit(31)
+      .populate('project', 'name owner')
+      .lean(),
+  ]);
+  const projectNames = new Map(projects.map((item) => [item.id, item.name]));
+  const invitationOwners = await User.find({
+    _id: {
+      $in: invitations.filter((item) => item.project).map((item) => item.project.owner),
+    },
+    deleting: { $ne: true },
+  })
+    .select('_id')
+    .lean();
+  const validInvitationOwners = new Set(invitationOwners.map((item) => String(item._id)));
+  res.json({
+    date,
+    projects,
+    truncated: owned.length > 100 || memberships.length > 100,
+    digest: {
+      tasks: tasks.slice(0, 30).map((item) => ({
+        id: String(item._id),
+        title: item.title,
+        project: item.project,
+        projectId: item.projectId ? String(item.projectId) : null,
+        shared: String(item.owner) !== String(req.user._id),
+        due: item.due,
+        reasons: attentionReasons(item, date),
+      })),
+      reviews: reviews.slice(0, 30).map((item) => ({
+        id: String(item._id),
+        title: item.title,
+        projectId: String(item.project),
+        project: projectNames.get(String(item.project)),
+      })),
+      requests: requests.slice(0, 30).map((item) => ({
+        id: String(item._id),
+        title: item.title,
+        projectId: String(item.project),
+        project: projectNames.get(String(item.project)),
+        status: item.status,
+      })),
+      invitations: invitations
+        .slice(0, 30)
+        .filter(
+          (item) => item.project && validInvitationOwners.has(String(item.project.owner)),
+        )
+        .map((item) => ({
+          id: String(item._id),
+          project: item.project.name,
+          role: item.role ?? 'member',
+        })),
+      truncated:
+        tasks.length > 30 ||
+        reviews.length > 30 ||
+        requests.length > 30 ||
+        invitations.length > 30,
+    },
+  });
+});
+
 teamRouter.patch('/invitations/:invitationId', async (req, res) => {
   if (!mongoose.isObjectIdOrHexString(req.params.invitationId))
     return res.status(400).json({ message: 'Invalid invitation ID.' });

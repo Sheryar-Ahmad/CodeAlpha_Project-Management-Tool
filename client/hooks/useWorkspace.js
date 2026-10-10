@@ -77,7 +77,7 @@ export default function useWorkspace(mode, onExpired) {
     setError('');
     async function load() {
       // TeamWorkspace owns its scoped queries; private summaries are unused in that view.
-      if (mode !== 'demo' && view === 'teams') {
+      if (mode !== 'demo' && ['teams', 'portfolio'].includes(view)) {
         setLoading(false);
         return;
       }
@@ -127,11 +127,13 @@ export default function useWorkspace(mode, onExpired) {
             search: debounced,
             project,
             page: String(page),
-            view: ['projects', 'focus', 'time', 'teams'].includes(view) ? 'all' : view,
+            view: ['projects', 'focus', 'time', 'teams', 'portfolio'].includes(view)
+              ? 'all'
+              : view,
             date,
           });
           const [taskResult, taskStats, projectResult] = await Promise.all([
-            ['projects', 'focus', 'time', 'teams'].includes(view)
+            ['projects', 'focus', 'time', 'teams', 'portfolio'].includes(view)
               ? Promise.resolve({ tasks: [], hasMore: false })
               : view === 'calendar'
                 ? request('/tasks/calendar?' + new URLSearchParams({ month, project }), {

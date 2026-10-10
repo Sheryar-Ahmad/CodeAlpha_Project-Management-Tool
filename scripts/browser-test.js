@@ -2172,7 +2172,43 @@ try {
         'Schedule overflow at ' + width,
       );
     }
+
     await ownerPage.setViewportSize({ width: 1440, height: 1000 });
+    await memberPage.getByRole('button', { name: 'Portfolio', exact: true }).click();
+    await memberPage
+      .getByRole('heading', { name: 'Your project portfolio', exact: true })
+      .waitFor();
+    await memberPage
+      .locator('.portfolio-card')
+      .filter({ hasText: teamProject.name })
+      .waitFor();
+    await memberPage.getByLabel('Find a portfolio project').fill('No matching project');
+    await memberPage
+      .getByText('No projects match your search.', { exact: true })
+      .waitFor();
+    await memberPage.getByLabel('Find a portfolio project').fill('');
+    for (const width of [320, 375, 768, 1024, 1440]) {
+      await memberPage.setViewportSize({ width, height: 1000 });
+      assert.equal(
+        await memberPage.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+        true,
+        'Portfolio overflow at ' + width,
+      );
+    }
+    await memberPage.screenshot({
+      path: 'docs/screenshots/portfolio-desktop.png',
+      fullPage: true,
+    });
+    await memberPage
+      .locator('.portfolio-card')
+      .filter({ hasText: teamProject.name })
+      .getByRole('button', { name: 'Open project', exact: true })
+      .click();
+    await memberPage
+      .getByRole('heading', { name: 'Shared project tasks', exact: true })
+      .waitFor();
     for (const [tab, heading] of [
       ['Shared tasks', 'Shared project tasks'],
       ['Dependencies', 'What needs to happen first?'],
@@ -2224,7 +2260,19 @@ try {
       .fill('Check that the topics are practical.');
     await memberPage.getByRole('button', { name: 'Request review', exact: true }).click();
     await memberPage.getByText('Review requested.', { exact: true }).waitFor();
-    await ownerPage.getByRole('button', { name: 'Reviews', exact: true }).click();
+
+    await ownerPage.getByRole('button', { name: 'Portfolio', exact: true }).click();
+    await ownerPage
+      .getByRole('heading', { name: 'Awaiting your review (1)', exact: true })
+      .waitFor();
+    await ownerPage
+      .locator('.digest-group')
+      .filter({ hasText: 'Awaiting your review' })
+      .getByRole('button', { name: 'Open project', exact: true })
+      .click();
+    await ownerPage
+      .getByRole('heading', { name: 'Review requests', exact: true })
+      .waitFor();
     await ownerPage.getByRole('button', { name: 'Refresh reviews', exact: true }).click();
     await ownerPage.getByRole('button', { name: 'Approve', exact: true }).click();
     await ownerPage.getByText('Review decision saved.', { exact: true }).waitFor();

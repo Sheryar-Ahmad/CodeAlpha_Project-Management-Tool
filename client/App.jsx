@@ -1,3 +1,4 @@
+import Portfolio from './components/Portfolio.jsx';
 import TeamWorkspace from './components/TeamWorkspace.jsx';
 import TaskImportDialog from './components/TaskImportDialog.jsx';
 import AccountSettings, { AccountDeletionScreen } from './components/AccountSettings.jsx';
@@ -41,6 +42,11 @@ import { request, today } from './lib/api.js';
 import { addDays, attentionReasons } from '../shared/planning.js';
 
 const workspaceViews = {
+  portfolio: {
+    label: 'Portfolio',
+    title: 'See the bigger picture',
+    description: 'Project health and the next decisions, together in one clear view.',
+  },
   teams: {
     label: 'Team projects',
     title: 'Good work, together',
@@ -108,6 +114,7 @@ const workspaceViews = {
 
 function Workspace({ mode, user, onExit, onExpired, onDeleting }) {
   const workspace = useWorkspace(mode, onExpired);
+  const [teamSelection, setTeamSelection] = useState({ id: '', panel: 'tasks' });
   const [dialog, setDialog] = useState(null);
   const [projectDialog, setProjectDialog] = useState(null);
   const [notebookProject, setNotebookProject] = useState(null);
@@ -310,6 +317,7 @@ function Workspace({ mode, user, onExit, onExpired, onDeleting }) {
             ['attention', 'Action Center', Inbox],
             ['projects', 'Projects', FolderOpen],
             ['teams', 'Team projects', Users],
+            ['portfolio', 'Portfolio', Target],
             ['blocked', 'Blockers', CirclePause],
             ['focus', 'Focus timer', Clock3],
             ['time', 'Work log', Timer],
@@ -404,25 +412,26 @@ function Workspace({ mode, user, onExit, onExpired, onDeleting }) {
             </h1>
             <p className="muted">{pageCopy.description}</p>
           </div>
-          {!['focus', 'time', 'teams'].includes(workspace.view) && !recovery && (
-            <button
-              className="button"
-              disabled={workspace.busy || workspace.loading}
-              onClick={() =>
-                workspace.view === 'projects'
-                  ? setProjectDialog({ project: null })
-                  : openNewTask()
-              }
-            >
-              <Plus size={17} />{' '}
-              {workspace.view === 'projects' ? 'New project' : 'New task'}
-            </button>
-          )}
+          {!['focus', 'time', 'teams', 'portfolio'].includes(workspace.view) &&
+            !recovery && (
+              <button
+                className="button"
+                disabled={workspace.busy || workspace.loading}
+                onClick={() =>
+                  workspace.view === 'projects'
+                    ? setProjectDialog({ project: null })
+                    : openNewTask()
+                }
+              >
+                <Plus size={17} />{' '}
+                {workspace.view === 'projects' ? 'New project' : 'New task'}
+              </button>
+            )}
         </section>
         <div className="notice-row" role="status" aria-live="polite">
           {workspace.notice}
         </div>
-        {!['focus', 'time', 'teams'].includes(workspace.view) && (
+        {!['focus', 'time', 'teams', 'portfolio'].includes(workspace.view) && (
           <section className="workspace-summary" aria-label="All tasks summary">
             <p className="summary-heading">Across your active workspace</p>
             <div className="stats">
@@ -455,8 +464,31 @@ function Workspace({ mode, user, onExit, onExpired, onDeleting }) {
             </button>
           </div>
         )}
-        {workspace.view === 'teams' ? (
-          <TeamWorkspace demo={mode === 'demo'} onExpired={onExpired} />
+        {workspace.view === 'portfolio' ? (
+          <Portfolio
+            demo={mode === 'demo'}
+            onExpired={onExpired}
+            onOpen={(id, panel) => {
+              setTeamSelection({ id, panel });
+              workspace.setView('teams');
+            }}
+            onTeams={() => {
+              setTeamSelection({ id: '', panel: 'tasks' });
+              workspace.setView('teams');
+            }}
+            onPrivateTask={(title) => {
+              workspace.setView('all');
+              workspace.setProject('');
+              workspace.setSearch(title);
+            }}
+          />
+        ) : workspace.view === 'teams' ? (
+          <TeamWorkspace
+            demo={mode === 'demo'}
+            onExpired={onExpired}
+            initialProjectId={teamSelection.id}
+            initialPanel={teamSelection.panel}
+          />
         ) : workspace.view === 'focus' ? (
           <FocusTimer storageScope={mode === 'demo' ? 'demo' : user.id} />
         ) : workspace.view === 'time' ? (
@@ -690,12 +722,12 @@ function Workspace({ mode, user, onExit, onExpired, onDeleting }) {
           <span>
             {mode === 'demo'
               ? 'Demo tasks stay in this browser. No account required.'
-              : workspace.view === 'teams'
+              : ['teams', 'portfolio'].includes(workspace.view)
                 ? 'Shared project work is visible to accepted members. Exports contain only tasks owned by your account.'
                 : 'Your tasks are saved to your private account.'}
           </span>
           <div className="footer-actions">
-            {workspace.view !== 'teams' && (
+            {!['teams', 'portfolio'].includes(workspace.view) && (
               <button
                 className="text-button"
                 disabled={workspace.busy || workspace.loading}
@@ -731,7 +763,9 @@ function Workspace({ mode, user, onExit, onExpired, onDeleting }) {
               onClick={() => act(workspace.exportTasks)}
             >
               <Download size={14} aria-hidden="true" />{' '}
-              {workspace.view === 'teams' ? 'Export owned tasks' : 'Export tasks'}
+              {['teams', 'portfolio'].includes(workspace.view)
+                ? 'Export owned tasks'
+                : 'Export tasks'}
             </button>
             {mode === 'demo' && (
               <button

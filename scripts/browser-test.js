@@ -2010,6 +2010,15 @@ try {
     await ownerPage
       .getByLabel('Project template', { exact: true })
       .selectOption('workshop-v1');
+    await ownerPage
+      .getByLabel('Raise overdue unfinished tasks to high priority', { exact: true })
+      .check();
+    await ownerPage.getByRole('button', { name: 'Save rules', exact: true }).click();
+    await ownerPage.getByText('Automation rules saved.', { exact: true }).waitFor();
+    await ownerPage
+      .getByRole('button', { name: 'Run saved rules now', exact: true })
+      .click();
+    await ownerPage.getByText('0 overdue tasks updated.', { exact: true }).waitFor();
     ownerPage.once('dialog', (dialog) => dialog.accept());
     await ownerPage
       .getByRole('button', { name: 'Apply project template', exact: true })

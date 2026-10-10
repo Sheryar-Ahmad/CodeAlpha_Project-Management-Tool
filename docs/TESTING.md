@@ -170,3 +170,5 @@ Project-template tests race application, repair interrupted setup, preserve cust
 Import tests reject owner injection and oversize files, verify fresh IDs/disabled schedules, concurrent restore, unchanged retry payloads and no recreation after completion. Recovery tests verify password-gated generation, hash-only storage, atomic one-use consumption, old-session rejection and password-change revocation. Chromium covers import preview/save, account settings, 320–1440px layouts, recovery reset and sign-in with the new password.
 
 Account deletion checks reject incorrect password/confirmation, freeze mutations and team access, resume a six-project cascade, preserve another account, revoke sessions and purge a simulated late write with authenticated maintenance. Chromium deletes only its isolated test account after typed confirmation and verifies the guest can no longer open its removed project.
+
+Automation checks cover owner settings, stale revisions, explicit checklist triggers, blocked/empty exclusions, recurring successors, unchanged completed/undated work and repeat-run idempotency. Chromium enables a rule and runs saved settings through the Workflow tab.

@@ -1,3 +1,4 @@
+import { Project } from '../models/Project.js';
 import { TaskComment } from '../models/TaskComment.js';
 import { taskScope } from '../middleware/projectAccess.js';
 import { ensurePrivateProject } from '../lib/projects.js';
@@ -290,12 +291,41 @@ taskRouter.patch('/:id', async (req, res) => {
     if (data.due !== current.due || !current.repeatDay)
       data.repeatDay = Number(data.due.slice(8));
   }
+  let autoComplete = false;
+  // This explicit checklist save is the trigger; empty lists and blocked tasks never auto-complete.
+  if (
+    !data.status &&
+    data.checklist?.length &&
+    data.checklist.every((step) => step.done)
+  ) {
+    const current = await Task.findOne({
+      _id: req.params.id,
+      ...taskScope(req),
+      ...activeRecords,
+    })
+      .select('projectId status')
+      .lean();
+    const project = current?.projectId
+      ? await Project.findById(data.projectId ?? current.projectId)
+          .select('automation')
+          .lean()
+      : null;
+    if (
+      project?.automation?.checklistToDone &&
+      ['todo', 'progress'].includes(current?.status)
+    ) {
+      data.status = 'done';
+      data.blockerReason = '';
+      autoComplete = true;
+    }
+  }
   // Include ownership in the query; never trust a client-supplied owner.
   const task = await Task.findOneAndUpdate(
     {
       _id: req.params.id,
       ...taskScope(req),
       ...activeRecords,
+      ...(autoComplete ? { status: { $in: ['todo', 'progress'] } } : {}),
       ...(data.due === '' && !data.recurrence
         ? { recurrence: { $in: ['none', null] } }
         : {}),

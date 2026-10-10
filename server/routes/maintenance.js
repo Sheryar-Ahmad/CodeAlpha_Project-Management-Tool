@@ -1,3 +1,4 @@
+import { runScheduledRules } from '../lib/automation.js';
 import { Router } from 'express';
 import { timingSafeEqual } from 'node:crypto';
 import { tokenHash } from '../middleware/auth.js';
@@ -31,5 +32,6 @@ maintenanceRouter.get('/', async (req, res) => {
       { $set: { lastSweptAt: new Date() } },
     );
   }
-  res.json({ checked: jobs.length, completed });
+  const automation = await runScheduledRules();
+  res.json({ checked: jobs.length, completed, automation });
 });

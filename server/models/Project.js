@@ -15,6 +15,12 @@ const schema = new mongoose.Schema(
   {
     owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     name: { type: String, required: true, trim: true, maxlength: 60 },
+    automation: {
+      checklistToDone: { type: Boolean, default: false },
+      overdueHigh: { type: Boolean, default: false },
+    },
+    automationRevision: { type: Number, default: 0 },
+    automationLastRunAt: { type: Date, default: () => new Date(0) },
     templateId: { type: String, default: '' },
     templateReady: { type: Boolean, default: false },
     templateTasks: { type: [mongoose.Schema.Types.ObjectId], default: [] },

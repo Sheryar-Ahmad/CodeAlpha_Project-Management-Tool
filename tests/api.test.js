@@ -2780,3 +2780,130 @@ test('account deletion freezes access, resumes in batches and cascades only the 
   assert.equal(await Task.countDocuments({ owner: users[0].id }), 0);
   delete process.env.CRON_SECRET;
 });
+
+test('opt-in project rules complete checked work safely and only elevate unfinished overdue tasks', async () => {
+  await RateBucket.deleteMany({ key: /^(api|auth):/ });
+  const owner = request.agent(app),
+    member = request.agent(app);
+  for (const [agent, email] of [
+    [owner, 'rule-owner@example.com'],
+    [member, 'rule-member@example.com'],
+  ])
+    await agent
+      .post('/api/auth/register')
+      .set('Origin', origin)
+      .send({ name: 'Rule user', email, password: 'rule-test-passphrase-long' })
+      .expect(201);
+  const task = (
+    await owner
+      .post('/api/tasks')
+      .set('Origin', origin)
+      .send({
+        title: 'Checked task',
+        project: 'Rule project',
+        due: '2000-01-01',
+        recurrence: 'weekly',
+        checklist: [{ id: 'one', text: 'Finish step', done: false }],
+      })
+      .expect(201)
+  ).body.task;
+  const base = '/api/projects/' + task.projectId,
+    endpoint = base + '/workflow/automation';
+  await owner
+    .post(base + '/members')
+    .set('Origin', origin)
+    .send({ email: 'rule-member@example.com' })
+    .expect(201);
+  const invitation = (await member.get('/api/teams').expect(200)).body.invitations[0];
+  await member
+    .patch('/api/teams/invitations/' + invitation.id)
+    .set('Origin', origin)
+    .send({ action: 'accept' })
+    .expect(204);
+  await member
+    .patch(endpoint)
+    .set('Origin', origin)
+    .send({ checklistToDone: true, overdueHigh: true, revision: 0 })
+    .expect(403);
+  await owner
+    .patch(endpoint)
+    .set('Origin', origin)
+    .send({ checklistToDone: true, overdueHigh: true, revision: 0 })
+    .expect(204);
+  await owner
+    .patch(endpoint)
+    .set('Origin', origin)
+    .send({ checklistToDone: false, overdueHigh: false, revision: 0 })
+    .expect(409);
+  const completed = (
+    await member
+      .patch(base + '/tasks/' + task.id)
+      .set('Origin', origin)
+      .send({ checklist: [{ id: 'one', text: 'Finish step', done: true }] })
+      .expect(200)
+  ).body;
+  assert.equal(completed.task.status, 'done');
+  assert.ok(completed.nextTask);
+  const blocked = (
+    await owner
+      .post(base + '/tasks')
+      .set('Origin', origin)
+      .send({
+        title: 'Still blocked',
+        project: 'Rule project',
+        status: 'blocked',
+        blockerReason: 'Waiting for permission',
+        due: '2000-01-01',
+        priority: 'low',
+      })
+      .expect(201)
+  ).body.task;
+  assert.equal(
+    (
+      await owner
+        .patch(base + '/tasks/' + blocked.id)
+        .set('Origin', origin)
+        .send({ checklist: [{ id: 'done', text: 'Prepared', done: true }] })
+        .expect(200)
+    ).body.task.status,
+    'blocked',
+  );
+  const undated = (
+    await owner
+      .post(base + '/tasks')
+      .set('Origin', origin)
+      .send({ title: 'Undated task', project: 'Rule project', priority: 'low' })
+      .expect(201)
+  ).body.task;
+  assert.equal(
+    (
+      await owner
+        .patch(base + '/tasks/' + undated.id)
+        .set('Origin', origin)
+        .send({ checklist: [] })
+        .expect(200)
+    ).body.task.status,
+    'todo',
+  );
+  const result = (
+    await owner
+      .post(endpoint + '/run')
+      .set('Origin', origin)
+      .send({})
+      .expect(200)
+  ).body;
+  assert.equal(result.changed, 2);
+  assert.equal((await Task.findById(task.id).lean()).priority, 'medium');
+  assert.equal((await Task.findById(blocked.id).lean()).priority, 'high');
+  assert.equal((await Task.findById(undated.id).lean()).priority, 'low');
+  assert.equal(
+    (
+      await owner
+        .post(endpoint + '/run')
+        .set('Origin', origin)
+        .send({})
+        .expect(200)
+    ).body.changed,
+    0,
+  );
+});

@@ -1,3 +1,4 @@
+import { runProjectRules } from '../lib/automation.js';
 import { Router } from 'express';
 import mongoose from 'mongoose';
 import { randomUUID } from 'node:crypto';
@@ -91,4 +92,44 @@ workflowRouter.post('/template', requireProjectOwner, async (req, res) => {
     { $set: { templateReady: true } },
   );
   res.json({ ready: true, created: template.tasks.length });
+});
+
+const automationSchema = z
+  .object({
+    checklistToDone: z.boolean(),
+    overdueHigh: z.boolean(),
+    revision: z.number().int().min(0),
+  })
+  .strict();
+workflowRouter.get('/automation', (req, res) =>
+  res.json({
+    checklistToDone: req.sharedProject.automation?.checklistToDone ?? false,
+    overdueHigh: req.sharedProject.automation?.overdueHigh ?? false,
+    revision: req.sharedProject.automationRevision ?? 0,
+    lastRun:
+      req.sharedProject.automationLastRunAt?.getTime() > 0
+        ? req.sharedProject.automationLastRunAt
+        : null,
+  }),
+);
+workflowRouter.patch('/automation', requireProjectOwner, async (req, res) => {
+  const { revision, ...automation } = parse(automationSchema, req.body);
+  const result = await Project.updateOne(
+    {
+      _id: req.sharedProject._id,
+      owner: req.user._id,
+      automationRevision: revision === 0 ? { $in: [0, null] } : revision,
+    },
+    { $set: { automation }, $inc: { automationRevision: 1 } },
+    { runValidators: true },
+  );
+  if (!result.matchedCount)
+    return res
+      .status(409)
+      .json({ message: 'Rules changed. Refresh before editing again.' });
+  res.status(204).end();
+});
+workflowRouter.post('/automation/run', requireProjectOwner, async (req, res) => {
+  parse(z.object({}).strict(), req.body ?? {});
+  res.json(await runProjectRules(req.sharedProject));
 });

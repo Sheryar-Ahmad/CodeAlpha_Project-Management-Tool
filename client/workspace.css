@@ -1975,3 +1975,21 @@ textarea:disabled {
   padding: 1.5rem;
   overflow-wrap: anywhere;
 }
+
+.automation-panel {
+  margin-top: 2rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+}
+.check-option {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding-block: 0.5rem;
+}
+.check-option input {
+  width: 20px;
+  flex: 0 0 20px;
+  margin: 0.2rem 0;
+}

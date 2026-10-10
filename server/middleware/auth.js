@@ -45,11 +45,9 @@ export async function requireAuth(req, res, next) {
       req.method + ' ' + req.originalUrl,
     )
   )
-    return res
-      .status(403)
-      .json({
-        message: 'Account deletion is in progress. Resume it from Account settings.',
-      });
+    return res.status(403).json({
+      message: 'Account deletion is in progress. Resume it from Account settings.',
+    });
   req.user = user;
   req.sessionToken = token;
   next();

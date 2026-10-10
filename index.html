@@ -89,58 +89,157 @@
           <p class="preview-note">Illustrative preview — explore the interactive demo.</p>
         </div>
       </section>
-      <section id="features" class="wrap section">
-        <p class="eyebrow">A SMALL TOOL FOR MEANINGFUL WORK</p>
-        <h2>Everything in its place.</h2>
+      <section
+        id="features"
+        class="wrap section features"
+        aria-labelledby="features-title"
+      >
+        <div class="feature-heading">
+          <div>
+            <p class="eyebrow">LESS TO JUGGLE. MORE ROOM TO FOCUS.</p>
+            <h2 id="features-title">Make space for<br /><span>your best work.</span></h2>
+          </div>
+          <p class="feature-intro">
+            The plan, the deadlines, the little details.<br />
+            Bring them together in one calm workspace.
+          </p>
+        </div>
         <div class="feature-grid">
-          <article>
-            <span class="feature-icon" aria-hidden="true"> ▦ </span>
-            <h3>See the whole picture</h3>
-            <p>
-              Give each project a brief and milestones. See tasks on a board or list, then
-              compare recorded project dates on a timeline.
+          <article class="feature-card feature-plan">
+            <p class="feature-label">
+              <span class="feature-marker" aria-hidden="true"></span> PROJECTS &amp; TASKS
             </p>
-          </article>
-          <article>
-            <span class="feature-icon teal" aria-hidden="true"> ◷ </span>
-            <h3>Keep deadlines visible</h3>
+            <h3>A clear plan. A visible finish line.</h3>
             <p>
-              Review the month on your calendar, plan a task for any day, and use Today or
-              Upcoming for the deadlines closest to you.
+              Break big ideas into tasks and milestones. Switch between your board, list,
+              and project timeline to see what moves next.
             </p>
+            <!-- These static examples illustrate the tools; the demo is linked below. -->
+            <div class="feature-board" aria-hidden="true">
+              <div>
+                <span class="mini-column-title">To do <b>2</b></span>
+                <div class="mini-task">
+                  <i></i>Prepare the brief<small>Planning</small>
+                </div>
+                <div class="mini-task mini-task-short">Review the details</div>
+              </div>
+              <div>
+                <span class="mini-column-title">In progress <b>1</b></span>
+                <div class="mini-task">
+                  <i class="mini-teal"></i>Build the first draft<small
+                    >Website launch</small
+                  ><span class="mini-progress"></span>
+                </div>
+              </div>
+              <div>
+                <span class="mini-column-title">Done <b>1</b></span>
+                <div class="mini-task">
+                  <i class="mini-teal"></i>Set the milestones<small class="mini-complete"
+                    >✓ Complete</small
+                  >
+                </div>
+              </div>
+            </div>
           </article>
-          <article>
-            <span class="feature-icon amber" aria-hidden="true"> ↗ </span>
-            <h3>Find your next step</h3>
+          <article class="feature-card feature-deadlines">
+            <p class="feature-label">
+              <span class="feature-marker" aria-hidden="true"></span> CALENDAR &amp; DAILY
+              PLANNING
+            </p>
+            <h3>Know what’s coming. Breathe easier.</h3>
             <p>
-              Open the Action Center for blocked, overdue, and urgent work. See why each
-              task needs attention, then choose a clear next step.
+              Give each deadline a place on your calendar. Use Today and Upcoming to keep
+              the closest ones in view.
             </p>
+            <div class="feature-calendar" aria-hidden="true">
+              <div class="mini-calendar-heading">
+                <strong>Your week, at a glance</strong><span>Planned ahead</span>
+              </div>
+              <div class="mini-week">
+                <span>Mon<b>12</b></span
+                ><span>Tue<b>13</b></span
+                ><span class="mini-day-selected">Wed<b>14</b></span
+                ><span>Thu<b>15</b></span
+                ><span>Fri<b>16</b></span>
+              </div>
+              <div class="mini-deadline">
+                <span class="mini-date">14</span>
+                <div>
+                  <strong>Share the first draft</strong
+                  ><small>Website launch · Due Wednesday</small>
+                </div>
+                <span class="mini-deadline-dot"></span>
+              </div>
+            </div>
           </article>
-          <article>
-            <span class="feature-icon" aria-hidden="true"> ✓ </span>
-            <h3>Keep useful context close</h3>
+          <article class="feature-card feature-small">
+            <div class="feature-card-top">
+              <span class="feature-icon amber" aria-hidden="true"
+                ><svg viewBox="0 0 24 24"><path d="M5 19 19 5M6 5h13v13" /></svg></span
+              ><span class="feature-number" aria-hidden="true">03</span>
+            </div>
+            <h3>Find your next step.</h3>
             <p>
-              Keep notes, decisions, and meeting outcomes in a project notebook. Turn a
-              meeting into an editable follow-up task.
+              See blocked, overdue, and urgent tasks together. Know what needs attention
+              and why.
             </p>
+            <span class="feature-caption">ACTION CENTER</span>
           </article>
-          <article>
-            <span class="feature-icon teal" aria-hidden="true"> ↻ </span>
-            <h3>Skip the repeated setup</h3>
+          <article class="feature-card feature-small">
+            <div class="feature-card-top">
+              <span class="feature-icon" aria-hidden="true"
+                ><svg viewBox="0 0 24 24">
+                  <path d="M6 3h12v18H6zM9 8h6M9 12h6M9 16h3" /></svg></span
+              ><span class="feature-number" aria-hidden="true">04</span>
+            </div>
+            <h3>Keep the details close.</h3>
             <p>
-              Start from a checklist template, duplicate useful work, or repeat a daily,
-              weekly, or monthly task while keeping completed history.
+              Save notes and decisions with your project. Turn meeting outcomes into
+              follow-up tasks.
             </p>
+            <span class="feature-caption">PROJECT NOTEBOOK</span>
           </article>
-          <article>
-            <span class="feature-icon amber" aria-hidden="true"> ◷ </span>
-            <h3>Give your effort a record</h3>
+          <article class="feature-card feature-small">
+            <div class="feature-card-top">
+              <span class="feature-icon teal" aria-hidden="true"
+                ><svg viewBox="0 0 24 24">
+                  <path
+                    d="M20 7v5h-5M4 17v-5h5M6 6a8 8 0 0 1 14 6M18 18a8 8 0 0 1-14-6"
+                  /></svg></span
+              ><span class="feature-number" aria-hidden="true">05</span>
+            </div>
+            <h3>Set it up. Use it again.</h3>
             <p>
-              Focus with a quiet timer. Separately record time you worked and review
-              weekly totals by day or project.
+              Reuse a checklist, duplicate a task, or set work to repeat. Spend less time
+              starting from scratch.
             </p>
+            <span class="feature-caption">TEMPLATES &amp; REPEATING TASKS</span>
           </article>
+          <article class="feature-card feature-small">
+            <div class="feature-card-top">
+              <span class="feature-icon teal" aria-hidden="true"
+                ><svg viewBox="0 0 24 24">
+                  <circle cx="12" cy="13" r="8" />
+                  <path d="M12 9v4l3 2M9 2h6M12 2v3" /></svg></span
+              ><span class="feature-number" aria-hidden="true">06</span>
+            </div>
+            <h3>Make time for focus.</h3>
+            <p>
+              Settle into work with a quiet timer. Log your time separately and review
+              your weekly effort.
+            </p>
+            <span class="feature-caption">FOCUS TIMER &amp; WORK LOG</span>
+          </article>
+        </div>
+        <div class="feature-footer">
+          <p>
+            Small details, less friction.<span>
+              Preview examples above. Your own work starts here.</span
+            >
+          </p>
+          <a class="feature-demo-link" href="/app.html?demo=1"
+            >Try it for yourself <span aria-hidden="true">↗</span></a
+          >
         </div>
       </section>
       <section id="about" class="wrap about section">
@@ -158,9 +257,9 @@
             Engineering student at COMSATS University Islamabad.
           </p>
           <p>
-            Explore the local demo without an account, or sign in to save your personal
-            projects, notes, and work logs with MongoDB. Shared team workspaces are
-            planned for a later milestone.
+            Explore the demo without an account, or sign in to save your projects, notes,
+            and work logs. Invite teammates to shared projects while keeping your personal
+            workspace private.
           </p>
           <a href="/app.html?demo=1"> Explore the task board → </a>
         </div>

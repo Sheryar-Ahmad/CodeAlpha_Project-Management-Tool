@@ -1888,9 +1888,40 @@ try {
         title: 'Prepare the workshop outline',
         project: teamProject.name,
         description: 'Choose three practical topics and share the draft for review.',
+        due: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
       },
     });
     await ownerPage.goto(origin + '/app.html');
+    const calendarDownloadEvent = ownerPage.waitForEvent('download');
+    await ownerPage
+      .getByRole('button', { name: 'Export deadline calendar', exact: true })
+      .click();
+    const calendarDownload = await calendarDownloadEvent;
+    assert.ok(calendarDownload.suggestedFilename().endsWith('.ics'));
+    await calendarDownload.saveAs('.cache/calendar-deadlines.ics');
+    assert.ok(
+      (await readFile('.cache/calendar-deadlines.ics', 'utf8')).includes(
+        'SUMMARY:Prepare the workshop outline',
+      ),
+    );
+    await ownerPage
+      .locator('.task-card')
+      .filter({
+        has: ownerPage.getByRole('heading', {
+          name: 'Prepare the workshop outline',
+          exact: true,
+        }),
+      })
+      .getByText('Calendar options', { exact: true })
+      .click();
+    const googleLink = ownerPage.getByRole('link', {
+      name: 'Add Prepare the workshop outline to Google Calendar (opens in a new tab)',
+      exact: true,
+    });
+    assert.equal(
+      new URL(await googleLink.getAttribute('href')).hostname,
+      'calendar.google.com',
+    );
     await ownerPage
       .getByRole('button', { name: 'Import task backup', exact: true })
       .click();
@@ -2110,6 +2141,38 @@ try {
       );
     }
 
+    await ownerPage.getByRole('button', { name: 'Dependencies', exact: true }).click();
+    await ownerPage
+      .getByLabel('Schedule start date', { exact: true })
+      .fill(new Date(Date.now() + 10 * 86400000).toISOString().slice(0, 10));
+    await ownerPage
+      .getByRole('button', { name: 'Preview dependency schedule', exact: true })
+      .click();
+    await ownerPage
+      .getByText('Schedule preview ready. Review every proposed date before applying.', {
+        exact: true,
+      })
+      .waitFor();
+    ownerPage.once('dialog', (dialog) => dialog.accept());
+    await ownerPage
+      .getByRole('button', { name: 'Apply next schedule batch', exact: true })
+      .click();
+    await ownerPage
+      .getByText('0 dates awaiting review · 0 conflicts · Preview expires', {
+        exact: false,
+      })
+      .waitFor();
+    for (const width of [320, 375, 768, 1440]) {
+      await ownerPage.setViewportSize({ width, height: 1000 });
+      assert.equal(
+        await ownerPage.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+        true,
+        'Schedule overflow at ' + width,
+      );
+    }
+    await ownerPage.setViewportSize({ width: 1440, height: 1000 });
     for (const [tab, heading] of [
       ['Shared tasks', 'Shared project tasks'],
       ['Dependencies', 'What needs to happen first?'],

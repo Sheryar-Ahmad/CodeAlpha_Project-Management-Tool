@@ -1,3 +1,4 @@
+import { ProjectSchedule } from '../models/ProjectSchedule.js';
 import { User } from '../models/User.js';
 import { Session } from '../models/Session.js';
 import { Task } from '../models/Task.js';
@@ -28,6 +29,7 @@ export async function purgeAccount(user) {
       ProjectDependencies,
       ProjectCapacity,
       ProjectGoal,
+      ProjectSchedule,
       WorkRequest,
     ])
       await model.deleteMany({ project: project._id });

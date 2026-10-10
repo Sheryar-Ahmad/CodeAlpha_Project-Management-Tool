@@ -172,3 +172,7 @@ Import tests reject owner injection and oversize files, verify fresh IDs/disable
 Account deletion checks reject incorrect password/confirmation, freeze mutations and team access, resume a six-project cascade, preserve another account, revoke sessions and purge a simulated late write with authenticated maintenance. Chromium deletes only its isolated test account after typed confirmation and verifies the guest can no longer open its removed project.
 
 Automation checks cover owner settings, stale revisions, explicit checklist triggers, blocked/empty exclusions, recurring successors, unchanged completed/undated work and repeat-run idempotency. Chromium enables a rule and runs saved settings through the Workflow tab.
+
+Calendar handoff tests cover UTF-8 folding, escaped delimiter/newline injection, year-boundary all-day events, stable identifiers and private API scope. Chromium downloads and reads the actual .ics file and verifies the Google link URL; no external event is saved by automated tests.
+
+Scheduling checks cover longest prerequisite paths, completed/repeating/unavailable prerequisites, cycle/year bounds, owner-only proposals, scoped saves, stale graph rejection and task edit conflicts. Chromium previews and explicitly applies a schedule batch and verifies no overflow at 320–1440px.

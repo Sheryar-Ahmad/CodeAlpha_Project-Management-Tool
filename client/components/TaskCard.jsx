@@ -8,6 +8,7 @@ import {
   Pencil,
   Trash2,
 } from 'lucide-react';
+import { googleCalendarLink } from '../../shared/calendarExport.js';
 import { today } from '../lib/api.js';
 import { taskStatuses } from '../../shared/task.js';
 import { recurrenceLabels } from '../../shared/recurrence.js';
@@ -37,6 +38,8 @@ export default function TaskCard({
     : 'No due date';
   const steps = task.checklist ?? [];
   const completed = steps.filter((step) => step.done).length;
+  const calendarLink =
+    !readOnly && task.status !== 'done' ? googleCalendarLink(task) : null;
   return (
     <article className="task-card">
       <div className="task-information">
@@ -85,6 +88,25 @@ export default function TaskCard({
                 ))}
               </ul>
             )}
+          </details>
+        )}
+        {calendarLink && (
+          <details className="task-context">
+            <summary>Calendar options</summary>
+            <a
+              href={calendarLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={
+                'Add ' + task.title + ' to Google Calendar (opens in a new tab)'
+              }
+            >
+              Add to Google Calendar <ExternalLink size={13} aria-hidden="true" />
+            </a>
+            <p className="small muted">
+              Opens Google Calendar with this task's title, project, description and due
+              date. Review and save there. Changes do not sync back to Orbit.
+            </p>
           </details>
         )}
         {steps.length > 0 && (

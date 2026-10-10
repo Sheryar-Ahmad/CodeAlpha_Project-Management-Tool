@@ -695,6 +695,15 @@ function Workspace({ mode, user, onExit, onExpired, onDeleting }) {
                 : 'Your tasks are saved to your private account.'}
           </span>
           <div className="footer-actions">
+            {workspace.view !== 'teams' && (
+              <button
+                className="text-button"
+                disabled={workspace.busy || workspace.loading}
+                onClick={() => act(workspace.exportCalendar)}
+              >
+                Export deadline calendar
+              </button>
+            )}
             {mode === 'account' && (
               <button
                 className="text-button"

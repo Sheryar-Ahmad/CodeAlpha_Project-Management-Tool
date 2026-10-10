@@ -33,6 +33,7 @@ export function importDrafts(file, project, makeId) {
     due: row.due,
     lifecycle: row.lifecycle,
     estimateMinutes: row.estimateMinutes,
+    durationDays: row.durationDays,
     recurrence: 'none',
     checklist: row.checklist.map(({ text, done }) => ({ id: makeId(), text, done })),
   }));

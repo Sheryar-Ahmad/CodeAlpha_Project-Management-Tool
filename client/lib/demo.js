@@ -103,6 +103,10 @@ function isTask(task) {
       (Number.isInteger(task.estimateMinutes) &&
         task.estimateMinutes >= 0 &&
         task.estimateMinutes <= 60000)) &&
+    (task.durationDays === undefined ||
+      (Number.isInteger(task.durationDays) &&
+        task.durationDays >= 1 &&
+        task.durationDays <= 365)) &&
     Object.hasOwn(taskStatuses, task.status) &&
     (task.blockerReason === undefined ||
       (typeof task.blockerReason === 'string' && task.blockerReason.length <= 500)) &&

@@ -1993,3 +1993,17 @@ textarea:disabled {
   flex: 0 0 20px;
   margin: 0.2rem 0;
 }
+
+.schedule-preview {
+  list-style: none;
+  padding: 0;
+  max-height: 400px;
+  overflow: auto;
+  overflow-wrap: anywhere;
+}
+.schedule-preview li {
+  padding: 0.75rem;
+  margin-block: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}

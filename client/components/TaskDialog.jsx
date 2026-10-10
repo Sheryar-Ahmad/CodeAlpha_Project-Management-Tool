@@ -49,6 +49,7 @@ export default function TaskDialog({
     data.description = data.description.trim();
     data.notes = data.notes.trim();
     data.estimateMinutes = Number(data.estimateMinutes);
+    data.durationDays = Number(data.durationDays);
     if (data.recurrence !== 'none' && !data.due) {
       setError('Repeating tasks need a due date.');
       return;
@@ -223,6 +224,24 @@ export default function TaskDialog({
             />
           </label>
         </div>
+        <label>
+          Planning duration (calendar days)
+          <input
+            name="durationDays"
+            aria-label="Planning duration (calendar days)"
+            type="number"
+            min="1"
+            max="365"
+            required
+            step="1"
+            defaultValue={task?.durationDays ?? 1}
+            disabled={busy}
+          />
+          <span className="small muted">
+            Used only when the owner previews dependency scheduling. Days include
+            weekends; estimates stay separate.
+          </span>
+        </label>
         <label>
           Estimated work (minutes)
           <input

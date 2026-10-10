@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { request, today } from '../lib/api.js';
 import { createTaskExport } from '../../shared/export.js';
-import { downloadTaskExport } from '../lib/export.js';
+import { downloadTaskExport, downloadCalendarExport } from '../lib/export.js';
+import { createCalendarExport } from '../../shared/calendarExport.js';
 import { nextRecurringDraft } from '../../shared/recurrence.js';
 import { matchesPlanningView } from '../../shared/planning.js';
 import { monthBounds } from '../../shared/calendar.js';
@@ -337,6 +338,29 @@ export default function useWorkspace(mode, onExpired) {
       setBusy(false);
     }
   }
+  async function exportCalendar() {
+    if (mutationLock.current) throw new Error('Please wait for the current save.');
+    mutationLock.current = true;
+    setBusy(true);
+    setNotice('');
+    try {
+      const data =
+        mode === 'demo'
+          ? createCalendarExport(readDemo(), 'demo')
+          : await request('/tasks/calendar-export');
+      downloadCalendarExport(data);
+      setNotice(
+        data.count +
+          ' active deadlines exported. Keep the file private. Calendar imports are snapshots, not live sync.',
+      );
+    } catch (failure) {
+      if (failure.status === 401) onExpired();
+      throw failure;
+    } finally {
+      mutationLock.current = false;
+      setBusy(false);
+    }
+  }
   async function exportTasks() {
     if (mutationLock.current) throw new Error('Please wait for the current save.');
     mutationLock.current = true;
@@ -363,6 +387,7 @@ export default function useWorkspace(mode, onExpired) {
     calendarTruncated,
     date,
     exportTasks,
+    exportCalendar,
     saveProject,
     connectProject,
     tasks,

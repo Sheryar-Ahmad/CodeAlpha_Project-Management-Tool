@@ -59,6 +59,7 @@ export const taskSchema = z
     status: z.enum(Object.keys(taskStatuses)).default('todo'),
     blockerReason: z.string().trim().max(500).default(''),
     due: z.string().refine(validDate, 'Enter a valid date.').default(''),
+    durationDays: z.number().int().min(1).max(365).default(1),
     estimateMinutes: z.number().int().min(0).max(60000).default(0),
     recurrence: z.enum(Object.keys(recurrenceLabels)).default('none'),
     checklist: checklistSchema.default([]),
@@ -85,6 +86,7 @@ export const taskUpdateSchema = z
     blockerReason: taskSchema.shape.blockerReason.removeDefault().optional(),
     due: taskSchema.shape.due.removeDefault().optional(),
     recurrence: taskSchema.shape.recurrence.removeDefault().optional(),
+    durationDays: taskSchema.shape.durationDays.removeDefault().optional(),
     estimateMinutes: taskSchema.shape.estimateMinutes.removeDefault().optional(),
     checklist: checklistSchema.optional(),
   })

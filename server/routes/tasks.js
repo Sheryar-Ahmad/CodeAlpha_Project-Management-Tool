@@ -1,3 +1,4 @@
+import { createCalendarExport } from '../../shared/calendarExport.js';
 import { Project } from '../models/Project.js';
 import { TaskComment } from '../models/TaskComment.js';
 import { taskScope } from '../middleware/projectAccess.js';
@@ -37,6 +38,7 @@ const serialize = (task) => ({
   links: (task.links ?? []).map(({ label, url }) => ({ label, url })),
   priority: task.priority,
   estimateMinutes: task.estimateMinutes ?? 0,
+  durationDays: task.durationDays ?? 1,
   status: task.status,
   blockerReason: task.blockerReason ?? '',
   due: task.due,
@@ -61,6 +63,28 @@ const exportLimit = rateLimit({
   message: { message: 'Export limit reached. Please try again in an hour.' },
 });
 
+taskRouter.get('/calendar-export', exportLimit, async (req, res) => {
+  const tasks = await Task.find({
+    ...taskScope(req),
+    ...activeRecords,
+    status: { $ne: 'done' },
+    due: { $gt: '' },
+  })
+    .sort({ due: 1, _id: 1 })
+    .select('title project description due status lifecycle')
+    .limit(1001)
+    .lean();
+  if (tasks.length > 1000)
+    return res
+      .status(413)
+      .json({ message: 'Calendar export supports up to 1000 active deadlines.' });
+  res.json(
+    createCalendarExport(
+      tasks.map((task) => ({ ...task, id: String(task._id) })),
+      'account',
+    ),
+  );
+});
 taskRouter.get('/export', exportLimit, async (req, res) => {
   // One extra record detects oversize exports without loading an unbounded account.
   const tasks = await Task.find({ ...taskScope(req) })

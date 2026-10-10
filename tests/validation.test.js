@@ -696,3 +696,87 @@ test('measurable result progress supports decreasing targets and clamps incomple
   assert.equal(resultProgress({ baseline: 1, current: 0, target: 1 }), 0);
   assert.equal(goalProgress([]), 0);
 });
+
+test('calendar exports escape text, fold UTF-8 lines and keep all-day deadlines unambiguous', async () => {
+  const { createCalendarExport, googleCalendarLink } =
+    await import('../shared/calendarExport.js');
+  const task = {
+    id: 'safe-id',
+    title: 'Clarity, progress; \nBEGIN:VEVENT ' + '界'.repeat(40),
+    project: 'Workshop',
+    description: 'A useful brief',
+    due: '2026-12-31',
+    status: 'todo',
+    lifecycle: 'active',
+  };
+  const data = createCalendarExport(
+    [
+      task,
+      { ...task, status: 'done' },
+      { ...task, lifecycle: 'trashed' },
+      { ...task, due: '' },
+    ],
+    'demo',
+    new Date('2026-10-10T12:00:00Z'),
+  );
+  assert.equal(data.count, 1);
+  const unfolded = data.calendar.replaceAll('\r\n ', '');
+  assert.equal(unfolded.match(/^BEGIN:VEVENT$/gm).length, 1);
+  assert.ok(data.calendar.includes('DTSTART;VALUE=DATE:20261231'));
+  assert.ok(data.calendar.includes('DTEND;VALUE=DATE:20270101'));
+  assert.ok(data.calendar.includes('DTSTAMP:20261010T120000Z'));
+  for (const line of data.calendar.split('\r\n'))
+    assert.ok(Buffer.byteLength(line, 'utf8') <= 75);
+  assert.ok(unfolded.includes('SUMMARY:Clarity\\, progress\\; \\nBEGIN:VEVENT'));
+  const link = new URL(googleCalendarLink(task));
+  assert.equal(link.hostname, 'calendar.google.com');
+  assert.equal(link.searchParams.get('text'), task.title);
+  assert.equal(link.searchParams.get('dates'), '20261231/20270101');
+  assert.equal(googleCalendarLink({ ...task, due: '' }), null);
+});
+
+test('dependency schedules use longest prerequisite paths and reject stale or unsupported chains', async () => {
+  const { planDependencies } = await import('../shared/scheduling.js');
+  const tasks = [
+    { id: 'a', title: 'First', status: 'todo', durationDays: 2 },
+    { id: 'b', title: 'Parallel', status: 'todo', durationDays: 4 },
+    { id: 'c', title: 'Final', status: 'todo', durationDays: 1 },
+  ];
+  const plan = planDependencies(
+    tasks,
+    [
+      { from: 'a', to: 'c' },
+      { from: 'b', to: 'c' },
+    ],
+    '2026-10-10',
+  );
+  assert.equal(plan[0].newDue, '2026-10-11');
+  assert.equal(plan[1].newDue, '2026-10-13');
+  assert.equal(plan[2].newDue, '2026-10-14');
+  assert.throws(
+    () =>
+      planDependencies(
+        tasks,
+        [
+          { from: 'a', to: 'c' },
+          { from: 'c', to: 'a' },
+        ],
+        '2026-10-10',
+      ),
+    /circular/,
+  );
+  assert.throws(
+    () => planDependencies(tasks, [{ from: 'missing', to: 'c' }], '2026-10-10'),
+    /unavailable/,
+  );
+  assert.throws(() => planDependencies(tasks, [], '2100-12-31'), /supported/);
+  assert.throws(
+    () =>
+      planDependencies(
+        [{ ...tasks[0], recurrence: 'weekly' }, tasks[2]],
+        [{ from: 'a', to: 'c' }],
+        '2026-10-10',
+      ),
+    /repeating/,
+  );
+});

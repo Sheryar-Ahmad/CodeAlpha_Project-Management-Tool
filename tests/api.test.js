@@ -2907,3 +2907,210 @@ test('opt-in project rules complete checked work safely and only elevate unfinis
     0,
   );
 });
+
+test('calendar downloads are owner-scoped and include active unfinished deadlines only', async () => {
+  await RateBucket.deleteMany({ key: /^(api|auth):/ });
+  const owner = request.agent(app),
+    other = request.agent(app);
+  for (const [agent, email] of [
+    [owner, 'ics-owner@example.com'],
+    [other, 'ics-other@example.com'],
+  ])
+    await agent
+      .post('/api/auth/register')
+      .set('Origin', origin)
+      .send({ name: 'Calendar user', email, password: 'calendar-test-passphrase' })
+      .expect(201);
+  for (const body of [
+    { title: 'Owned deadline', due: '2026-10-11' },
+    { title: 'Completed deadline', due: '2026-10-11', status: 'done' },
+    { title: 'Undated task' },
+  ])
+    await owner
+      .post('/api/tasks')
+      .set('Origin', origin)
+      .send({ project: 'Calendar project', notes: 'Exclude this private note', ...body })
+      .expect(201);
+  const exported = (await owner.get('/api/tasks/calendar-export').expect(200)).body;
+  assert.equal(exported.count, 1);
+  assert.ok(exported.calendar.includes('Owned deadline'));
+  assert.ok(!exported.calendar.includes('Completed deadline'));
+  assert.ok(!exported.calendar.includes('Exclude this private note'));
+  assert.equal((await other.get('/api/tasks/calendar-export').expect(200)).body.count, 0);
+});
+
+test('schedule proposals preserve concurrent edits, scoped dates and retry-safe batch state', async () => {
+  await RateBucket.deleteMany({ key: /^(api|auth):/ });
+  const owner = request.agent(app),
+    member = request.agent(app);
+  for (const [agent, email] of [
+    [owner, 'schedule-owner@example.com'],
+    [member, 'schedule-member@example.com'],
+  ])
+    await agent
+      .post('/api/auth/register')
+      .set('Origin', origin)
+      .send({ name: 'Schedule user', email, password: 'schedule-test-passphrase' })
+      .expect(201);
+  const first = (
+    await owner
+      .post('/api/tasks')
+      .set('Origin', origin)
+      .send({ title: 'Prepare', project: 'Scheduled project', durationDays: 2 })
+      .expect(201)
+  ).body.task;
+  const base = '/api/projects/' + first.projectId,
+    endpoint = base + '/schedule';
+  const second = (
+    await owner
+      .post(base + '/tasks')
+      .set('Origin', origin)
+      .send({ title: 'Deliver', project: 'Scheduled project', durationDays: 1 })
+      .expect(201)
+  ).body.task;
+  await owner
+    .post(base + '/dependencies')
+    .set('Origin', origin)
+    .send({ from: first.id, to: second.id })
+    .expect(201);
+  await owner
+    .post(base + '/members')
+    .set('Origin', origin)
+    .send({ email: 'schedule-member@example.com' })
+    .expect(201);
+  const invitation = (await member.get('/api/teams').expect(200)).body.invitations[0];
+  await member
+    .patch('/api/teams/invitations/' + invitation.id)
+    .set('Origin', origin)
+    .send({ action: 'accept' })
+    .expect(204);
+  await member
+    .post(endpoint + '/preview')
+    .set('Origin', origin)
+    .send({ startDate: '2026-10-10' })
+    .expect(403);
+  const plan = (
+    await owner
+      .post(endpoint + '/preview')
+      .set('Origin', origin)
+      .send({ startDate: '2026-10-10' })
+      .expect(201)
+  ).body.plan;
+  assert.equal(plan.rows.find((row) => row.id === second.id).newDue, '2026-10-12');
+  await owner
+    .patch(base + '/tasks/' + first.id)
+    .set('Origin', origin)
+    .send({ due: '2026-11-01' })
+    .expect(200);
+  const applied = (
+    await owner
+      .post(endpoint + '/' + plan.id + '/apply')
+      .set('Origin', origin)
+      .send({})
+      .expect(200)
+  ).body.plan;
+  assert.equal(applied.conflicts, 1);
+  assert.equal(applied.pending, 0);
+  assert.equal((await Task.findById(first.id).lean()).due, '2026-11-01');
+  assert.equal((await Task.findById(second.id).lean()).due, '2026-10-12');
+  await owner
+    .post(endpoint + '/' + plan.id + '/apply')
+    .set('Origin', origin)
+    .send({})
+    .expect(200);
+  assert.equal((await Task.findById(first.id).lean()).due, '2026-11-01');
+  const next = (
+    await owner
+      .post(endpoint + '/preview')
+      .set('Origin', origin)
+      .send({ startDate: '2026-10-10' })
+      .expect(201)
+  ).body.plan;
+  await owner
+    .delete(base + '/dependencies')
+    .set('Origin', origin)
+    .send({ from: first.id, to: second.id })
+    .expect(204);
+  await owner
+    .post(endpoint + '/' + next.id + '/apply')
+    .set('Origin', origin)
+    .send({})
+    .expect(409);
+  await owner
+    .post(endpoint + '/preview')
+    .set('Origin', origin)
+    .send({ startDate: '2026-02-30' })
+    .expect(400);
+});
+
+test('large schedules resume 25-row batches and safely repair an interrupted saved-row marker', async () => {
+  await RateBucket.deleteMany({ key: /^(api|auth):/ });
+  const agent = request.agent(app);
+  const user = (
+    await agent
+      .post('/api/auth/register')
+      .set('Origin', origin)
+      .send({
+        name: 'Batch planner',
+        email: 'batch-planner@example.com',
+        password: 'batch-planner-passphrase-long',
+      })
+      .expect(201)
+  ).body.user;
+  const project = (
+    await agent
+      .post('/api/projects')
+      .set('Origin', origin)
+      .send({ name: 'Batch schedule' })
+      .expect(201)
+  ).body.project;
+  await Task.insertMany(
+    Array.from({ length: 28 }, (_, index) => ({
+      owner: user.id,
+      projectId: project.id,
+      project: project.name,
+      title: 'Plan step ' + index,
+    })),
+  );
+  const endpoint = '/api/projects/' + project.id + '/schedule';
+  const plan = (
+    await agent
+      .post(endpoint + '/preview')
+      .set('Origin', origin)
+      .send({ startDate: '2026-10-10' })
+      .expect(201)
+  ).body.plan;
+  const first = (
+    await agent
+      .post(endpoint + '/' + plan.id + '/apply')
+      .set('Origin', origin)
+      .send({})
+      .expect(200)
+  ).body.plan;
+  assert.equal(first.pending, 3);
+  assert.equal(first.rows.filter((row) => row.state === 'saved').length, 25);
+  const { ProjectSchedule } = await import('../server/models/ProjectSchedule.js');
+  await ProjectSchedule.updateOne(
+    { _id: plan.id },
+    { $set: { 'rows.0.state': 'pending' } },
+  );
+  const second = (
+    await agent
+      .post(endpoint + '/' + plan.id + '/apply')
+      .set('Origin', origin)
+      .send({})
+      .expect(200)
+  ).body.plan;
+  assert.equal(second.pending, 0);
+  assert.equal(second.conflicts, 0);
+  assert.equal(
+    await Task.countDocuments({ projectId: project.id, due: '2026-10-10' }),
+    28,
+  );
+  await ProjectSchedule.updateOne({ _id: plan.id }, { $set: { expiresAt: new Date(0) } });
+  await agent
+    .post(endpoint + '/' + plan.id + '/apply')
+    .set('Origin', origin)
+    .send({})
+    .expect(409);
+});

@@ -1,3 +1,4 @@
+import { schedulingRouter } from './scheduling.js';
 import { workflowRouter } from './projectWorkflow.js';
 import { goalsRouter } from './goals.js';
 import { workloadRouter } from './workload.js';
@@ -22,6 +23,7 @@ projectRouter.use('/:id/guest', guestPortalRouter);
 projectRouter.use('/:id/workload', workloadRouter);
 projectRouter.use('/:id/goals', goalsRouter);
 projectRouter.use('/:id/workflow', workflowRouter);
+projectRouter.use('/:id/schedule', schedulingRouter);
 projectRouter.use('/:id/members', memberRouter);
 projectRouter.use('/:id/collaboration', collaborationRouter);
 projectRouter.use('/:id/reviews', reviewRouter);

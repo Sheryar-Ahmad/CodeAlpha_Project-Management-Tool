@@ -15,6 +15,7 @@ export function createTaskExport(tasks, scope) {
       links: (task.links ?? []).map(({ label, url }) => ({ label, url })),
       priority: task.priority,
       estimateMinutes: task.estimateMinutes ?? 0,
+      durationDays: task.durationDays ?? 1,
       status: task.status,
       blockerReason: task.blockerReason ?? '',
       due: task.due,

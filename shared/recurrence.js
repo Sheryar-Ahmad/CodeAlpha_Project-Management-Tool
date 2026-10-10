@@ -36,6 +36,7 @@ export function nextRecurringDraft(task, makeId) {
     links: (task.links ?? []).map(({ label, url }) => ({ label, url })),
     priority: task.priority,
     estimateMinutes: task.estimateMinutes ?? 0,
+    durationDays: task.durationDays ?? 1,
     status: 'todo',
     blockerReason: '',
     due,

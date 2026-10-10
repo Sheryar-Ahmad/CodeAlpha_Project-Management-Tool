@@ -71,6 +71,8 @@ Screenshots are from the working local demo using illustrative sample tasks.
 | Task discussion           | Keep plain-text comments beside shared tasks, with owner moderation                          |
 | Team notes                | Record shared decisions and meetings without exposing private notebooks                      |
 | Review requests           | Ask a teammate to review a captured task brief and record approval or changes                |
+| Dependency scheduling     | Review calendar-day proposals, apply bounded batches and keep concurrent edits safe          |
+| Calendar handoff          | Private .ics deadline downloads and per-task Google Calendar event links                     |
 | Automation                | Opt-in checklist completion and bounded overdue-priority rules, with visible settings        |
 | Backup import             | Validate a JSON preview and restore into a new owned project without replacing work          |
 | Account security          | Password changes, one-time recovery codes, session revocation and resumable deletion         |
@@ -251,7 +253,7 @@ npm run build
 npm run format:check
 ```
 
-**Verified locally:** 72 API/input/planning/timer/password/template/recovery/export/recurrence/project tests and Chromium browser flows covering demo CRUD, storage persistence, search, filters, safe text rendering, mobile overflow, dialog Escape, checklists, task duplication, template previews and replacement protection, list actions and pagination, blockers, archive/trash restoration, private downloads, daily views, overnight date changes, project progress, focus pause/refresh/completion, registration, database-backed persistence, logout, and login. Expanded checks cover whole-month calendar queries, leap years, Action Center rules, milestones, health explanations, command navigation, notebook decisions/meetings, follow-up drafts, weekly time totals, private APIs, and explicit legacy linking. Team checks cover invitation state transitions, cross-project isolation, removed/pending users, role restrictions, assignment eligibility, private/team note separation, discussion moderation, review decisions and inbox access. Browser tests exercise two separate authenticated accounts and team layouts at 320–1440px.
+**Verified locally:** 77 API/input/planning/timer/password/template/recovery/export/recurrence/project tests and Chromium browser flows covering demo CRUD, storage persistence, search, filters, safe text rendering, mobile overflow, dialog Escape, checklists, task duplication, template previews and replacement protection, list actions and pagination, blockers, archive/trash restoration, private downloads, daily views, overnight date changes, project progress, focus pause/refresh/completion, registration, database-backed persistence, logout, and login. Expanded checks cover whole-month calendar queries, leap years, Action Center rules, milestones, health explanations, command navigation, notebook decisions/meetings, follow-up drafts, weekly time totals, private APIs, and explicit legacy linking. Team checks cover invitation state transitions, cross-project isolation, removed/pending users, role restrictions, assignment eligibility, private/team note separation, discussion moderation, review decisions and inbox access. Browser tests exercise two separate authenticated accounts and team layouts at 320–1440px.
 
 For browser checks:
 
@@ -339,7 +341,7 @@ See [the product direction review](docs/PRODUCT_DIRECTION.md) for which proposed
 - [ ] Accessibility audit and measured production performance
 - [ ] Live deployment link and LinkedIn walkthrough
 
-The remaining roadmap includes dependency scheduling, public intake forms and configured external integrations. See [the delivery tracker](docs/PRODUCT_DIRECTION.md) for shipped and pending scope; these services are not advertised as complete.
+The remaining roadmap includes public intake forms and configured external integrations. See [the delivery tracker](docs/PRODUCT_DIRECTION.md) for shipped and pending scope; these services are not advertised as complete.
 
 For a short video, use [the 90-second demo outline](docs/DEMO.md).
 

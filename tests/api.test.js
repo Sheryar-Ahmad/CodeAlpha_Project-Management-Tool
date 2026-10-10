@@ -2497,3 +2497,169 @@ test('project templates are owner-only, concurrency-safe and repair partial setu
     .send({ templateId: 'invented' })
     .expect(400);
 });
+
+test('task backup import validates preview and retries a private restore without recreating deleted tasks', async () => {
+  await RateBucket.deleteMany({ key: /^(api|auth):/ });
+  const agent = request.agent(app);
+  await agent
+    .post('/api/auth/register')
+    .set('Origin', origin)
+    .send({
+      name: 'Importer',
+      email: 'importer@example.com',
+      password: 'import-test-passphrase-long',
+    })
+    .expect(201);
+  await agent
+    .post('/api/tasks')
+    .set('Origin', origin)
+    .send({
+      title: 'Original task',
+      project: 'Original project',
+      notes: 'A safe backup note',
+      estimateMinutes: 30,
+      due: '2026-10-10',
+      recurrence: 'weekly',
+      checklist: [{ id: 'old-step', text: 'Keep this context', done: true }],
+    })
+    .expect(201);
+  const file = (await agent.get('/api/tasks/export').expect(200)).body;
+  const originalId = file.tasks[0].id;
+  assert.equal(
+    (
+      await agent
+        .post('/api/imports/preview')
+        .set('Origin', origin)
+        .send({ file })
+        .expect(200)
+    ).body.count,
+    1,
+  );
+  await agent
+    .post('/api/imports/preview')
+    .set('Origin', origin)
+    .send({ file: { ...file, tasks: [{ ...file.tasks[0], owner: 'spoofed' }] } })
+    .expect(400);
+  const key = '74f62c47-d8b6-441d-bdb0-e1a3caed1111',
+    body = { key, file, projectName: 'Restored backup' };
+  const responses = await Promise.all(
+    [1, 2].map(() => agent.post('/api/imports').set('Origin', origin).send(body)),
+  );
+  assert.ok(responses.every((response) => response.status === 200));
+  const projectId = responses[0].body.projectId,
+    tasks = (await agent.get('/api/projects/' + projectId + '/tasks').expect(200)).body
+      .tasks;
+  assert.equal(tasks.length, 1);
+  assert.notEqual(tasks[0].id, originalId);
+  assert.equal(tasks[0].notes, 'A safe backup note');
+  assert.equal(tasks[0].estimateMinutes, 30);
+  assert.equal(tasks[0].recurrence, 'none');
+  assert.notEqual(tasks[0].checklist[0].id, 'old-step');
+  await Task.deleteOne({ _id: tasks[0].id });
+  const retry = (
+    await agent.post('/api/imports').set('Origin', origin).send(body).expect(200)
+  ).body;
+  assert.equal(retry.count, 1);
+  assert.equal(await Task.countDocuments({ projectId }), 0);
+  await agent
+    .post('/api/imports')
+    .set('Origin', origin)
+    .send({ ...body, projectName: 'Changed retry' })
+    .expect(409);
+  await agent
+    .post('/api/imports')
+    .set('Origin', origin)
+    .send({
+      ...body,
+      key: '74f62c47-d8b6-441d-bdb0-e1a3caed2222',
+      projectName: 'Original project',
+    })
+    .expect(409);
+  await agent
+    .post('/api/imports/preview')
+    .set('Origin', origin)
+    .send({ file: { ...file, tasks: Array(101).fill(file.tasks[0]) } })
+    .expect(400);
+});
+
+test('recovery codes are password-gated, one-use and revoke all earlier session versions', async () => {
+  await RateBucket.deleteMany({ key: /^(api|auth):/ });
+  const first = request.agent(app),
+    second = request.agent(app),
+    password = 'security-old-passphrase-long',
+    newPassword = 'security-new-passphrase-long';
+  await first
+    .post('/api/auth/register')
+    .set('Origin', origin)
+    .send({ name: 'Security user', email: 'security@example.com', password })
+    .expect(201);
+  await second
+    .post('/api/auth/login')
+    .set('Origin', origin)
+    .send({ email: 'security@example.com', password })
+    .expect(200);
+  await first
+    .post('/api/auth/recovery-code')
+    .set('Origin', origin)
+    .send({ password: 'wrong' })
+    .expect(401);
+  const code = (
+    await first
+      .post('/api/auth/recovery-code')
+      .set('Origin', origin)
+      .send({ password })
+      .expect(200)
+  ).body.code;
+  assert.match(code, /^[a-f0-9]{64}$/);
+  const saved = await User.findOne({ email: 'security@example.com' })
+    .select('+recoveryHash')
+    .lean();
+  assert.notEqual(saved.recoveryHash, code);
+  const recover = { email: 'security@example.com', code, password: newPassword };
+  const results = await Promise.all(
+    [1, 2].map(() =>
+      request(app).post('/api/auth/recover').set('Origin', origin).send(recover),
+    ),
+  );
+  assert.deepEqual(results.map((item) => item.status).sort(), [200, 400]);
+  await first.get('/api/auth/me').expect(401);
+  await second.get('/api/auth/me').expect(401);
+  await first
+    .post('/api/auth/login')
+    .set('Origin', origin)
+    .send({ email: 'security@example.com', password })
+    .expect(401);
+  await first
+    .post('/api/auth/login')
+    .set('Origin', origin)
+    .send({ email: 'security@example.com', password: newPassword })
+    .expect(200);
+  await second
+    .post('/api/auth/login')
+    .set('Origin', origin)
+    .send({ email: 'security@example.com', password: newPassword })
+    .expect(200);
+  const nextCode = (
+    await first
+      .post('/api/auth/recovery-code')
+      .set('Origin', origin)
+      .send({ password: newPassword })
+      .expect(200)
+  ).body.code;
+  await first
+    .post('/api/auth/password')
+    .set('Origin', origin)
+    .send({ password: newPassword, newPassword: 'security-final-passphrase-long' })
+    .expect(200);
+  await first.get('/api/auth/me').expect(200);
+  await second.get('/api/auth/me').expect(401);
+  await request(app)
+    .post('/api/auth/recover')
+    .set('Origin', origin)
+    .send({ ...recover, code: nextCode })
+    .expect(400);
+  const publicResponse = (await first.get('/api/auth/me').expect(200)).body.user;
+  assert.equal(publicResponse.recoveryHash, undefined);
+  assert.equal(publicResponse.passwordHash, undefined);
+  assert.equal(publicResponse.authVersion, undefined);
+});

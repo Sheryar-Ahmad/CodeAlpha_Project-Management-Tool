@@ -169,3 +169,14 @@ Owner invitations accept role=member (default) or guest. A guest must accept the
 ### Project starter workflows
 
 `GET /api/projects/:id/workflow/template` returns setup status. The owner can `POST { templateId }` using workshop-v1, launch-v1 or research-v1. Applying reserves fixed task IDs and adds three starter tasks without replacing existing work. Concurrent/repeated requests use those IDs. An interrupted setup is repairable with the same template; an already completed setup never recreates deliberately deleted tasks. A different template returns 409. Guests are excluded. The UI shows an explicit preview and confirmation.
+
+### Backup imports
+
+Account-only `POST /api/imports/preview { file }` checks an Orbit v1 JSON export (1 MB / 100 tasks maximum). `POST /api/imports { file, key, projectName }` uses a client UUID key and a new project name. The server reserves fresh task IDs, checks retry content by digest, and preserves user edits while repairing partial setup. Completed retries never recreate deleted tasks. Task content, estimates and lifecycle are restored; assignments, old IDs and repeating schedules are not. Preview/save are limited to 20 combined attempts/hour/account. Completed jobs discard copied task content, retaining only retry metadata.
+
+### Account security
+
+`POST /api/auth/recovery-code { password }` verifies the current password and returns a fresh 64-character one-time code. Only its SHA-256 digest is stored. Generation replaces the old code.
+`POST /api/auth/recover { email, code, password }` atomically consumes the code, changes the password and revokes older sessions. It does not sign in automatically. Invalid/used/unknown credentials return the same error.
+`POST /api/auth/password { password, newPassword }` requires the current password, revokes other sessions and recovery codes, and renews the caller's session. Session versions reject earlier credentials even if cleanup races with login.
+All three routes use the authentication attempt limit. Recovery has no email fallback: a lost password without a saved code cannot be reset through this workflow.

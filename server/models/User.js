@@ -11,6 +11,8 @@ const schema = new mongoose.Schema(
       maxlength: 254,
     },
     passwordHash: { type: String, required: true, select: false },
+    authVersion: { type: Number, default: 0 },
+    recoveryHash: { type: String, default: '', select: false },
   },
   { timestamps: true },
 );

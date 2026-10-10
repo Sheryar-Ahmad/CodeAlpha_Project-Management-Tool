@@ -1,3 +1,5 @@
+import { randomBytes } from 'node:crypto';
+import { z } from 'zod';
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { User } from '../models/User.js';
@@ -49,4 +51,93 @@ authRouter.post('/logout', requireAuth, async (req, res) => {
   await Session.deleteOne({ tokenHash: tokenHash(req.sessionToken) });
   clearSessionCookie(res);
   res.status(204).end();
+});
+
+const passwordSchema = z.string().min(12, 'Use at least 12 characters.').max(128);
+authRouter.post('/recovery-code', limiter, requireAuth, async (req, res) => {
+  const { password } = parse(
+    z.object({ password: z.string().min(1).max(128) }).strict(),
+    req.body,
+  );
+  const user = await User.findById(req.user._id).select('+passwordHash');
+  if (!user || !(await verifyPassword(password, user.passwordHash)))
+    return res.status(401).json({ message: 'Current password is incorrect.' });
+  const code = randomBytes(32).toString('hex');
+  const updated = await User.updateOne(
+    {
+      _id: user._id,
+      passwordHash: user.passwordHash,
+      authVersion: user.authVersion ? user.authVersion : { $in: [0, null] },
+    },
+    { $set: { recoveryHash: tokenHash(code) } },
+  );
+  if (!updated.matchedCount)
+    return res
+      .status(409)
+      .json({ message: 'Account security changed. Sign in again before continuing.' });
+  res.json({ code });
+});
+authRouter.post('/recover', limiter, async (req, res) => {
+  const data = parse(
+    z
+      .object({
+        email: loginSchema.shape.email,
+        code: z
+          .string()
+          .trim()
+          .regex(/^[a-f0-9]{64}$/),
+        password: passwordSchema,
+      })
+      .strict(),
+    req.body,
+  );
+  // Hash password work happens even if the supplied recovery code does not match.
+  const passwordHash = await hashPassword(data.password);
+  const user = await User.findOneAndUpdate(
+    { email: data.email, recoveryHash: tokenHash(data.code) },
+    { $set: { passwordHash, recoveryHash: '' }, $inc: { authVersion: 1 } },
+    { returnDocument: 'after' },
+  );
+  if (!user)
+    return res
+      .status(400)
+      .json({ message: 'Email or recovery code is incorrect or already used.' });
+  await Session.deleteMany({ user: user._id });
+  res.json({
+    message:
+      'Password updated. Sign in with your new password, then create a new recovery code.',
+  });
+});
+authRouter.post('/password', limiter, requireAuth, async (req, res) => {
+  const data = parse(
+    z
+      .object({ password: z.string().min(1).max(128), newPassword: passwordSchema })
+      .strict(),
+    req.body,
+  );
+  const user = await User.findById(req.user._id).select('+passwordHash');
+  if (!user || !(await verifyPassword(data.password, user.passwordHash)))
+    return res.status(401).json({ message: 'Current password is incorrect.' });
+  const updated = await User.findOneAndUpdate(
+    {
+      _id: user._id,
+      passwordHash: user.passwordHash,
+      authVersion: user.authVersion ? user.authVersion : { $in: [0, null] },
+    },
+    {
+      $set: { passwordHash: await hashPassword(data.newPassword), recoveryHash: '' },
+      $inc: { authVersion: 1 },
+    },
+    { returnDocument: 'after' },
+  );
+  if (!updated)
+    return res
+      .status(409)
+      .json({ message: 'Account security changed. Sign in again before continuing.' });
+  await Session.deleteMany({ user: user._id });
+  await createSession(res, updated);
+  res.json({
+    message:
+      'Password updated. Other sessions and the previous recovery code have been revoked.',
+  });
 });

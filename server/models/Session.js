@@ -8,6 +8,7 @@ const schema = new mongoose.Schema(
       index: true,
     },
     tokenHash: { type: String, required: true, unique: true },
+    authVersion: { type: Number, default: 0 },
     expiresAt: { type: Date, required: true },
   },
   { timestamps: true },

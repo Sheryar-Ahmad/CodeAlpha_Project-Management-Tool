@@ -96,14 +96,25 @@
         records. This task-only export does not include project metadata, notebook
         entries, work logs, discussions, assignments, or review records.
       </p>
+      <h2>Imports and account recovery</h2>
+      <p>
+        Task imports validate an Orbit backup and restore into a new owned project.
+        Completed import jobs discard their copied task content and retain retry metadata.
+        This browser temporarily retains only the import key and project name for retries;
+        select the original backup again after a reload. Recovery codes are generated
+        after password confirmation, shown once, and stored only as a digest. A code can
+        reset your password once and revoke older sessions. Keep the code private.
+        Changing a password also revokes previous recovery codes.
+      </p>
       <h2>Deleting data</h2>
       <p>
         Archiving keeps a task saved outside active work. Delete moves a task to Trash,
         where you can restore it to the board or permanently delete it. Trash is not
         automatically emptied. Notebook entries and work logs can be permanently deleted
-        directly after confirmation. Self-service account deletion and password recovery
-        are not implemented yet. Clearing browser data does not delete account records
-        from MongoDB. Do not use this prototype for confidential or regulated information.
+        directly after confirmation. Self-service account deletion is not implemented yet.
+        Saved one-time recovery codes can reset a password; there is no email recovery
+        fallback. Clearing browser data does not delete account records from MongoDB. Do
+        not use this prototype for confidential or regulated information.
       </p>
       <h2>Hosting and external services</h2>
       <p>
@@ -114,8 +125,8 @@
       </p>
       <h2>Development status</h2>
       <p>
-        Production retention rules, account deletion, recovery, and a support contact must
-        be finalized before a broad public release. The public source repository contains
+        Production retention rules, account deletion, and a support contact must be
+        finalized before a broad public release. The public source repository contains
         application code, not your account records or database credentials.
       </p>
       <a href="/">Return to Orbit →</a>

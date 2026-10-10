@@ -1891,6 +1891,41 @@ try {
       },
     });
     await ownerPage.goto(origin + '/app.html');
+    await ownerPage
+      .getByRole('button', { name: 'Import task backup', exact: true })
+      .click();
+    const backupResponse = await ownerContext.request.get(origin + '/api/tasks/export');
+    assert.equal(backupResponse.status(), 200);
+    const backupFile = await backupResponse.json();
+    await ownerPage.getByLabel('Orbit JSON backup', { exact: true }).setInputFiles({
+      name: 'orbit-backup.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify(backupFile)),
+    });
+    await ownerPage
+      .getByText('1 tasks checked and ready to import', { exact: true })
+      .waitFor();
+    await ownerPage
+      .getByLabel('New import project', { exact: true })
+      .fill('Restored workshop backup');
+    for (const width of [320, 375, 768, 1440]) {
+      await ownerPage.setViewportSize({ width, height: 1000 });
+      assert.equal(
+        await ownerPage.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+        true,
+        'Import overflow at ' + width,
+      );
+    }
+    ownerPage.once('dialog', (dialog) => dialog.accept());
+    await ownerPage
+      .getByRole('button', { name: 'Import checked tasks', exact: true })
+      .click();
+    await ownerPage
+      .getByRole('heading', { name: 'Bring your task backup back', exact: true })
+      .waitFor({ state: 'hidden' });
+    await ownerPage.setViewportSize({ width: 1440, height: 1000 });
     await ownerPage.getByRole('button', { name: 'Team projects', exact: true }).click();
     await ownerPage
       .getByLabel('Choose a project', { exact: true })
@@ -2229,6 +2264,68 @@ try {
     });
     console.log(
       'PASS: guest invitation, read-only portal, restricted team access and mobile layouts.',
+    );
+    await RateBucket.deleteMany({ key: /^(api|auth):/ });
+    await ownerPage
+      .getByRole('button', { name: 'Account settings', exact: true })
+      .click();
+    await ownerPage
+      .getByLabel('Current password for recovery', { exact: true })
+      .fill('browser-team-passphrase-long');
+    await ownerPage
+      .getByRole('button', { name: 'Generate recovery code', exact: true })
+      .click();
+    const recoveryInput = ownerPage.getByLabel('Your new recovery code', { exact: true });
+    await recoveryInput.waitFor();
+    const recoveryCode = await recoveryInput.inputValue();
+    assert.match(recoveryCode, /^[a-f0-9]{64}$/);
+    assert.equal(
+      await ownerPage.evaluate(
+        (code) => JSON.stringify({ ...localStorage, ...sessionStorage }).includes(code),
+        recoveryCode,
+      ),
+      false,
+    );
+    for (const width of [320, 375, 768, 1440]) {
+      await ownerPage.setViewportSize({ width, height: 1000 });
+      assert.equal(
+        await ownerPage.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+        true,
+        'Account settings overflow at ' + width,
+      );
+    }
+    await ownerPage
+      .getByRole('button', { name: 'Close account settings', exact: true })
+      .click();
+    await ownerPage.getByRole('button', { name: 'Sign out', exact: true }).click();
+    await ownerPage
+      .getByRole('button', { name: 'Forgot password? Use a recovery code', exact: true })
+      .click();
+    await ownerPage
+      .getByLabel('Email address', { exact: true })
+      .fill('iris-browser@example.com');
+    await ownerPage.getByLabel('Recovery code', { exact: true }).fill(recoveryCode);
+    await ownerPage
+      .getByLabel('New password', { exact: true })
+      .fill('browser-recovered-passphrase-long');
+    await ownerPage.getByRole('button', { name: 'Reset password', exact: true }).click();
+    await ownerPage
+      .getByText(
+        'Password updated. Sign in with your new password, then create a new recovery code.',
+        { exact: true },
+      )
+      .waitFor();
+    await ownerPage
+      .getByLabel('Password', { exact: true })
+      .fill('browser-recovered-passphrase-long');
+    await ownerPage.getByRole('button', { name: 'Sign in', exact: true }).click();
+    await ownerPage
+      .getByRole('heading', { name: 'Your task board', exact: true })
+      .waitFor();
+    console.log(
+      'PASS: account recovery code, private handling, password reset and sign-in.',
     );
     await ownerContext.close();
     await memberContext.close();

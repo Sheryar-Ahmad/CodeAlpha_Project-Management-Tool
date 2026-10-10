@@ -166,3 +166,5 @@ Workload regression checks due/overdue estimates, unestimated and undated work, 
 Goals checks cover member authorship/owner moderation, numeric limits, decreasing targets, bounded progress, concurrent revision conflicts and revocation. Chromium creates a 40% objective and refreshes it at mobile/desktop widths.
 
 Project-template tests race application, repair interrupted setup, preserve customized tasks and prevent deleted task recreation after completion. Chromium applies a workshop blueprint from its preview and finds the saved starter tasks.
+
+Import tests reject owner injection and oversize files, verify fresh IDs/disabled schedules, concurrent restore, unchanged retry payloads and no recreation after completion. Recovery tests verify password-gated generation, hash-only storage, atomic one-use consumption, old-session rejection and password-change revocation. Chromium covers import preview/save, account settings, 320–1440px layouts, recovery reset and sign-in with the new password.

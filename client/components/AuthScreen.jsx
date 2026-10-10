@@ -9,6 +9,8 @@ export default function AuthScreen({
   initialRegister = false,
 }) {
   const [register, setRegister] = useState(initialRegister);
+  const [recover, setRecover] = useState(false);
+  const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(initialError || '');
   async function submit(event) {
@@ -17,11 +19,17 @@ export default function AuthScreen({
     setError('');
     const data = Object.fromEntries(new FormData(event.currentTarget));
     try {
-      const result = await request(register ? '/auth/register' : '/auth/login', {
-        method: 'POST',
-        body: JSON.stringify(data),
-      });
-      onUser(result.user);
+      const result = await request(
+        recover ? '/auth/recover' : register ? '/auth/register' : '/auth/login',
+        {
+          method: 'POST',
+          body: JSON.stringify(data),
+        },
+      );
+      if (recover) {
+        setRecover(false);
+        setNotice(result.message);
+      } else onUser(result.user);
     } catch (failure) {
       setError(failure.message);
     } finally {
@@ -62,11 +70,19 @@ export default function AuthScreen({
           <LockKeyhole size={22} />
         </span>
         <p className="eyebrow">YOUR PERSONAL WORKSPACE</p>
-        <h2 id="auth-title">{register ? 'Start something great.' : 'Welcome back.'}</h2>
+        <h2 id="auth-title">
+          {recover
+            ? 'Recover your workspace.'
+            : register
+              ? 'Start something great.'
+              : 'Welcome back.'}
+        </h2>
         <p className="muted">
-          {register
-            ? 'Create an account to save your work across devices.'
-            : 'Sign in and pick up where you left off.'}
+          {recover
+            ? 'Use the one-time recovery code you saved from Account settings.'
+            : register
+              ? 'Create an account to save your work across devices.'
+              : 'Sign in and pick up where you left off.'}
         </p>
         <form onSubmit={submit}>
           {register && (
@@ -92,14 +108,28 @@ export default function AuthScreen({
               disabled={busy}
             />
           </label>
+          {recover && (
+            <label>
+              Recovery code
+              <input
+                name="code"
+                aria-label="Recovery code"
+                required
+                minLength={64}
+                maxLength={64}
+                autoComplete="off"
+                disabled={busy}
+              />
+            </label>
+          )}
           <label>
-            Password
+            {recover ? 'New password' : 'Password'}
             <input
               name="password"
               type="password"
-              autoComplete={register ? 'new-password' : 'current-password'}
+              autoComplete={register || recover ? 'new-password' : 'current-password'}
               required
-              minLength={register ? 12 : 1}
+              minLength={register || recover ? 12 : 1}
               maxLength={128}
               disabled={busy}
             />
@@ -115,7 +145,13 @@ export default function AuthScreen({
             </p>
           )}
           <button className="button auth-submit" disabled={busy}>
-            {busy ? 'Please wait…' : register ? 'Create account' : 'Sign in'}{' '}
+            {busy
+              ? 'Please wait…'
+              : recover
+                ? 'Reset password'
+                : register
+                  ? 'Create account'
+                  : 'Sign in'}{' '}
             <ArrowUpRight size={16} />
           </button>
         </form>
@@ -123,12 +159,28 @@ export default function AuthScreen({
           className="text-button auth-switch"
           disabled={busy}
           onClick={() => {
+            setRecover(false);
+            setNotice('');
             setRegister(!register);
             setError('');
           }}
         >
           {register ? 'Already have an account? Sign in' : 'New here? Create an account'}
         </button>
+        {!register && (
+          <button
+            className="text-button"
+            disabled={busy}
+            onClick={() => {
+              setRecover((value) => !value);
+              setError('');
+              setNotice('');
+            }}
+          >
+            {recover ? 'Back to sign in' : 'Forgot password? Use a recovery code'}
+          </button>
+        )}
+        {notice && <p role="status">{notice}</p>}
         <div className="auth-divider">
           <span>or explore first</span>
         </div>

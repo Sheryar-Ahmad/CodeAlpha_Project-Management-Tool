@@ -1,4 +1,6 @@
 import TeamWorkspace from './components/TeamWorkspace.jsx';
+import TaskImportDialog from './components/TaskImportDialog.jsx';
+import AccountSettings from './components/AccountSettings.jsx';
 import { useCallback, useEffect, useState } from 'react';
 import {
   Users,
@@ -110,6 +112,8 @@ function Workspace({ mode, user, onExit, onExpired }) {
   const [projectDialog, setProjectDialog] = useState(null);
   const [notebookProject, setNotebookProject] = useState(null);
   const [commandOpen, setCommandOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
   const [layout, setLayout] = useState('board');
   const [actionError, setActionError] = useState('');
   const [signingOut, setSigningOut] = useState(false);
@@ -691,6 +695,25 @@ function Workspace({ mode, user, onExit, onExpired }) {
                 : 'Your tasks are saved to your private account.'}
           </span>
           <div className="footer-actions">
+            {mode === 'account' && (
+              <button
+                className="text-button"
+                disabled={workspace.busy || workspace.loading}
+                onClick={() => setAccountOpen(true)}
+              >
+                Account settings
+              </button>
+            )}
+            {mode === 'account' && (
+              <button
+                type="button"
+                className="text-button"
+                disabled={workspace.busy || workspace.loading}
+                onClick={() => setImportOpen(true)}
+              >
+                Import task backup
+              </button>
+            )}
             <button
               type="button"
               className="text-button"
@@ -730,6 +753,17 @@ function Workspace({ mode, user, onExit, onExpired }) {
             setNotebookProject(null);
             setDialog({ task });
           }}
+        />
+      )}
+      {accountOpen && (
+        <AccountSettings onClose={() => setAccountOpen(false)} onExpired={onExpired} />
+      )}
+      {importOpen && (
+        <TaskImportDialog
+          user={user}
+          onClose={() => setImportOpen(false)}
+          onExpired={onExpired}
+          onImported={() => workspace.retry()}
         />
       )}
       {commandOpen && (

@@ -19,6 +19,7 @@ export async function createSession(res, user) {
   const token = randomBytes(32).toString('hex');
   await Session.create({
     user: user._id,
+    authVersion: user.authVersion ?? 0,
     tokenHash: tokenHash(token),
     expiresAt: new Date(Date.now() + duration),
   });
@@ -35,7 +36,8 @@ export async function requireAuth(req, res, next) {
   if (!session)
     return res.status(401).json({ message: 'Your session has expired. Please sign in.' });
   const user = await User.findById(session.user).lean();
-  if (!user) return res.status(401).json({ message: 'Please sign in to continue.' });
+  if (!user || (session.authVersion ?? 0) !== (user.authVersion ?? 0))
+    return res.status(401).json({ message: 'Please sign in to continue.' });
   req.user = user;
   req.sessionToken = token;
   next();

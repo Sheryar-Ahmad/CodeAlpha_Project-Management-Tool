@@ -156,3 +156,5 @@ Project timeline: switch from cards, choose a month, verify clipped spans and si
 npm run test:browser -- --teams-only runs the isolated two-account team regression. The full browser command also verifies all personal/demo workflows. API tests include role/access boundaries and review/assignment/discussion rules.
 
 Dependency checks cover direct/indirect cycles, same-task and foreign-task rejection, duplicate links, concurrent opposing updates, and moved-task title privacy. In Team projects, add a prerequisite, reject its reverse link, refresh, and confirm Waiting for prerequisite completion. Check the form and existing links at mobile widths; removing a link must keep its tasks.
+
+Work requests: use a member account to submit a proposal, confirm only owners can triage, accept into the shared board, reload, and verify exactly one task. Decline another with an explanation; cancel a pending request as its requester. API tests cover concurrent acceptance, acceptance-vs-cancel, field injection, removed users, and repair of an interrupted accepting record. Tool tabs keep tasks, dependencies, reviews, and requests separate; test each at mobile widths.

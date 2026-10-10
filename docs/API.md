@@ -146,3 +146,7 @@ Review requests capture title and description at creation, not a full task/file 
 ## Dependencies
 
 GET /projects/:id/dependencies returns at most 200 directed links and current scoped task titles/statuses. POST accepts {from,to} for two active connected tasks. DELETE accepts the same pair, keeping tasks intact. Owner/accepted members can manage links. Self-links, duplicates, foreign tasks, and circular chains are rejected. Missing/moved/trashed tasks return null task details without leaking new project data. A per-project revision compare-and-swap validates concurrent changes against the entire graph; it requires no MongoDB transactions. Links are informational and do not gate status or automatically reschedule work.
+
+## Project work requests
+
+GET /projects/:id/requests supports page and pending/accepted/declined/cancelled status filters, 20 per page. Pending includes interrupted accepting records. POST accepts {title,description,priority,due} from an owner/accepted member. PATCH /:requestId accepts {action: accept, decline, or cancel; response}; owners accept/decline, requesters or owners cancel pending requests. Decline needs an explanation. Acceptance reserves state=accepting, creates one task using a preallocated ID, then records accepted. Retrying an interrupted accepting record repairs it without duplicate tasks. Accepted retries return its recorded task ID without recreating a deliberately deleted task. Requests are project-visible, authenticated intake, not public anonymous forms.

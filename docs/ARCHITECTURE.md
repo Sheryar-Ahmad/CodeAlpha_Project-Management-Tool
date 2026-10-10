@@ -94,3 +94,7 @@ TaskReview stores a captured title/description, requester, designated reviewer, 
 ## Dependency graph
 
 One ProjectDependencies document holds up to 200 edges and a revision counter. Kahn’s algorithm detects direct and indirect cycles. Every mutation compares the read revision and retries conflicts against the newer graph, preventing concurrent opposing edges from introducing a cycle. Creation verifies both tasks are active and connected to the current project. Tasks can later move/recover/delete independently; read-side scoped lookup marks unavailable endpoints without exposing their new context, and users can remove stale links. This is dependency recording, not date scheduling or task status enforcement.
+
+## Retry-safe intake
+
+WorkRequest reserves accepting state before writing a task. Pending cancellation/decline uses an expected-state update and cannot race past that reservation. The preallocated task ID supports idempotent upsert, scoped to the project owner. A final accepted update records completion; accepting records remain visible to the owner for explicit retry after interruption. These are separate writes for standalone MongoDB, not a transaction. Terminal accepted retries do not resurrect deleted tasks. Intake records remain project history after linked task removal.

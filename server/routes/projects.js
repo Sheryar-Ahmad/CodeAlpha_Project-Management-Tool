@@ -1,3 +1,4 @@
+import { workRequestRouter } from './workRequests.js';
 import { dependencyRouter } from './dependencies.js';
 import { reviewRouter } from './reviews.js';
 import { collaborationRouter } from './collaboration.js';
@@ -17,6 +18,7 @@ projectRouter.use('/:id/members', memberRouter);
 projectRouter.use('/:id/collaboration', collaborationRouter);
 projectRouter.use('/:id/reviews', reviewRouter);
 projectRouter.use('/:id/dependencies', dependencyRouter);
+projectRouter.use('/:id/requests', workRequestRouter);
 projectRouter.use('/:id/tasks', requireProjectAccess, taskRouter);
 projectRouter.use('/:id/notes', projectNotesRouter);
 projectRouter.use('/:id/team-notes', requireProjectAccess, projectNotesRouter);

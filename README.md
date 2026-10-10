@@ -63,6 +63,7 @@ Screenshots are from the working local demo using illustrative sample tasks.
 
 | Feature                   | What it solves                                                                         |
 | ------------------------- | -------------------------------------------------------------------------------------- |
+| Work requests             | Propose work for owner triage and accept it into the board without duplicate tasks     |
 | Dependencies              | Record prerequisites, reject circular chains, and identify unfinished prerequisites    |
 | Team projects             | Invite existing accounts, accept or decline, and remove access without deleting work   |
 | Task assignments          | Assign a next step to an accepted teammate and filter your assigned work               |
@@ -243,7 +244,7 @@ npm run build
 npm run format:check
 ```
 
-**Verified locally:** 62 API/input/planning/timer/password/template/recovery/export/recurrence/project tests and Chromium browser flows covering demo CRUD, storage persistence, search, filters, safe text rendering, mobile overflow, dialog Escape, checklists, task duplication, template previews and replacement protection, list actions and pagination, blockers, archive/trash restoration, private downloads, daily views, overnight date changes, project progress, focus pause/refresh/completion, registration, database-backed persistence, logout, and login. Expanded checks cover whole-month calendar queries, leap years, Action Center rules, milestones, health explanations, command navigation, notebook decisions/meetings, follow-up drafts, weekly time totals, private APIs, and explicit legacy linking. Team checks cover invitation state transitions, cross-project isolation, removed/pending users, role restrictions, assignment eligibility, private/team note separation, discussion moderation, review decisions and inbox access. Browser tests exercise two separate authenticated accounts and team layouts at 320–1440px.
+**Verified locally:** 63 API/input/planning/timer/password/template/recovery/export/recurrence/project tests and Chromium browser flows covering demo CRUD, storage persistence, search, filters, safe text rendering, mobile overflow, dialog Escape, checklists, task duplication, template previews and replacement protection, list actions and pagination, blockers, archive/trash restoration, private downloads, daily views, overnight date changes, project progress, focus pause/refresh/completion, registration, database-backed persistence, logout, and login. Expanded checks cover whole-month calendar queries, leap years, Action Center rules, milestones, health explanations, command navigation, notebook decisions/meetings, follow-up drafts, weekly time totals, private APIs, and explicit legacy linking. Team checks cover invitation state transitions, cross-project isolation, removed/pending users, role restrictions, assignment eligibility, private/team note separation, discussion moderation, review decisions and inbox access. Browser tests exercise two separate authenticated accounts and team layouts at 320–1440px.
 
 For browser checks:
 
@@ -331,7 +332,7 @@ See [the product direction review](docs/PRODUCT_DIRECTION.md) for which proposed
 - [ ] Accessibility audit and measured production performance
 - [ ] Live deployment link and LinkedIn walkthrough
 
-The remaining roadmap includes dependency scheduling, capacity planning, guest access, project templates, intake forms, automation, OKRs, validated imports, and configured external integrations. See [the delivery tracker](docs/PRODUCT_DIRECTION.md) for shipped and pending scope; these services are not advertised as complete.
+The remaining roadmap includes dependency scheduling, capacity planning, guest access, project templates, public intake forms, automation, OKRs, validated imports, and configured external integrations. See [the delivery tracker](docs/PRODUCT_DIRECTION.md) for shipped and pending scope; these services are not advertised as complete.
 
 For a short video, use [the 90-second demo outline](docs/DEMO.md).
 
@@ -366,3 +367,5 @@ Reviews store the task title and description captured at request time. They are 
 These screenshots use illustrative accounts in an isolated test database.
 
 </details>
+
+Project tools use separate tabs for shared tasks, dependencies, reviews, and work requests. Intake submissions are visible to accepted members; only the owner can accept or decline them. Interrupted acceptance remains visible for a safe retry. Task-only exports exclude intake records.

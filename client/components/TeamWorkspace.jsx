@@ -1,3 +1,4 @@
+import ProjectRequests from './ProjectRequests.jsx';
 import ProjectDependencies from './ProjectDependencies.jsx';
 import ProjectReviews from './ProjectReviews.jsx';
 import TaskDiscussion from './TaskDiscussion.jsx';
@@ -32,6 +33,7 @@ export default function TeamWorkspace({ demo, onExpired }) {
   const [reviewInbox, setReviewInbox] = useState([]),
     [inboxTruncated, setInboxTruncated] = useState(false);
   const [mine, setMine] = useState(false);
+  const [panel, setPanel] = useState('tasks');
   const [notebook, setNotebook] = useState(false),
     [truncated, setTruncated] = useState(false);
   const lock = useRef(false);
@@ -145,7 +147,8 @@ export default function TeamWorkspace({ demo, onExpired }) {
   function act(action) {
     action().catch(() => {});
   }
-  function choose(id) {
+  function choose(id, nextPanel = 'tasks') {
+    setPanel(nextPanel);
     setSelected(id);
     setMine(false);
     setTasks([]);
@@ -275,7 +278,7 @@ export default function TeamWorkspace({ demo, onExpired }) {
                   type="button"
                   className="secondary"
                   disabled={busy}
-                  onClick={() => choose(item.projectId)}
+                  onClick={() => choose(item.projectId, 'reviews')}
                 >
                   Open project reviews
                 </button>
@@ -405,7 +408,27 @@ export default function TeamWorkspace({ demo, onExpired }) {
           </button>
         </section>
       )}
-      {project && directory && overview && (
+      {project && directory && (
+        <nav className="project-tool-nav" aria-label="Project tools">
+          {[
+            ['tasks', 'Shared tasks'],
+            ['dependencies', 'Dependencies'],
+            ['reviews', 'Reviews'],
+            ['requests', 'Work requests'],
+          ].map(([value, label]) => (
+            <button
+              type="button"
+              key={value}
+              aria-pressed={panel === value}
+              disabled={busy}
+              onClick={() => setPanel(value)}
+            >
+              {label}
+            </button>
+          ))}
+        </nav>
+      )}
+      {project && directory && overview && panel === 'tasks' && (
         <section aria-labelledby="shared-tasks-heading">
           <div className="team-toolbar">
             <div>
@@ -601,7 +624,7 @@ export default function TeamWorkspace({ demo, onExpired }) {
           )}
         </section>
       )}
-      {project && directory && (
+      {project && directory && panel === 'dependencies' && (
         <ProjectDependencies
           key={project.id}
           project={project}
@@ -609,13 +632,24 @@ export default function TeamWorkspace({ demo, onExpired }) {
           onExpired={onExpired}
         />
       )}
-      {project && directory && (
+      {project && directory && panel === 'reviews' && (
         <ProjectReviews
           key={project.id}
           project={project}
           directory={directory}
           tasks={tasks}
           onExpired={onExpired}
+        />
+      )}
+      {project && directory && panel === 'requests' && (
+        <ProjectRequests
+          key={project.id}
+          project={project}
+          onExpired={onExpired}
+          onAccepted={() => {
+            setPanel('tasks');
+            setRevision((value) => value + 1);
+          }}
         />
       )}
       {project && discussion && (

@@ -1840,3 +1840,40 @@ textarea:disabled {
   min-width: 0;
   overflow-wrap: anywhere;
 }
+
+.review-request-form input {
+  width: 100%;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #cbd5e6;
+  border-radius: 8px;
+  background: white;
+  font: inherit;
+  color: inherit;
+}
+
+.project-tool-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 12px;
+  background: #eaeef7;
+}
+.project-tool-nav button {
+  flex: 1 1 110px;
+  min-height: 44px;
+  border: 0;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font: inherit;
+  color: #51627f;
+  background: transparent;
+  cursor: pointer;
+}
+.project-tool-nav button[aria-pressed='true'] {
+  background: white;
+  color: #5946df;
+  box-shadow: 0 2px 6px #22345a0c;
+  font-weight: 600;
+}

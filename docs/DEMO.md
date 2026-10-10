@@ -15,3 +15,5 @@ Close with the repository link and, after deployment, the verified live URL. Thi
 ## Team workflow
 
 Use two browser profiles: invite an existing account from Team projects, accept on the other account, add a shared task, assign it, and open Discussion. Record a shared decision in Team notes, then request a review and approve it from the other account. Remove access and refresh to demonstrate the permission boundary. Explain that private notes stay separate and invitations are in-app only.
+
+Show the project tool tabs: link two tasks in Dependencies, reject a circular link, then submit a Work request as a member. Accept it as the owner and point out the new task. Retry acceptance to demonstrate duplicate prevention. Requests are authenticated project intake, not anonymous public submissions.

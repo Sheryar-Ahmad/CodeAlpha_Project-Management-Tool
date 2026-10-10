@@ -1,3 +1,4 @@
+import { WorkRequest } from '../server/models/WorkRequest.js';
 import { ProjectDependencies } from '../server/models/ProjectDependencies.js';
 import { TaskReview } from '../server/models/TaskReview.js';
 import { TaskComment } from '../server/models/TaskComment.js';
@@ -34,6 +35,7 @@ before(async () => {
     TaskComment.init(),
     TaskReview.init(),
     ProjectDependencies.init(),
+    WorkRequest.init(),
     ProjectNote.init(),
     WorkLog.init(),
     RateBucket.init(),
@@ -1924,4 +1926,166 @@ test('project dependencies reject cycles, foreign tasks and concurrent opposing 
     .send({ from: tasks[0].id, to: tasks[1].id })
     .expect(204);
   assert.equal((await owner.get(endpoint).expect(200)).body.edges.length, 1);
+});
+
+test('work intake enforces owner triage and repairs acceptance without duplicate tasks', async () => {
+  await RateBucket.deleteMany({ key: /^(api|auth):/ });
+  const owner = request.agent(app),
+    member = request.agent(app),
+    outsider = request.agent(app);
+  const users = [];
+  for (const [agent, email] of [
+    [owner, 'request-owner@example.com'],
+    [member, 'request-member@example.com'],
+    [outsider, 'request-outsider@example.com'],
+  ])
+    users.push(
+      (
+        await agent
+          .post('/api/auth/register')
+          .set('Origin', origin)
+          .send({ name: 'Request user', email, password: 'request-passphrase-long' })
+          .expect(201)
+      ).body.user,
+    );
+  const project = (
+    await owner
+      .post('/api/projects')
+      .set('Origin', origin)
+      .send({ name: 'Intake project' })
+      .expect(201)
+  ).body.project;
+  const base = '/api/projects/' + project.id,
+    endpoint = base + '/requests';
+  await owner
+    .post(base + '/members')
+    .set('Origin', origin)
+    .send({ email: users[1].email })
+    .expect(201);
+  const invitation = (await member.get('/api/teams').expect(200)).body.invitations[0];
+  await member
+    .patch('/api/teams/invitations/' + invitation.id)
+    .set('Origin', origin)
+    .send({ action: 'accept' })
+    .expect(204);
+  await outsider.get(endpoint).expect(404);
+  await member
+    .post(endpoint)
+    .set('Origin', origin)
+    .send({ title: 'Untrusted', requester: users[0].id })
+    .expect(400);
+  await member
+    .post(endpoint)
+    .set('Origin', origin)
+    .send({
+      title: 'Prepare materials',
+      description: 'Print the workshop handout',
+      priority: 'high',
+      due: '2026-10-20',
+    })
+    .expect(201);
+  const pending = (await owner.get(endpoint).expect(200)).body.requests[0];
+  assert.equal(pending.canDecide, true);
+  assert.equal(
+    (await member.get(endpoint).expect(200)).body.requests[0].canDecide,
+    false,
+  );
+  await member
+    .patch(endpoint + '/' + pending.id)
+    .set('Origin', origin)
+    .send({ action: 'accept' })
+    .expect(403);
+  const accepted = await Promise.all(
+    [1, 2].map(() =>
+      owner
+        .patch(endpoint + '/' + pending.id)
+        .set('Origin', origin)
+        .send({ action: 'accept' }),
+    ),
+  );
+  assert.deepEqual(
+    accepted.map((result) => result.status),
+    [200, 200],
+  );
+  assert.equal(accepted[0].body.task, accepted[1].body.task);
+  assert.equal(
+    await Task.countDocuments({ projectId: project.id, title: 'Prepare materials' }),
+    1,
+  );
+  const task = await Task.findById(accepted[0].body.task).lean();
+  assert.equal(String(task.owner), users[0].id);
+  assert.equal(task.status, 'todo');
+  assert.equal(task.priority, 'high');
+  await owner
+    .patch(endpoint + '/' + pending.id)
+    .set('Origin', origin)
+    .send({ action: 'decline', response: 'Too late' })
+    .expect(409);
+  const interrupted = await WorkRequest.create({
+    project: project.id,
+    requester: users[1].id,
+    title: 'Interrupted save',
+    status: 'accepting',
+  });
+  await owner
+    .patch(endpoint + '/' + interrupted.id)
+    .set('Origin', origin)
+    .send({ action: 'accept' })
+    .expect(200);
+  assert.equal((await WorkRequest.findById(interrupted._id)).status, 'accepted');
+  assert.equal(await Task.countDocuments({ _id: interrupted.task }), 1);
+  // A pending request may be cancelled or accepted; competing operations cannot do both.
+  const racing = await WorkRequest.create({
+    project: project.id,
+    requester: users[1].id,
+    title: 'Competing decision',
+  });
+  const results = await Promise.all([
+    owner
+      .patch(endpoint + '/' + racing.id)
+      .set('Origin', origin)
+      .send({ action: 'accept' }),
+    member
+      .patch(endpoint + '/' + racing.id)
+      .set('Origin', origin)
+      .send({ action: 'cancel' }),
+  ]);
+  const saved = await WorkRequest.findById(racing._id).lean();
+  assert.ok(['accepted', 'cancelled'].includes(saved.status));
+  assert.deepEqual(
+    results.map((result) => result.status),
+    saved.status === 'accepted' ? [200, 409] : [409, 204],
+  );
+  assert.equal(
+    await Task.countDocuments({ _id: racing.task }),
+    saved.status === 'accepted' ? 1 : 0,
+  );
+  await member
+    .post(endpoint)
+    .set('Origin', origin)
+    .send({ title: 'Optional expansion' })
+    .expect(201);
+  const declined = (await owner.get(endpoint).expect(200)).body.requests.find(
+    (item) => item.title === 'Optional expansion',
+  );
+  await owner
+    .patch(endpoint + '/' + declined.id)
+    .set('Origin', origin)
+    .send({ action: 'decline', response: '' })
+    .expect(400);
+  await owner
+    .patch(endpoint + '/' + declined.id)
+    .set('Origin', origin)
+    .send({ action: 'decline', response: 'Outside this milestone' })
+    .expect(204);
+  assert.equal(
+    (await member.get(endpoint + '?status=declined').expect(200)).body.requests[0]
+      .response,
+    'Outside this milestone',
+  );
+  await owner
+    .delete(base + '/members/' + invitation.id)
+    .set('Origin', origin)
+    .expect(204);
+  await member.get(endpoint).expect(404);
 });

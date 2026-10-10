@@ -1971,6 +1971,7 @@ try {
       memberId,
     );
 
+    await memberPage.getByRole('button', { name: 'Dependencies', exact: true }).click();
     await memberPage
       .getByLabel('Finish this first', { exact: true })
       .selectOption({ label: 'Prepare the workshop outline' });
@@ -2010,16 +2011,44 @@ try {
         'Team overflow at ' + width,
       );
     }
+
+    for (const [tab, heading] of [
+      ['Shared tasks', 'Shared project tasks'],
+      ['Dependencies', 'What needs to happen first?'],
+      ['Reviews', 'Review requests'],
+      ['Work requests', 'Propose a next step'],
+    ]) {
+      await memberPage.getByRole('button', { name: tab, exact: true }).click();
+      await memberPage.getByRole('heading', { name: heading, exact: true }).waitFor();
+      for (const width of [320, 375, 768, 1024, 1440]) {
+        await memberPage.setViewportSize({ width, height: 1000 });
+        assert.equal(
+          await memberPage.evaluate(
+            () => document.documentElement.scrollWidth <= innerWidth,
+          ),
+          true,
+          tab + ' overflow at ' + width,
+        );
+      }
+    }
+    await memberPage.getByRole('button', { name: 'Shared tasks', exact: true }).click();
+    await memberPage.evaluate(() => {
+      window.scrollTo(0, 0);
+      const sidebar = document.querySelector('.sidebar');
+      if (sidebar) sidebar.scrollTop = 0;
+    });
     await memberPage.screenshot({
       path: 'docs/screenshots/team-desktop.png',
       fullPage: true,
     });
     await memberPage.setViewportSize({ width: 375, height: 900 });
+    await memberPage.evaluate(() => window.scrollTo(0, 0));
     await memberPage.screenshot({
       path: 'docs/screenshots/team-mobile.png',
       fullPage: true,
     });
 
+    await memberPage.getByRole('button', { name: 'Reviews', exact: true }).click();
     await memberPage
       .getByLabel('Task to review', { exact: true })
       .selectOption({ label: 'Prepare the workshop outline' });
@@ -2031,6 +2060,7 @@ try {
       .fill('Check that the topics are practical.');
     await memberPage.getByRole('button', { name: 'Request review', exact: true }).click();
     await memberPage.getByText('Review requested.', { exact: true }).waitFor();
+    await ownerPage.getByRole('button', { name: 'Reviews', exact: true }).click();
     await ownerPage.getByRole('button', { name: 'Refresh reviews', exact: true }).click();
     await ownerPage.getByRole('button', { name: 'Approve', exact: true }).click();
     await ownerPage.getByText('Review decision saved.', { exact: true }).waitFor();
@@ -2038,6 +2068,37 @@ try {
       .getByLabel('Review status', { exact: true })
       .selectOption('approved');
     await memberPage.getByText('Omar → Iris · approved', { exact: true }).waitFor();
+
+    await RateBucket.deleteMany({ key: /^api:/ });
+    await memberPage.getByRole('button', { name: 'Work requests', exact: true }).click();
+    await memberPage
+      .getByLabel('Request title', { exact: true })
+      .fill('Prepare participant handouts');
+    await memberPage
+      .getByLabel('Request details', { exact: true })
+      .fill('Include the three workshop topics and a short checklist.');
+    await memberPage
+      .getByRole('button', { name: 'Submit work request', exact: true })
+      .click();
+    await memberPage.getByText('Work request submitted.', { exact: true }).waitFor();
+    assert.equal(
+      await memberPage
+        .getByRole('button', { name: 'Accept into board', exact: true })
+        .count(),
+      0,
+    );
+    await ownerPage.getByRole('button', { name: 'Work requests', exact: true }).click();
+    await ownerPage
+      .getByRole('button', { name: 'Accept into board', exact: true })
+      .click();
+    await ownerPage
+      .getByRole('heading', { name: 'Prepare participant handouts', exact: true })
+      .waitFor();
+    await memberPage.getByRole('button', { name: 'Shared tasks', exact: true }).click();
+    await memberPage.getByRole('button', { name: 'Refresh', exact: true }).click();
+    await memberPage
+      .getByRole('heading', { name: 'Prepare participant handouts', exact: true })
+      .waitFor();
     await ownerPage.getByRole('button', { name: 'Refresh', exact: true }).click();
     await ownerPage.getByRole('button', { name: 'Remove access', exact: true }).waitFor();
     ownerPage.once('dialog', (dialog) => dialog.accept());

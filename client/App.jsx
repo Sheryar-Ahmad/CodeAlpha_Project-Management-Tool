@@ -1,3 +1,4 @@
+import PublicRequest from './components/PublicRequest.jsx';
 import Portfolio from './components/Portfolio.jsx';
 import TeamWorkspace from './components/TeamWorkspace.jsx';
 import TaskImportDialog from './components/TaskImportDialog.jsx';
@@ -842,6 +843,9 @@ function Workspace({ mode, user, onExit, onExpired, onDeleting }) {
   );
 }
 export default function App() {
+  const [publicToken] = useState(() =>
+    new URLSearchParams(location.hash.slice(1)).get('request'),
+  );
   const [mode, setMode] = useState(
     new URLSearchParams(location.search).get('demo') === '1' ? 'demo' : 'checking',
   );
@@ -853,7 +857,7 @@ export default function App() {
     setError('Your session has expired. Please sign in again.');
   }, []);
   useEffect(() => {
-    if (new URLSearchParams(location.search).get('demo') === '1') return;
+    if (publicToken || new URLSearchParams(location.search).get('demo') === '1') return;
     const controller = new AbortController();
     request('/auth/me', { signal: controller.signal })
       .then((result) => {
@@ -875,6 +879,7 @@ export default function App() {
     history.replaceState(null, '', value === 'demo' ? '/app.html?demo=1' : '/app.html');
     setMode(value);
   }
+  if (publicToken) return <PublicRequest token={publicToken} />;
   if (mode === 'checking')
     return (
       <main className="auth-loading" role="status">

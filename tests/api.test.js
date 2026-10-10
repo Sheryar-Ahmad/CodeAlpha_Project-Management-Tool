@@ -3291,3 +3291,176 @@ test('digest groups and portfolio scope report their truncation without leaking 
   assert.equal(report.digest.tasks.length, 30);
   assert.equal(report.digest.truncated, true);
 });
+
+test('public intake reveals only a name, supports safe retries and owner triage, and revokes links', async () => {
+  await RateBucket.deleteMany({});
+  const ownerAgent = request.agent(app),
+    memberAgent = request.agent(app);
+  const register = async (agent, name) =>
+    (
+      await agent
+        .post('/api/auth/register')
+        .set('Origin', origin)
+        .send({
+          name,
+          email: name + '@intake.example',
+          password: 'intake-long-passphrase',
+        })
+        .expect(201)
+    ).body.user;
+  const owner = await register(ownerAgent, 'IntakeOwner'),
+    member = await register(memberAgent, 'IntakeMember');
+  const project = await Project.create({
+    owner: owner.id,
+    name: 'Public proposals',
+    description: 'Never public',
+    milestones: [{ id: 'secret', title: 'Secret milestone', due: '', done: false }],
+  });
+  await ProjectMember.create({ project: project._id, user: member.id, status: 'active' });
+  const endpoint = '/api/projects/' + project._id + '/intake-link';
+  await ownerAgent.get(endpoint).expect(200).expect({ enabled: false });
+  await memberAgent
+    .post(endpoint)
+    .set('Origin', origin)
+    .send({ action: 'rotate' })
+    .expect(403);
+  await ownerAgent
+    .post(endpoint)
+    .set('Origin', origin)
+    .send({ action: 'rotate', owner: member.id })
+    .expect(400);
+  const token = (
+    await ownerAgent
+      .post(endpoint)
+      .set('Origin', origin)
+      .send({ action: 'rotate' })
+      .expect(200)
+  ).body.token;
+  assert.match(token, /^[a-f0-9]{64}$/);
+  const record = await Project.findById(project._id).select('+intakeHash').lean();
+  assert.equal(record.intakeHash.length, 64);
+  assert.notEqual(record.intakeHash, token);
+  await request(app).get('/api/intake').expect(404);
+  await request(app)
+    .get('/api/intake')
+    .set('X-Orbit-Intake', token)
+    .expect(200)
+    .expect({ name: project.name });
+  const draft = {
+    key: crypto.randomUUID(),
+    submitter: 'Workshop visitor',
+    title: 'Add a beginner session',
+    description: 'Useful plain text <script>no execution</script>',
+    due: '2026-10-30',
+    website: '',
+  };
+  await request(app)
+    .post('/api/intake')
+    .set('X-Orbit-Intake', token)
+    .send(draft)
+    .expect(403);
+  const send = (body) =>
+    request(app)
+      .post('/api/intake')
+      .set('Origin', origin)
+      .set('X-Orbit-Intake', token)
+      .send(body);
+  await send({ ...draft, requester: member.id }).expect(400);
+  await send({ ...draft, website: 'spam bot' }).expect(400);
+  const responses = await Promise.all([send(draft), send(draft)]);
+  assert.ok(responses.every((result) => result.status === 201));
+  assert.ok(
+    responses.every(
+      (result) => result.body.task === undefined && result.body.id === undefined,
+    ),
+  );
+  assert.equal(await WorkRequest.countDocuments({ project: project._id }), 1);
+  await send({ ...draft, title: 'Changed on retry' }).expect(409);
+  const list = (
+    await ownerAgent.get('/api/projects/' + project._id + '/requests').expect(200)
+  ).body.requests;
+  assert.equal(list[0].source, 'public');
+  assert.equal(list[0].submitter, draft.submitter);
+  assert.equal(list[0].requester, null);
+  assert.equal(list[0].canCancel, true);
+  const entry = list[0];
+  const memberList = (
+    await memberAgent.get('/api/projects/' + project._id + '/requests').expect(200)
+  ).body.requests;
+  assert.equal(memberList[0].canCancel, false);
+  assert.equal(memberList[0].canDecide, false);
+  const accept = await ownerAgent
+    .patch('/api/projects/' + project._id + '/requests/' + entry.id)
+    .set('Origin', origin)
+    .send({ action: 'accept' })
+    .expect(200);
+  const task = await Task.findById(accept.body.task).lean();
+  assert.equal(task.title, draft.title);
+  assert.equal(String(task.owner), owner.id);
+  await ownerAgent
+    .patch('/api/projects/' + project._id + '/requests/' + entry.id)
+    .set('Origin', origin)
+    .send({ action: 'accept' })
+    .expect(200);
+  assert.equal(await Task.countDocuments({ projectId: project._id }), 1);
+  const next = (
+    await ownerAgent
+      .post(endpoint)
+      .set('Origin', origin)
+      .send({ action: 'rotate' })
+      .expect(200)
+  ).body.token;
+  await request(app).get('/api/intake').set('X-Orbit-Intake', token).expect(404);
+  await send(draft).expect(404);
+  await request(app).get('/api/intake').set('X-Orbit-Intake', next).expect(200);
+  await ownerAgent
+    .post(endpoint)
+    .set('Origin', origin)
+    .send({ action: 'disable' })
+    .expect(200);
+  await request(app).get('/api/intake').set('X-Orbit-Intake', next).expect(404);
+  assert.equal(await WorkRequest.countDocuments({ project: project._id }), 1);
+  const last = (
+    await ownerAgent
+      .post(endpoint)
+      .set('Origin', origin)
+      .send({ action: 'rotate' })
+      .expect(200)
+  ).body.token;
+  await User.updateOne({ _id: owner.id }, { $set: { deleting: true } });
+  await request(app).get('/api/intake').set('X-Orbit-Intake', last).expect(404);
+});
+
+test('public submission limit survives retries across the shared database store', async () => {
+  await RateBucket.deleteMany({});
+  const owner = await User.create({
+    name: 'Limited form',
+    email: 'limit@intake.example',
+    passwordHash: 'unused-test-value',
+  });
+  const { tokenHash } = await import('../server/middleware/auth.js');
+  const token = 'a'.repeat(64);
+  const project = await Project.create({
+    owner: owner._id,
+    name: 'Limited public form',
+    intakeHash: tokenHash(token),
+  });
+  for (let index = 0; index < 8; index++)
+    await request(app)
+      .post('/api/intake')
+      .set('Origin', origin)
+      .set('X-Orbit-Intake', token)
+      .send({
+        key: crypto.randomUUID(),
+        submitter: 'Visitor',
+        title: 'Proposal ' + index,
+      })
+      .expect(201);
+  await request(app)
+    .post('/api/intake')
+    .set('Origin', origin)
+    .set('X-Orbit-Intake', token)
+    .send({ key: crypto.randomUUID(), submitter: 'Visitor', title: 'Too many proposals' })
+    .expect(429);
+  assert.equal(await WorkRequest.countDocuments({ project: project._id }), 8);
+});

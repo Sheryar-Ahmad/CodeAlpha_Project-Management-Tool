@@ -1,3 +1,4 @@
+import { IntakeLinkSettings } from './PublicRequest.jsx';
 import { useEffect, useRef, useState } from 'react';
 import { request } from '../lib/api.js';
 export default function ProjectRequests({ project, onExpired, onAccepted }) {
@@ -81,8 +82,12 @@ export default function ProjectRequests({ project, onExpired, onAccepted }) {
       <h2 id="requests-heading">Propose a next step</h2>
       <p className="small muted">
         Submit work for the project owner to triage before it enters the task board.
-        Requests are visible to accepted project members; this is not a public form.
+        Requests are visible to accepted project members. Owners can also enable a public
+        request form.
       </p>
+      {project.role === 'owner' && (
+        <IntakeLinkSettings project={project} onExpired={onExpired} />
+      )}
       <form
         className="review-request-form"
         onSubmit={(event) => {
@@ -183,8 +188,12 @@ export default function ProjectRequests({ project, onExpired, onAccepted }) {
                 <h3>{item.title}</h3>
                 <p>{item.description}</p>
                 <p className="small muted">
-                  From {item.requester?.name ?? 'Former account'} · {item.priority}{' '}
-                  priority · {item.due || 'No requested date'} · {item.status}
+                  From{' '}
+                  {item.source === 'public'
+                    ? item.submitter + ' · Public form (unverified name)'
+                    : (item.requester?.name ?? 'Former account')}{' '}
+                  · {item.priority} priority · {item.due || 'No requested date'} ·{' '}
+                  {item.status}
                 </p>
                 {item.response && (
                   <p>

@@ -3,7 +3,11 @@ import { validDate } from '../../shared/date.js';
 const schema = new mongoose.Schema(
   {
     project: { type: mongoose.Schema.Types.ObjectId, ref: 'Project', required: true },
-    requester: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    requester: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    source: { type: String, enum: ['account', 'public'], default: 'account' },
+    submitter: { type: String, trim: true, maxlength: 60, default: '' },
+    publicKey: { type: String, maxlength: 36, select: false },
+    submissionDigest: { type: String, select: false },
     title: { type: String, trim: true, required: true, maxlength: 120 },
     description: { type: String, trim: true, maxlength: 1000, default: '' },
     priority: { type: String, enum: ['low', 'medium', 'high'], default: 'medium' },
@@ -21,6 +25,10 @@ const schema = new mongoose.Schema(
     },
   },
   { timestamps: true, versionKey: false },
+);
+schema.index(
+  { project: 1, publicKey: 1 },
+  { unique: true, partialFilterExpression: { publicKey: { $type: 'string' } } },
 );
 schema.index({ project: 1, status: 1, createdAt: -1, _id: -1 });
 export const WorkRequest =

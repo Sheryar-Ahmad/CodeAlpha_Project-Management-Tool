@@ -1,3 +1,4 @@
+import { intakeSettingsRouter } from './intake.js';
 import { schedulingRouter } from './scheduling.js';
 import { workflowRouter } from './projectWorkflow.js';
 import { goalsRouter } from './goals.js';
@@ -20,6 +21,7 @@ import { parse, projectSchema, projectUpdateSchema } from '../lib/validation.js'
 export const projectRouter = Router();
 projectRouter.use(requireAuth);
 projectRouter.use('/:id/guest', guestPortalRouter);
+projectRouter.use('/:id/intake-link', intakeSettingsRouter);
 projectRouter.use('/:id/workload', workloadRouter);
 projectRouter.use('/:id/goals', goalsRouter);
 projectRouter.use('/:id/workflow', workflowRouter);

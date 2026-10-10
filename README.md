@@ -61,61 +61,62 @@ Screenshots are from the working local demo using illustrative sample tasks.
 
 ## What you can do
 
-| Feature                   | What it solves                                                                               |
-| ------------------------- | -------------------------------------------------------------------------------------------- |
-| Portfolio and work digest | Compare owned/joined project health and act on urgent work, reviews, invitations and intake  |
-| Guest portal              | Invite clients to read a project brief, milestones and active-task summaries without editing |
-| Work requests             | Propose work for owner triage and accept it into the board without duplicate tasks           |
-| Dependencies              | Record prerequisites, reject circular chains, and identify unfinished prerequisites          |
-| Team projects             | Invite existing accounts, accept or decline, and remove access without deleting work         |
-| Task assignments          | Assign a next step to an accepted teammate and filter your assigned work                     |
-| Task discussion           | Keep plain-text comments beside shared tasks, with owner moderation                          |
-| Team notes                | Record shared decisions and meetings without exposing private notebooks                      |
-| Review requests           | Ask a teammate to review a captured task brief and record approval or changes                |
-| Dependency scheduling     | Review calendar-day proposals, apply bounded batches and keep concurrent edits safe          |
-| Calendar handoff          | Private .ics deadline downloads and per-task Google Calendar event links                     |
-| Automation                | Opt-in checklist completion and bounded overdue-priority rules, with visible settings        |
-| Backup import             | Validate a JSON preview and restore into a new owned project without replacing work          |
-| Account security          | Password changes, one-time recovery codes, session revocation and resumable deletion         |
-| Project templates         | Workshop, launch and research blueprints with previews and retry-safe setup                  |
-| Project goals             | Measurable results, transparent progress calculations and stale-edit protection              |
-| Workload planning         | Task estimates and weekly project capacity, with unestimated and undated work kept visible   |
-| Review inbox              | Find pending reviews addressed to you across accessible projects                             |
-| Private accounts          | Register, sign in, and return to your personal workspace                                     |
-| Task board                | See what is waiting, moving, and finished                                                    |
-| List view                 | Scan the same tasks in a tidy list without losing filters or pagination                      |
-| Archive and recovery      | Clear active work, restore tasks from Trash, and confirm permanent deletion separately       |
-| Task editing              | Create, edit, move to Trash, and update status                                               |
-| Project labels            | Keep tasks organized by project and filter the board                                         |
-| Project timeline          | Compare recorded project spans and dated checkpoints within a selected month                 |
-| Deadline calendar         | Review a whole month, filter projects, and create/edit tasks from a selected day             |
-| Action Center             | Find blocked, overdue, imminent, and high-priority work with clear reasons                   |
-| Milestones                | Define up to 20 project checkpoints, dates, and completion states                            |
-| Project health            | Explain overdue work, blocked tasks, missed milestones, and planning conflicts               |
-| Project notebook          | Keep private project notes, decisions, and meeting outcomes, 20 entries per page             |
-| Meeting follow-ups        | Turn a recorded meeting into an editable follow-up task                                      |
-| Weekly work logs          | Save manual time entries, correct records, and see totals by day/project                     |
-| Quick find                | Navigate views/projects and search all tasks using Ctrl+K or Command+K                       |
-| Stable project references | Link new tasks by project ID and explicitly connect older groups                             |
-| Project details           | Create projects before tasks; save briefs, start/target dates, and planning status           |
-| Priorities and deadlines  | Make important work and overdue tasks visible                                                |
-| Today and Upcoming        | Find overdue work, today’s tasks, and the next seven days                                    |
-| Blockers                  | Explain what is stuck, review blocked work, and clear reasons when moving forward            |
-| Task notes and resources  | Keep decisions and reference links alongside each task                                       |
-| Checklists                | Break a task into up to 20 steps and track completion                                        |
-| Project overview          | See completion progress and the earliest unfinished deadline                                 |
-| Recurring tasks           | Keep completed history and create a fresh daily, weekly, or monthly next occurrence          |
-| Task templates            | Start a kickoff, assignment, meeting follow-up, or weekly review with editable steps         |
-| Duplicate task            | Reuse a task with fresh steps and a cleared deadline                                         |
-| Focus timer               | Work in quiet sessions with pause, break, and refresh recovery                               |
-| Search                    | Find tasks by title, description, project, notes, or blocker reason                          |
-| Account-wide overview     | Track total, active, completed, and overdue work                                             |
-| Bounded pagination        | Browse 30 tasks per page instead of loading everything                                       |
-| Task export               | Download a private JSON copy of active, archived, and trashed tasks                          |
-| Local demo                | Explore without an account; demo data never enters account storage                           |
-| Interface feedback        | Loading skeletons, empty states, save feedback, and error recovery                           |
-| Responsive layout         | Readable layouts on desktop and mobile                                                       |
-| Public pages              | Static marketing content and an honest privacy notice                                        |
+| Feature                   | What it solves                                                                                 |
+| ------------------------- | ---------------------------------------------------------------------------------------------- |
+| Public request forms      | Optional revocable links, account-free proposals, bounded submissions and private owner triage |
+| Portfolio and work digest | Compare owned/joined project health and act on urgent work, reviews, invitations and intake    |
+| Guest portal              | Invite clients to read a project brief, milestones and active-task summaries without editing   |
+| Work requests             | Propose work for owner triage and accept it into the board without duplicate tasks             |
+| Dependencies              | Record prerequisites, reject circular chains, and identify unfinished prerequisites            |
+| Team projects             | Invite existing accounts, accept or decline, and remove access without deleting work           |
+| Task assignments          | Assign a next step to an accepted teammate and filter your assigned work                       |
+| Task discussion           | Keep plain-text comments beside shared tasks, with owner moderation                            |
+| Team notes                | Record shared decisions and meetings without exposing private notebooks                        |
+| Review requests           | Ask a teammate to review a captured task brief and record approval or changes                  |
+| Dependency scheduling     | Review calendar-day proposals, apply bounded batches and keep concurrent edits safe            |
+| Calendar handoff          | Private .ics deadline downloads and per-task Google Calendar event links                       |
+| Automation                | Opt-in checklist completion and bounded overdue-priority rules, with visible settings          |
+| Backup import             | Validate a JSON preview and restore into a new owned project without replacing work            |
+| Account security          | Password changes, one-time recovery codes, session revocation and resumable deletion           |
+| Project templates         | Workshop, launch and research blueprints with previews and retry-safe setup                    |
+| Project goals             | Measurable results, transparent progress calculations and stale-edit protection                |
+| Workload planning         | Task estimates and weekly project capacity, with unestimated and undated work kept visible     |
+| Review inbox              | Find pending reviews addressed to you across accessible projects                               |
+| Private accounts          | Register, sign in, and return to your personal workspace                                       |
+| Task board                | See what is waiting, moving, and finished                                                      |
+| List view                 | Scan the same tasks in a tidy list without losing filters or pagination                        |
+| Archive and recovery      | Clear active work, restore tasks from Trash, and confirm permanent deletion separately         |
+| Task editing              | Create, edit, move to Trash, and update status                                                 |
+| Project labels            | Keep tasks organized by project and filter the board                                           |
+| Project timeline          | Compare recorded project spans and dated checkpoints within a selected month                   |
+| Deadline calendar         | Review a whole month, filter projects, and create/edit tasks from a selected day               |
+| Action Center             | Find blocked, overdue, imminent, and high-priority work with clear reasons                     |
+| Milestones                | Define up to 20 project checkpoints, dates, and completion states                              |
+| Project health            | Explain overdue work, blocked tasks, missed milestones, and planning conflicts                 |
+| Project notebook          | Keep private project notes, decisions, and meeting outcomes, 20 entries per page               |
+| Meeting follow-ups        | Turn a recorded meeting into an editable follow-up task                                        |
+| Weekly work logs          | Save manual time entries, correct records, and see totals by day/project                       |
+| Quick find                | Navigate views/projects and search all tasks using Ctrl+K or Command+K                         |
+| Stable project references | Link new tasks by project ID and explicitly connect older groups                               |
+| Project details           | Create projects before tasks; save briefs, start/target dates, and planning status             |
+| Priorities and deadlines  | Make important work and overdue tasks visible                                                  |
+| Today and Upcoming        | Find overdue work, today’s tasks, and the next seven days                                      |
+| Blockers                  | Explain what is stuck, review blocked work, and clear reasons when moving forward              |
+| Task notes and resources  | Keep decisions and reference links alongside each task                                         |
+| Checklists                | Break a task into up to 20 steps and track completion                                          |
+| Project overview          | See completion progress and the earliest unfinished deadline                                   |
+| Recurring tasks           | Keep completed history and create a fresh daily, weekly, or monthly next occurrence            |
+| Task templates            | Start a kickoff, assignment, meeting follow-up, or weekly review with editable steps           |
+| Duplicate task            | Reuse a task with fresh steps and a cleared deadline                                           |
+| Focus timer               | Work in quiet sessions with pause, break, and refresh recovery                                 |
+| Search                    | Find tasks by title, description, project, notes, or blocker reason                            |
+| Account-wide overview     | Track total, active, completed, and overdue work                                               |
+| Bounded pagination        | Browse 30 tasks per page instead of loading everything                                         |
+| Task export               | Download a private JSON copy of active, archived, and trashed tasks                            |
+| Local demo                | Explore without an account; demo data never enters account storage                             |
+| Interface feedback        | Loading skeletons, empty states, save feedback, and error recovery                             |
+| Responsive layout         | Readable layouts on desktop and mobile                                                         |
+| Public pages              | Static marketing content and an honest privacy notice                                          |
 
 **Scope clarification:** private project records now hold descriptions, dates, and planning status. New tasks receive an owner-scoped project ID. Older tasks remain readable and can be connected through Projects → Connect existing tasks, including archived/trashed records. Names still stay fixed, and summaries use labels during this transition. Team projects now support explicit in-app invitations to existing accounts. Only accepted members can use shared routes, scoped by project ID. Private task views and private notebooks remain separate. Only connected tasks are shared; linking an older group is an explicit owner action.
 
@@ -254,7 +255,7 @@ npm run build
 npm run format:check
 ```
 
-**Verified locally:** 79 API/input/planning/timer/password/template/recovery/export/recurrence/project tests and Chromium browser flows covering demo CRUD, storage persistence, search, filters, safe text rendering, mobile overflow, dialog Escape, checklists, task duplication, template previews and replacement protection, list actions and pagination, blockers, archive/trash restoration, private downloads, daily views, overnight date changes, project progress, focus pause/refresh/completion, registration, database-backed persistence, logout, and login. Expanded checks cover whole-month calendar queries, leap years, Action Center rules, milestones, health explanations, command navigation, notebook decisions/meetings, follow-up drafts, weekly time totals, private APIs, and explicit legacy linking. Team checks cover invitation state transitions, cross-project isolation, removed/pending users, role restrictions, assignment eligibility, private/team note separation, discussion moderation, review decisions and inbox access. Browser tests exercise two separate authenticated accounts and team layouts at 320–1440px.
+**Verified locally:** 81 API/input/planning/timer/password/template/recovery/export/recurrence/project tests and Chromium browser flows covering demo CRUD, storage persistence, search, filters, safe text rendering, mobile overflow, dialog Escape, checklists, task duplication, template previews and replacement protection, list actions and pagination, blockers, archive/trash restoration, private downloads, daily views, overnight date changes, project progress, focus pause/refresh/completion, registration, database-backed persistence, logout, and login. Expanded checks cover whole-month calendar queries, leap years, Action Center rules, milestones, health explanations, command navigation, notebook decisions/meetings, follow-up drafts, weekly time totals, private APIs, and explicit legacy linking. Team checks cover invitation state transitions, cross-project isolation, removed/pending users, role restrictions, assignment eligibility, private/team note separation, discussion moderation, review decisions and inbox access. Browser tests exercise two separate authenticated accounts and team layouts at 320–1440px.
 
 For browser checks:
 
@@ -342,7 +343,7 @@ See [the product direction review](docs/PRODUCT_DIRECTION.md) for which proposed
 - [ ] Accessibility audit and measured production performance
 - [ ] Live deployment link and LinkedIn walkthrough
 
-The remaining roadmap includes public intake forms and configured external integrations. See [the delivery tracker](docs/PRODUCT_DIRECTION.md) for shipped and pending scope; these services are not advertised as complete.
+The remaining roadmap includes configured live external integrations and advanced collaboration variants. See [the delivery tracker](docs/PRODUCT_DIRECTION.md) for shipped and pending scope; these services are not advertised as complete.
 
 For a short video, use [the 90-second demo outline](docs/DEMO.md).
 

@@ -51,7 +51,7 @@ export default function Portfolio({ demo, onExpired, onOpen, onPrivateTask, onTe
           The portfolio combines owned and joined projects. Create an account to use team
           reports and your work digest.
         </p>
-        <a className="button primary" href="app.html?mode=register">
+        <a className="button primary" href="app.html?auth=register">
           Create your account <ArrowUpRight size={16} />
         </a>
       </section>

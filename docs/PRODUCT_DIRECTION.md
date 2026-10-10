@@ -88,7 +88,7 @@ The proposal, excluding AI assistance at the user's request, is authorized for i
 | 14. Guest/client portal                                                | Implemented: account invitations and restricted read-only project/task summaries; no anonymous public share links                                                                                                                   |
 | 15. Project templates                                                  | Implemented: task/checklist starters and three retry-safe multi-task project blueprints                                                                                                                                             |
 | 16. Recurring tasks                                                    | Implemented: daily/weekly/monthly next occurrence on completion; no background scheduler                                                                                                                                            |
-| 17. Forms / work requests                                              | Implemented: authenticated project intake, owner triage, requester cancellation and retry-safe task creation; anonymous/public forms pending                                                                                        |
+| 17. Forms / work requests                                              | Implemented: authenticated and optional public intake, revocable links, owner triage and retry-safe task creation                                                                                                                   |
 | 18. Automation                                                         | Implemented: opt-in checklist completion and bounded overdue-priority rules, manual run and daily scheduled sweep                                                                                                                   |
 | 19. Integrations                                                       | Implemented: private iCalendar exports and Google Calendar event handoff; live OAuth connections still require provider configuration                                                                                               |
 | 20. Command bar / global search                                        | Implemented: quick command bar, project/view navigation, and full-board task search                                                                                                                                                 |
@@ -105,7 +105,7 @@ The proposal, excluding AI assistance at the user's request, is authorized for i
 
 ### Delivery scope
 
-The table distinguishes usable bounded implementations from larger service variants. AI assistance is excluded. Live OAuth sync, outbound email/push, live sockets, public intake and independently assigned subtasks are not shipped yet. File resources use validated external links rather than hosted uploads. No claim is made that every enterprise variant in the supplied catalogue is complete.
+The table distinguishes usable bounded implementations from larger service variants. AI assistance is excluded. Live OAuth sync, outbound email/push, live sockets and independently assigned subtasks are not shipped yet. File resources use validated external links rather than hosted uploads. No claim is made that every enterprise variant in the supplied catalogue is complete.
 
 ### Team delivery limits
 

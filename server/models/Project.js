@@ -13,6 +13,7 @@ const milestone = new mongoose.Schema(
 );
 const schema = new mongoose.Schema(
   {
+    intakeHash: { type: String, default: '', select: false },
     owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     name: { type: String, required: true, trim: true, maxlength: 60 },
     automation: {
@@ -33,5 +34,6 @@ const schema = new mongoose.Schema(
   { timestamps: true, versionKey: false },
 );
 // Names are exact labels, scoped to an account; another account may use the same name.
+schema.index({ intakeHash: 1 });
 schema.index({ owner: 1, name: 1 }, { unique: true });
 export const Project = mongoose.models.Project || mongoose.model('Project', schema);

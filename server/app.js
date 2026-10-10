@@ -1,3 +1,4 @@
+import { publicIntakeRouter } from './routes/intake.js';
 import { accountRouter } from './routes/account.js';
 import { maintenanceRouter } from './routes/maintenance.js';
 import { importsRouter } from './routes/imports.js';
@@ -51,6 +52,7 @@ app.use('/api/tasks', taskRouter);
 app.use('/api/projects', projectRouter);
 app.use('/api/work-logs', workLogRouter);
 app.use('/api/teams', teamRouter);
+app.use('/api/intake', publicIntakeRouter);
 app.use('/api/imports', importsRouter);
 app.use('/api/account', accountRouter);
 app.use('/api/maintenance', maintenanceRouter);

@@ -2311,6 +2311,85 @@ try {
     await memberPage
       .getByRole('heading', { name: 'Prepare participant handouts', exact: true })
       .waitFor();
+
+    await ownerPage.getByRole('button', { name: 'Work requests', exact: true }).click();
+    await ownerPage.getByText('Public request form · Disabled', { exact: true }).click();
+    ownerPage.once('dialog', (dialog) => dialog.accept());
+    await ownerPage
+      .getByRole('button', { name: 'Create public request link', exact: true })
+      .click();
+    const publicURL = await ownerPage
+      .getByLabel('Public request link', { exact: true })
+      .inputValue();
+    assert.ok(publicURL.includes('/app.html#request='));
+    const visitorContext = await browser.newContext({
+      viewport: { width: 375, height: 900 },
+    });
+    const visitorPage = await visitorContext.newPage();
+    visitorPage.on('pageerror', (error) => errors.push(error.message));
+    await visitorPage.goto(publicURL);
+    await visitorPage
+      .getByRole('heading', { name: 'Propose work for Community workshop', exact: true })
+      .waitFor();
+    assert.equal(
+      await visitorPage.getByRole('button', { name: 'Sign in', exact: true }).count(),
+      0,
+    );
+    await visitorPage
+      .getByLabel('Your name or alias', { exact: true })
+      .fill('Workshop visitor');
+    await visitorPage
+      .getByLabel('What needs to be done?', { exact: true })
+      .fill('Add an accessible venue guide');
+    await visitorPage
+      .getByLabel('Useful context', { exact: true })
+      .fill('Describe step-free access and nearby transport.');
+    for (const width of [320, 375, 768, 1440]) {
+      await visitorPage.setViewportSize({ width, height: 1000 });
+      assert.equal(
+        await visitorPage.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+        true,
+        'Public request overflow at ' + width,
+      );
+    }
+    await visitorPage.getByRole('button', { name: 'Send request', exact: true }).click();
+    await visitorPage
+      .getByRole('heading', { name: 'Thank you for the next step', exact: true })
+      .waitFor();
+    await ownerPage
+      .getByRole('button', { name: 'Refresh requests', exact: true })
+      .click();
+    await ownerPage
+      .getByRole('heading', { name: 'Add an accessible venue guide', exact: true })
+      .waitFor();
+    await ownerPage
+      .getByText('Public form (unverified name)', { exact: false })
+      .waitFor();
+    await ownerPage
+      .getByRole('button', { name: 'Accept into board', exact: true })
+      .click();
+    await ownerPage
+      .getByRole('heading', { name: 'Add an accessible venue guide', exact: true })
+      .waitFor();
+    await ownerPage.getByRole('button', { name: 'Work requests', exact: true }).click();
+    await ownerPage.getByText('Public request form · Enabled', { exact: true }).click();
+    ownerPage.once('dialog', (dialog) => dialog.accept());
+    await ownerPage
+      .getByRole('button', { name: 'Disable public request link', exact: true })
+      .click();
+    await ownerPage
+      .getByText('Public request form · Disabled', { exact: true })
+      .waitFor();
+    await visitorPage.reload();
+    await visitorPage
+      .getByText('This request form is unavailable.', { exact: true })
+      .waitFor();
+    await visitorContext.close();
+    console.log(
+      'PASS: account-free intake, private owner triage, acceptance and disabled-link revocation.',
+    );
     await ownerPage.getByRole('button', { name: 'Refresh', exact: true }).click();
     await ownerPage.getByRole('button', { name: 'Remove access', exact: true }).waitFor();
     ownerPage.once('dialog', (dialog) => dialog.accept());

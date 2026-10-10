@@ -2134,3 +2134,61 @@ textarea:disabled {
 .portfolio-view progress::-moz-progress-bar {
   background: var(--teal);
 }
+
+.public-link-settings {
+  border: 1px solid var(--line);
+  padding: 16px;
+  border-radius: 12px;
+  margin: 20px 0;
+}
+.public-link-settings summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.public-link-settings > label {
+  display: grid;
+  gap: 8px;
+  margin-top: 18px;
+}
+.public-link-settings input {
+  min-width: 0;
+  width: 100%;
+}
+.public-request-page {
+  width: min(100% - 32px, 780px);
+  margin: 24px auto;
+}
+.public-request-page > header,
+.public-request-page > footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: center;
+  margin: 24px 0;
+}
+.public-request-page h1 {
+  font-size: clamp(24px, 5vw, 36px);
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.public-request-page .review-request-form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 18px;
+}
+.public-request-page .review-request-form button {
+  justify-self: start;
+}
+.public-request-page input,
+.public-request-page textarea {
+  width: 100%;
+  min-width: 0;
+}
+.intake-honeypot {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}

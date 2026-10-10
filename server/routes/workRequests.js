@@ -51,6 +51,8 @@ workRequestRouter.get('/', async (req, res) => {
       id: String(item._id),
       title: item.title,
       description: item.description,
+      source: item.source ?? 'account',
+      submitter: item.source === 'public' ? item.submitter : '',
       priority: item.priority,
       due: item.due,
       requester: item.requester

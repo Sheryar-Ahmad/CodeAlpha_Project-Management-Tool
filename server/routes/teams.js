@@ -42,7 +42,20 @@ teamRouter.get('/', async (req, res) => {
     .sort({ name: 1 })
     .limit(1001)
     .lean();
-  const visible = memberships.slice(0, 1000).filter((item) => item.project);
+
+  const liveOwners = await User.find({
+    _id: {
+      $in: memberships.filter((item) => item.project).map((item) => item.project.owner),
+    },
+    deleting: { $ne: true },
+  })
+    .select('_id')
+    .lean();
+  const ownerIds = new Set(liveOwners.map((item) => String(item._id)));
+  const visible = memberships
+    .slice(0, 1000)
+    .filter((item) => item.project && ownerIds.has(String(item.project.owner)));
+
   const accessibleIds = [
     ...owned.slice(0, 1000).map((item) => item._id),
     ...visible
@@ -377,7 +390,9 @@ memberRouter.get('/', async (req, res) => {
 });
 memberRouter.post('/', requireProjectOwner, async (req, res) => {
   const { email, role } = parse(inviteSchema, req.body);
-  const user = await User.findOne({ email }).select('_id').lean();
+  const user = await User.findOne({ email, deleting: { $ne: true } })
+    .select('_id')
+    .lean();
   if (!user || String(user._id) === String(req.sharedProject.owner))
     return res
       .status(400)

@@ -3254,6 +3254,14 @@ test('portfolio and digest honor membership, guest roles, assignments and closed
   assert.equal(closed.projects.length, 1);
   assert.equal(closed.digest.invitations.length, 0);
   assert.equal(closed.digest.tasks.length, 1);
+  const closedTeams = (await memberAgent.get('/api/teams').expect(200)).body;
+  assert.ok(
+    !closedTeams.projects.some(
+      (item) => item.name === 'Shared report' || item.name === 'Guest-only report',
+    ),
+  );
+  assert.equal(closedTeams.invitations.length, 0);
+  assert.equal(closedTeams.reviewInbox.length, 0);
 });
 
 test('digest groups and portfolio scope report their truncation without leaking unbounded records', async () => {

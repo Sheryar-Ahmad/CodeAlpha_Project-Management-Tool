@@ -1,7 +1,7 @@
 /* Orbit | Copyright (c) 2026 Sheheryar Ahmad | See NOTICE. */
 :root {
   --ink: #202b49;
-  --muted: #647087;
+  --muted: #5e697f;
   --purple: #5948d6;
   --line: #e3e7ef;
   --surface: #f6f7fb;
@@ -449,7 +449,7 @@ h3 {
 }
 
 .feature-number {
-  color: #737e94;
+  color: #647087;
   font-size: 11px;
   letter-spacing: 1px;
 }

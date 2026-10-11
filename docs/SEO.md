@@ -1,7 +1,5 @@
 # SEO launch checklist
 
-# SEO launch checklist
-
 Orbit’s public landing and privacy pages are static HTML. The React workspace is marked noindex; authentication protects account data.
 
 ## Implemented
@@ -13,6 +11,8 @@ Orbit’s public landing and privacy pages are static HTML. The React workspace 
 - A lightweight vector icon with no external font dependency.
 - The build generates canonical URLs, Open Graph URLs, WebSite structured data, sitemap.xml, and a robots sitemap reference when SITE_URL is configured.
 - Only the landing page and privacy page enter the sitemap. No fake lastmod dates.
+- Production metadata includes an original 1200×630 social preview and SoftwareApplication data without invented reviews or ratings.
+- Preview builds mark public pages noindex and omit the production sitemap.
 
 ## Production configuration
 
@@ -22,12 +22,19 @@ Without SITE_URL, the build intentionally omits domain-dependent metadata and th
 
 ## Checks after deployment
 
+The canonical origin is **https://orbit-by-sheheryar.vercel.app**. Public pages, sitemap, robots, anonymous API denial and security headers were checked on October 11, 2026. Search Console verification is still an owner-account step.
+
+1. Add `https://orbit-by-sheheryar.vercel.app/` as a **URL-prefix property** in [Google Search Console](https://search.google.com/search-console).
+2. Select HTML-tag verification. Copy only its `content` token into Vercel's optional `GOOGLE_SITE_VERIFICATION` build variable, then redeploy. The build emits the verification meta tag on public pages.
+3. Verify the property, submit `sitemap.xml`, and request indexing of the home page through URL Inspection.
+4. Monitor indexing and the chosen canonical. Search terms such as **Orbit project management** or **Orbit by Sheheryar** describe this app more clearly than the broad word **Orbit**. No code change guarantees indexing or first position.
+
 - Public canonical pages return 200; nonexistent paths return 404.
 - The selected HTTPS hostname is consistent across redirects, canonicals, sitemap, and social metadata.
 - Verify robots directives in source and rendered content.
 - Confirm private task and account responses are not cached or publicly exposed.
 - Inspect structured data and the actual generated sitemap.
-- Add a real social preview image and complete Open Graph/Twitter image metadata.
+- Inspect the deployed social preview image and Open Graph/Twitter image metadata.
 - Verify preview deployments stay outside the public index.
 - Submit the sitemap and inspect Google’s selected canonical in Search Console.
 - Measure mobile Lighthouse and real-user Core Web Vitals once traffic exists.
@@ -46,4 +53,4 @@ The supplied SEO checklist is tracked here; inapplicable features should not be 
 - [Canonical URL guidance](https://developers.google.com/search/docs/crawling-indexing/consolidate-duplicate-urls)
 - [Sitemap guidance](https://developers.google.com/search/docs/crawling-indexing/sitemaps/build-sitemap)
 
-The public landing page describes the implemented calendar, Action Center, project milestones/timeline, notebook decisions/meeting follow-ups, recurring work and manual weekly logs. Private workspace records remain behind authentication or local demo storage, and app.html remains noindex. Public copy must not advertise team sharing or external integrations before they work.
+The public landing page describes personal and team project management. Private workspace records remain behind authentication or local demo storage, and app.html remains noindex. Calendar handoffs are snapshots; do not advertise email delivery or live external synchronization as implemented.

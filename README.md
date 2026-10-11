@@ -4,6 +4,8 @@
 
 ### A clearer place for projects to move forward.
 
+[Open Orbit](https://orbit-by-sheheryar.vercel.app) · [Try the demo](https://orbit-by-sheheryar.vercel.app/app.html?demo=1)
+
 A MERN project management tool for deadlines, clear next steps, and calmer daily work.
 
 ![MongoDB](https://img.shields.io/badge/MongoDB-Database-137767?style=flat-square)
@@ -26,7 +28,7 @@ A project starts with an idea. Then come the messages, scattered notes, and dead
 
 Built by **Sheheryar Ahmad**, a Semester 5 Software Engineering student at **COMSATS University Islamabad**.
 
-> **Current release: 0.5.0.** Personal and explicitly shared project workspaces with invitations, assignments, task discussions, review requests, calendars, milestones, notebooks, weekly work logs, and MERN persistence. Team tasks refresh through polling; email delivery and live sockets are not configured. No production deployment is claimed.
+> **Current release: 0.5.0.** Personal and explicitly shared project workspaces with invitations, assignments, task discussions, review requests, calendars, milestones, notebooks, weekly work logs, and MERN persistence. Team tasks refresh through polling; email delivery and live sockets are not configured. Live at [orbit-by-sheheryar.vercel.app](https://orbit-by-sheheryar.vercel.app).
 
 ## A look inside
 
@@ -59,7 +61,7 @@ Built by **Sheheryar Ahmad**, a Semester 5 Software Engineering student at **COM
 
 <img src="docs/screenshots/workspace-mobile.png" alt="Orbit task workspace on a 375-pixel-wide mobile screen" width="375" />
 
-Screenshots are from the working local demo using illustrative sample tasks.
+Screenshots use illustrative local demo tasks and isolated test accounts.
 
 </details>
 
@@ -142,7 +144,7 @@ Checklist completion and task status are separate by default. Project owners can
 
 ### Requirements
 
-- **Node.js 20.19+**, with npm
+- **Node.js 24.x**, matching production and CI.
 - A local MongoDB server, or a MongoDB Atlas connection
 - Git
 
@@ -261,6 +263,8 @@ These measures do not mean the application has undergone an independent security
 
 ## Quality and verification
 
+See [the final release check](docs/RELEASE_CHECK.md) for dated security, accessibility, deployment and performance evidence.
+
 Run the checks:
 
 ```powershell
@@ -270,7 +274,7 @@ npm run build
 npm run format:check
 ```
 
-**Verified locally:** 91 API/input/planning/timer/password/template/recovery/export/recurrence/project tests and Chromium browser flows covering demo CRUD, storage persistence, search, filters, safe text rendering, mobile overflow, dialog Escape, checklists, task duplication, template previews and replacement protection, list actions and pagination, blockers, archive/trash restoration, private downloads, daily views, overnight date changes, project progress, focus pause/refresh/completion, registration, database-backed persistence, logout, and login. Expanded checks cover whole-month calendar queries, leap years, Action Center rules, milestones, health explanations, command navigation, notebook decisions/meetings, follow-up drafts, weekly time totals, private APIs, and explicit legacy linking. Team checks cover invitation state transitions, cross-project isolation, removed/pending users, role restrictions, assignment eligibility, private/team note separation, discussion moderation, review decisions and inbox access. Browser tests exercise two separate authenticated accounts and team layouts at 320–1440px.
+**Verified locally:** 94 API/input/planning/timer/password/template/recovery/export/recurrence/project/SEO tests and Chromium browser flows covering demo CRUD, storage persistence, search, filters, safe text rendering, mobile overflow, dialog Escape, checklists, task duplication, template previews and replacement protection, list actions and pagination, blockers, archive/trash restoration, private downloads, daily views, overnight date changes, project progress, focus pause/refresh/completion, registration, database-backed persistence, logout, and login. Expanded checks cover whole-month calendar queries, leap years, Action Center rules, milestones, health explanations, command navigation, notebook decisions/meetings, follow-up drafts, weekly time totals, private APIs, and explicit legacy linking. Team checks cover invitation state transitions, cross-project isolation, removed/pending users, role restrictions, assignment eligibility, private/team note separation, discussion moderation, review decisions and inbox access. Browser tests exercise two separate authenticated accounts and team layouts at 320–1440px.
 
 For browser checks:
 
@@ -282,7 +286,7 @@ npm run test:browser
 
 Integration tests use a temporary MongoDB instance, never your production database. On the first run, the test package may download a large MongoDB archive. The test runner puts downloads inside the ignored project cache and can use an existing project-local test server binary.
 
-See [the manual test checklist](docs/TESTING.md). Production hosting, Atlas connectivity, and Search Console checks must still be verified after deployment.
+See [the manual test checklist](docs/TESTING.md). Public production routes, protected API responses, canonical URLs and sitemap were checked on October 11, 2026. Authenticated workflows are verified against isolated test accounts; Search Console ownership and scheduled-job execution require provider-side verification.
 
 ## Deploy on Vercel
 
@@ -316,9 +320,9 @@ When SITE_URL is configured, the build generates:
 
 No fabricated reviews, keyword stuffing, or unsupported ranking claims. A README improves repository understanding and discoverability; website ranking also depends on deployed content, indexing, usefulness, and real performance. See [the SEO launch checklist](docs/SEO.md).
 
-## Monetization
+## Advertising
 
-No ads are installed in this release. The proposed approach keeps the workspace ad-free and considers a clearly labelled unit on useful public planning content after deployment and AdSense approval. SEO does not guarantee approval or income. Read [the monetization plan](docs/MONETIZATION.md).
+Orbit is ad-free. No advertising or analytics scripts are installed.
 
 ### Repeating work without losing history
 
@@ -332,41 +336,13 @@ Use **Export tasks** in the workspace footer to download a JSON file containing 
 
 The file contains your written task data, so keep it private. It excludes passwords, session tokens, and database credentials. Validated imports restore task exports into a new owned project; the download is not a complete database backup. Project metadata, milestones, notebook entries, and work logs are not included in this task-only export.
 
-## Next milestones
+## Release scope and limits
 
-Verified milestones are committed and pushed individually, following the latest project instruction. The saved baseline tag remains unchanged.
+The core personal/team workflows are implemented, including the unified assigned-work board and optional workspace guide. This release uses 30-second polling rather than instant sockets. Invitations target existing accounts; email/push delivery, email-based recovery and live OAuth calendar synchronization are not connected. Recovery codes must be generated and saved before a password is forgotten.
 
-AI assistance is excluded from the project scope. The remaining roadmap focuses on ordinary MERN workflows, collaboration, planning, and integrations.
+Subtasks are one level deep and independent of parent completion. Recurring work uses checklist steps. Calendar handoffs are snapshots. Task exports cover owned task content, not every notebook, project or work log. Account and project permissions are checked on each request.
 
-See [the delivery tracker](docs/PRODUCT_DIRECTION.md) for implemented capabilities, their limits, and remaining work.
-
-- [x] Recurring tasks with completion-driven scheduling rules
-- [x] Task notes and useful resource links
-- [x] Private task export
-- [x] Validated import for task recovery
-- [x] Private project records with briefs, dates, and planning status
-- [x] Stable task-to-project references and explicit legacy linking
-- [x] Deadline calendar, recorded project timeline, and Action Center
-- [x] Milestones and explained project health
-- [x] Project notebook, decisions, and meeting follow-ups
-- [x] Persisted manual work logs and weekly timesheets
-- [x] Keyboard command bar and full-board task search
-- [x] Shared project memberships
-- [x] Invitations and owner/member/guest authorization
-- [x] Recovery-code password reset, password changes, and account deletion
-- [x] Portfolio, work digest, and targeted discussion notifications
-- [x] Optional public work requests and resource-link reviews
-- [x] One-level subtasks with independent deadlines, status and assignment
-- [x] Bounded recent task activity with privacy-safe field names
-- [ ] Email verification and email-based recovery/delivery
-- [ ] Live Google Calendar OAuth integration
-- [ ] Optional live task updates (current team refresh uses polling)
-- [ ] Accessibility audit and measured production performance
-- [ ] Live deployment link and LinkedIn walkthrough
-
-The remaining roadmap includes configured live external integrations and advanced collaboration variants. See [the delivery tracker](docs/PRODUCT_DIRECTION.md) for shipped and pending scope; these services are not advertised as complete.
-
-For a short video, use [the 90-second demo outline](docs/DEMO.md).
+The automated checks are evidence for the tested workflows, not a security certification or a full accessibility audit. Before wider public use, verify provider backups, support arrangements and scheduled maintenance. The remaining presentation step is a walkthrough video; see [the demo outline](docs/DEMO.md).
 
 ## Author and license
 
@@ -379,6 +355,8 @@ Copyright © 2026 Sheheryar Ahmad. [MIT License](LICENSE). Copies or substantial
 ## Getting familiar with Orbit
 
 New accounts are offered an optional 12-topic workspace tour. Choose **Yes, show me around** to explore the real workspace, or **Skip for now** to begin independently. The guide covers tasks, subtasks, planning, team assignments, notifications, recovery and backups without creating sample records. Jump to a topic, go back, minimize it to work, or skip at any point. The **Guide** book button in the top bar reopens it on desktop and mobile.
+
+![Optional welcome tour](docs/screenshots/guide-welcome-desktop.png)
 
 Tour progress and dismissal are remembered per account on the current browser when local storage is available. They are not synchronized between devices. Account recovery codes remain separate and are never saved by the tour.
 

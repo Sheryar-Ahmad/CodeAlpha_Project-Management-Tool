@@ -12,7 +12,13 @@ if (process.argv[2] === 'browser') {
 const args =
   process.argv[2] === 'browser'
     ? ['scripts/browser-test.js', ...process.argv.slice(3)]
-    : ['--test', '--test-concurrency=1', 'tests/api.test.js', 'tests/validation.test.js'];
+    : [
+        '--test',
+        '--test-concurrency=1',
+        'tests/api.test.js',
+        'tests/validation.test.js',
+        'tests/seo.test.js',
+      ];
 const result = spawnSync(process.execPath, args, {
   cwd: root,
   env,

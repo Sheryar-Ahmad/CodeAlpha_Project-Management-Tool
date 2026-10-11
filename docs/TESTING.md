@@ -133,7 +133,7 @@ Automated browser coverage verifies the primary flows above; exhaustive accessib
 - Open the JSON and confirm titles, context, checklist progress, lifecycle, and export version. No passwords, sessions, credentials, or another user's records may appear.
 - Demo exports must be marked demo and account exports account. Test download permission failures and an unavailable account API.
 - More than 1,000 account tasks must return a clear size error; exceeding five account requests per hour must show a rate-limit message.
-- The file contains private task text; importing it is not implemented.
+- The file contains private task text; validated imports restore owned tasks into a new project. See the import checks below.
 
 ## Recurring tasks
 
@@ -164,7 +164,7 @@ Automated browser coverage verifies the primary flows above; exhaustive accessib
 - Work logs: record integer minutes, edit/delete, move between weeks, filter projects and check day/project totals. Reload account mode to verify MongoDB persistence.
 - Stable references: save project details for an older group, explicitly Connect existing tasks, repeat without duplicates, and verify unchanged status/checklists/context. New task labels should create/reuse a private project record.
 
-Automated browser checks cover these flows and 320–1920px layouts. Integration tests cover cross-account isolation, strict payloads, calendar/week boundaries, pagination/overflow, and legacy linking including Archive/Trash. Live production deployment and a full accessibility audit remain unverified.
+Automated browser checks cover these flows and 320–1920px layouts. Integration tests cover cross-account isolation, strict payloads, calendar/week boundaries, pagination/overflow, and legacy linking including Archive/Trash. Production public-route and anonymous authorization smoke checks are recorded in RELEASE_CHECK.md. A full manual accessibility audit and provider-side scheduled-job verification remain outside automated coverage.
 
 Project timeline: switch from cards, choose a month, verify clipped spans and single-date checkpoints, and open a project’s tasks. Projects without dates must say so; switching months must not invent scheduling dates.
 

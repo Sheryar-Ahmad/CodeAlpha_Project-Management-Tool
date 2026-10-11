@@ -1,5 +1,9 @@
 /* Orbit | Copyright (c) 2026 Sheheryar Ahmad | See NOTICE. */
 /* Workspace hierarchy: keep content readable without changing the public palette. */
+.auth-panel .small a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 .workspace-guide-button {
   display: inline-flex;
   align-items: center;

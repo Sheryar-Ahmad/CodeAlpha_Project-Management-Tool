@@ -110,3 +110,7 @@ Membership role defaults to member, including legacy records. Only the guest por
 ### Deletion lifecycle
 
 Deletion is an idempotent standalone-Mongo-compatible workflow rather than a cross-collection transaction. Access freezes before cleanup. Project children are removed before parents so retries find partial work. Batches are bounded to five projects. A daily secret-protected maintenance job resumes cleanup and re-sweeps completed account IDs for 90 days to remove requests already in flight when access froze. Other owners retain their work; authored contributions are removed and former assignments cleared. Configure and monitor the scheduler in production.
+
+## Unified My Work and onboarding
+
+Main-board and planning reads opt into a union of owned tasks and currently accessible shared assignments. Mutation authorization stays project-scoped; the client edits the same task record rather than copying it. Archive/Trash, private notebooks, work logs and exports retain their existing scopes. The optional tour stores only per-account progress/preferences in local browser storage; it does not store recovery codes or generate sample work.

@@ -11,6 +11,7 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 import mongoose from 'mongoose';
 import request from 'supertest';
 import { app } from '../server/app.js';
+import vercelHandler from '../api/index.js';
 import { User } from '../server/models/User.js';
 import { Session } from '../server/models/Session.js';
 import { Task } from '../server/models/Task.js';
@@ -104,6 +105,59 @@ test('duplicate accounts and malformed login payloads fail safely', async () => 
     .set('Origin', origin)
     .send({ email: 'alice@example.com', password: 'wrong-password' })
     .expect(401);
+});
+
+test('Vercel rewrite metadata does not break authenticated workspace queries', async () => {
+  const deployed = request.agent(vercelHandler);
+  await deployed
+    .post('/api/auth/register?path=auth%2Fregister')
+    .set('Origin', origin)
+    .send({
+      name: 'Deployment',
+      email: 'deployment@example.com',
+      password: 'deployment-passphrase',
+    })
+    .expect(201);
+  const created = await deployed
+    .post('/api/tasks?path=tasks')
+    .set('Origin', origin)
+    .send({ title: 'Deployment query regression', project: 'Release', due: '2026-10-11' })
+    .expect(201);
+  const listed = await deployed
+    .get('/api/tasks?path=tasks&search=Deployment%20query&page=1&limit=10')
+    .expect(200);
+  assert.deepEqual(
+    listed.body.tasks.map((task) => task.id),
+    [created.body.task.id],
+  );
+  const absent = await deployed
+    .get('/api/tasks?path=tasks&search=not-present')
+    .expect(200);
+  assert.equal(absent.body.tasks.length, 0);
+  const preParsed = request.agent((req, res) => {
+    req.query = Object.fromEntries(new URL(req.url, 'http://localhost').searchParams);
+    req.query.path = 'vercel-routing-metadata';
+    return vercelHandler(req, res);
+  });
+  await preParsed
+    .post('/api/auth/login')
+    .set('Origin', origin)
+    .send({ email: 'deployment@example.com', password: 'deployment-passphrase' })
+    .expect(200);
+  const preParsedList = await preParsed
+    .get('/api/tasks?search=Deployment%20query&limit=10')
+    .expect(200);
+  assert.deepEqual(
+    preParsedList.body.tasks.map((task) => task.id),
+    [created.body.task.id],
+  );
+  await deployed
+    .get('/api/tasks/calendar?path=tasks%2Fcalendar&month=2026-10')
+    .expect(200);
+  await deployed.get('/api/tasks?path=tasks&unknown=value').expect(400);
+  await deployed.get('/api/tasks?path=tasks&page=0').expect(400);
+  // Ordinary local requests retain strict validation, including unknown path keys.
+  await alice.get('/api/tasks?path=tasks').expect(400);
 });
 test('create, list, and update tasks without losing omitted fields', async () => {
   const created = await alice

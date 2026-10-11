@@ -4,6 +4,7 @@
 
 - npm run test:unit: dates, field limits, injection rejection, partial updates, pagination, checklist constraints, planning boundaries, timer calculations, and password hashing.
 - npm test: real temporary MongoDB tests for safe account responses, cookies, authorization, literal search, pagination, expiry, logout, planning queries, owner-scoped project summaries, and checklist persistence.
+- The Vercel entry-point regression covers registration, task creation, filtered task loading, and Calendar with rewrite-injected `path` metadata, including pre-parsed queries. Other unknown query keys and invalid pagination remain rejected.
 - npm run test:browser: Chromium demo and database-backed account flows, screenshots, mobile overflow, and uncaught errors.
 - npm run build: compile the multipage public site and React workspace.
 - npm run format:check: consistent formatting.

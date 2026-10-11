@@ -57,6 +57,9 @@ Temporary databases and downloaded tools stay in the ignored project cache. Inte
 
 ## Accessibility and layout
 
+- On a phone, open Calendar directly from the fixed bottom bar. Scroll to the end of the page and confirm the bar stays visible without covering the footer. Today and Tasks must return to the top of their view.
+- Open More and check that every workspace view is available. Close with Escape or the close button and confirm focus returns to More. Rotate to desktop width with the menu open: it must close and restore the sidebar.
+- From More, open Search or Account settings (signed-in mode), and confirm the dialog handoff works. Test Leave demo and Sign out. Mobile tabs and menu controls must remain usable with touch and keyboard.
 - Keyboard-only navigation, Escape to close a dialog, labels, and focus return.
 - Inspect widths of 375, 768, and 1440 pixels, and 200% zoom.
 - Verify contrast and reduced-motion preferences.

@@ -7,6 +7,37 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 import mongoose from 'mongoose';
 import app from '../server/app.js';
 
+// Exercise the actual navigation available at the current viewport.
+async function openWorkspaceView(page, label) {
+  // Account reloads briefly render the authentication check before the workspace.
+  await page.locator('.workspace').waitFor();
+  if (await page.evaluate(() => window.matchMedia('(min-width: 801px)').matches)) {
+    await page
+      .locator('.sidebar')
+      .getByRole('button', {
+        name: ['Blockers', 'Archive', 'Trash'].includes(label)
+          ? new RegExp('^' + label)
+          : label,
+        exact: !['Blockers', 'Archive', 'Trash'].includes(label),
+      })
+      .click();
+    return;
+  }
+  const tabs = page.getByRole('navigation', { name: 'Quick workspace navigation' });
+  const quick = tabs.getByRole('button', {
+    name: label === 'Task board' ? 'Tasks' : label,
+    exact: true,
+  });
+  if (await quick.count()) await quick.click();
+  else {
+    await tabs.getByRole('button', { name: 'More workspace views' }).click();
+    await page
+      .getByRole('dialog')
+      .getByRole('button', { name: label, exact: true })
+      .click();
+  }
+}
+
 const teamsOnly = process.argv.includes('--teams-only');
 const demoOnly = process.argv.includes('--demo-only');
 let mongo, apiServer, vite, browser;
@@ -130,20 +161,14 @@ try {
       .fill('Waiting for the final brief');
     await page.getByRole('button', { name: 'Save task', exact: true }).click();
     await page.getByText('Waiting for the final brief', { exact: true }).waitFor();
-    await page
-      .locator('.sidebar')
-      .getByRole('button', { name: /^Blockers/ })
-      .click();
+    await openWorkspaceView(page, 'Blockers');
     await page.getByRole('heading', { name: 'Browser test task', exact: true }).waitFor();
     assert.equal(await page.locator('.task-card').count(), 1);
     await page
       .getByLabel('Status for Browser test task', { exact: true })
       .selectOption('todo');
     await page.getByText('Nothing is blocked here.', { exact: true }).waitFor();
-    await page
-      .locator('.sidebar')
-      .getByRole('button', { name: 'Task board', exact: true })
-      .click();
+    await openWorkspaceView(page, 'Task board');
     await page.getByRole('heading', { name: 'Browser test task', exact: true }).waitFor();
     assert.equal(
       await page.getByText('Waiting for the final brief', { exact: true }).count(),
@@ -230,10 +255,7 @@ try {
     await page
       .getByRole('heading', { name: 'Renamed browser task', exact: true })
       .waitFor({ state: 'detached' });
-    await page
-      .locator('.sidebar')
-      .getByRole('button', { name: /^Trash/ })
-      .click();
+    await openWorkspaceView(page, 'Trash');
     await page
       .getByRole('heading', { name: 'Renamed browser task', exact: true })
       .waitFor();
@@ -256,10 +278,7 @@ try {
     await page
       .getByRole('heading', { name: 'Renamed browser task', exact: true })
       .waitFor({ state: 'detached' });
-    await page
-      .locator('.sidebar')
-      .getByRole('button', { name: 'Task board', exact: true })
-      .click();
+    await openWorkspaceView(page, 'Task board');
     await page
       .getByRole('heading', { name: 'Renamed browser task', exact: true })
       .waitFor();
@@ -269,10 +288,7 @@ try {
     await page
       .getByRole('heading', { name: 'Renamed browser task', exact: true })
       .waitFor({ state: 'detached' });
-    await page
-      .locator('.sidebar')
-      .getByRole('button', { name: /^Archive/ })
-      .click();
+    await openWorkspaceView(page, 'Archive');
     await page
       .getByRole('heading', { name: 'Renamed browser task', exact: true })
       .waitFor();
@@ -313,10 +329,7 @@ try {
       await page.getByRole('button', { name: 'New task', exact: true }).count(),
       0,
     );
-    await page
-      .locator('.sidebar')
-      .getByRole('button', { name: /^Trash/ })
-      .click();
+    await openWorkspaceView(page, 'Trash');
     await page
       .getByRole('heading', { name: 'Renamed browser task', exact: true })
       .waitFor();
@@ -350,10 +363,7 @@ try {
       await page.getByRole('button', { name: 'Create a task', exact: true }).count(),
       0,
     );
-    await page
-      .locator('.sidebar')
-      .getByRole('button', { name: 'Task board', exact: true })
-      .click();
+    await openWorkspaceView(page, 'Task board');
     await page.getByRole('heading', { name: 'Reusable copy', exact: true }).waitFor();
     console.log(
       'PASS: demo archive, read-only recovery views, restore, and guarded permanent deletion.',
@@ -363,10 +373,7 @@ try {
     await page
       .getByRole('heading', { name: 'Build the homepage', exact: true })
       .waitFor();
-    await page
-      .locator('.sidebar')
-      .getByRole('button', { name: 'Today', exact: true })
-      .click();
+    await openWorkspaceView(page, 'Today');
     await page.waitForFunction(
       () => document.querySelectorAll('.task-card').length === 2,
     );
@@ -375,10 +382,7 @@ try {
         .getByRole('heading', { name: 'Build the homepage', exact: true })
         .isVisible(),
     );
-    await page
-      .locator('.sidebar')
-      .getByRole('button', { name: 'Upcoming', exact: true })
-      .click();
+    await openWorkspaceView(page, 'Upcoming');
     // Both calendar views contain two samples; wait for the new view's content first.
     await page
       .getByRole('heading', { name: 'Review accessibility', exact: true })
@@ -392,10 +396,7 @@ try {
     await page.waitForFunction(
       () => document.querySelectorAll('.task-card').length === 0,
     );
-    await page
-      .locator('.sidebar')
-      .getByRole('button', { name: 'Today', exact: true })
-      .click();
+    await openWorkspaceView(page, 'Today');
     await page.waitForFunction(
       () => document.querySelectorAll('.task-card').length === 4,
     );
@@ -405,10 +406,7 @@ try {
       () => document.querySelectorAll('.task-card').length === 2,
     );
     console.log('PASS: planning views refresh after the calendar day changes.');
-    await page
-      .locator('.sidebar')
-      .getByRole('button', { name: 'Projects', exact: true })
-      .click();
+    await openWorkspaceView(page, 'Projects');
     await page.getByRole('heading', { name: 'Your projects', exact: true }).waitFor();
     await page.waitForFunction(
       () => document.querySelectorAll('.project-card').length === 2,
@@ -427,20 +425,14 @@ try {
       await page.getByLabel('Filter by project', { exact: true }).inputValue(),
       'Website launch',
     );
-    await page
-      .locator('.sidebar')
-      .getByRole('button', { name: 'Task board', exact: true })
-      .click();
+    await openWorkspaceView(page, 'Task board');
     await page.waitForFunction(
       () => document.querySelectorAll('.task-card').length === 6,
     );
     console.log(
       'PASS: planning navigation, project progress, checklists, and safe task duplication.',
     );
-    await page
-      .locator('.sidebar')
-      .getByRole('button', { name: 'Focus timer', exact: true })
-      .click();
+    await openWorkspaceView(page, 'Focus timer');
     await page
       .getByRole('heading', { name: 'Make space to focus.', exact: true })
       .waitFor();
@@ -451,10 +443,7 @@ try {
     await page.getByRole('button', { name: 'Pause', exact: true }).click();
     await page.getByRole('button', { name: 'Resume', exact: true }).waitFor();
     await page.reload();
-    await page
-      .locator('.sidebar')
-      .getByRole('button', { name: 'Focus timer', exact: true })
-      .click();
+    await openWorkspaceView(page, 'Focus timer');
     await page.getByRole('button', { name: 'Resume', exact: true }).waitFor();
     await page.getByRole('button', { name: 'Reset', exact: true }).click();
     await page.getByRole('timer').filter({ hasText: '01:00' }).waitFor();
@@ -465,33 +454,81 @@ try {
       timer.deadline = Date.now() - 1000;
       localStorage.setItem(key, JSON.stringify(timer));
     });
-    await page
-      .locator('.sidebar')
-      .getByRole('button', { name: 'Task board', exact: true })
-      .click();
-    await page
-      .locator('.sidebar')
-      .getByRole('button', { name: 'Focus timer', exact: true })
-      .click();
+    await openWorkspaceView(page, 'Task board');
+    await openWorkspaceView(page, 'Focus timer');
     await page
       .getByText('Focus session complete. Take a well-earned break.', { exact: true })
       .waitFor();
     await page.getByRole('button', { name: 'Reset', exact: true }).click();
     await page.getByLabel('Session length', { exact: true }).selectOption('25');
     await page.screenshot({ path: 'docs/screenshots/focus-desktop.png', fullPage: true });
-    await page
-      .locator('.sidebar')
-      .getByRole('button', { name: 'Task board', exact: true })
-      .click();
+    await openWorkspaceView(page, 'Task board');
     await page.waitForFunction(
       () => document.querySelectorAll('.task-card').length === 6,
     );
     console.log('PASS: focus timer pause, refresh, reset, and deadline completion.');
 
     await page.setViewportSize({ width: 375, height: 812 });
+    const quickNavigation = page.getByRole('navigation', {
+      name: 'Quick workspace navigation',
+    });
+    assert.ok(await quickNavigation.isVisible());
+    assert.equal(await page.locator('.sidebar').isVisible(), false);
+    await quickNavigation.getByRole('button', { name: 'Calendar', exact: true }).click();
+    await page
+      .getByRole('heading', { name: 'Your deadline calendar', exact: true })
+      .waitFor();
+    assert.equal(
+      await quickNavigation
+        .getByRole('button', { name: 'Calendar', exact: true })
+        .getAttribute('aria-pressed'),
+      'true',
+    );
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    const quickBounds = await quickNavigation.boundingBox();
+    assert.ok(quickBounds && quickBounds.y + quickBounds.height <= 813);
+    await quickNavigation.getByRole('button', { name: 'Today', exact: true }).click();
+    await page.getByRole('heading', { name: /Make today count/ }).waitFor();
+    assert.equal(await page.evaluate(() => window.scrollY), 0);
+    const moreButton = quickNavigation.getByRole('button', {
+      name: 'More workspace views',
+    });
+    await moreButton.click();
+    const mobileMenu = page.getByRole('dialog', { name: 'Everything, within reach.' });
+    assert.ok(await mobileMenu.isVisible());
+    assert.equal(
+      await mobileMenu
+        .getByRole('navigation', { name: 'All workspace views' })
+        .getByRole('button')
+        .count(),
+      13,
+    );
+    assert.equal(
+      await mobileMenu.evaluate((menu) => menu.contains(document.activeElement)),
+      true,
+    );
+    await page.keyboard.press('Escape');
+    assert.equal(await page.locator('.mobile-menu').count(), 0);
+    assert.ok(await moreButton.evaluate((button) => button === document.activeElement));
+    await openWorkspaceView(page, 'Focus timer');
+    await page.getByRole('heading', { name: /A little room to focus/ }).waitFor();
+    await moreButton.click();
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.waitForFunction(() => !document.querySelector('.mobile-menu'));
+    assert.ok(await page.locator('.sidebar').isVisible());
+    assert.equal(await quickNavigation.isVisible(), false);
+    await page.setViewportSize({ width: 375, height: 812 });
+    await openWorkspaceView(page, 'Task board');
+    for (const button of await quickNavigation.getByRole('button').all()) {
+      const bounds = await button.boundingBox();
+      assert.ok(bounds && bounds.width >= 44 && bounds.height >= 44);
+    }
+    console.log(
+      'PASS: direct mobile calendar access, fixed tabs, full menu, Escape focus restoration, touch targets and desktop rotation.',
+    );
     await page.screenshot({
       path: 'docs/screenshots/workspace-mobile.png',
-      fullPage: true,
+      fullPage: false,
     });
     assert.equal(
       await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
@@ -499,7 +536,7 @@ try {
     );
     assert.equal(
       await page.getByRole('button', { name: 'Leave demo', exact: true }).count(),
-      2,
+      1,
     );
     const topExit = page
       .locator('.topbar')
@@ -531,10 +568,7 @@ try {
     await projectPage
       .getByRole('heading', { name: 'Build the homepage', exact: true })
       .waitFor();
-    await projectPage
-      .locator('.sidebar')
-      .getByRole('button', { name: 'Projects', exact: true })
-      .click();
+    await openWorkspaceView(projectPage, 'Projects');
     await projectPage
       .getByRole('button', {
         name: 'Add project details for Website launch',
@@ -607,10 +641,7 @@ try {
       .waitFor();
     await projectPage.getByRole('button', { name: 'Cancel', exact: true }).click();
     await projectPage.reload();
-    await projectPage
-      .locator('.sidebar')
-      .getByRole('button', { name: 'Projects', exact: true })
-      .click();
+    await openWorkspaceView(projectPage, 'Projects');
     await projectPage
       .getByRole('button', {
         name: 'Edit project details for A project with no tasks',
@@ -645,10 +676,7 @@ try {
     await projectPage
       .getByRole('heading', { name: 'First project task', exact: true })
       .waitFor();
-    await projectPage
-      .locator('.sidebar')
-      .getByRole('button', { name: 'Projects', exact: true })
-      .click();
+    await openWorkspaceView(projectPage, 'Projects');
     await projectPage
       .getByRole('heading', { name: 'A project with no tasks', exact: true })
       .waitFor();
@@ -804,10 +832,7 @@ try {
     await templatePage
       .getByText('Waiting for the shared notes', { exact: true })
       .waitFor();
-    await templatePage
-      .locator('.sidebar')
-      .getByRole('button', { name: /^Blockers/ })
-      .click();
+    await openWorkspaceView(templatePage, 'Blockers');
     await templatePage
       .getByRole('list', { name: 'Tasks on this page', exact: true })
       .waitFor();
@@ -1006,10 +1031,7 @@ try {
         .getByRole('heading', { name: 'MongoDB saved task', exact: true })
         .waitFor({ state: 'detached' });
       await page.reload();
-      await page
-        .locator('.sidebar')
-        .getByRole('button', { name: /^Archive/ })
-        .click();
+      await openWorkspaceView(page, 'Archive');
       await page
         .getByRole('heading', { name: 'MongoDB saved task', exact: true })
         .waitFor();
@@ -1019,10 +1041,7 @@ try {
       await page
         .getByRole('heading', { name: 'No archived tasks yet', exact: true })
         .waitFor();
-      await page
-        .locator('.sidebar')
-        .getByRole('button', { name: 'Task board', exact: true })
-        .click();
+      await openWorkspaceView(page, 'Task board');
       await page
         .getByRole('heading', { name: 'MongoDB saved task', exact: true })
         .waitFor();
@@ -1038,10 +1057,7 @@ try {
       assert.equal(accountExport.tasks[0].title, 'MongoDB saved task');
       assert.equal(accountExport.tasks[0].lifecycle, 'active');
       console.log('PASS: account task export downloads only its own records.');
-      await page
-        .locator('.sidebar')
-        .getByRole('button', { name: 'Projects', exact: true })
-        .click();
+      await openWorkspaceView(page, 'Projects');
       await page.getByRole('button', { name: 'New project', exact: true }).click();
       await page.getByLabel('Project name', { exact: true }).fill('Account launch');
       await page
@@ -1050,10 +1066,7 @@ try {
       await page.getByRole('button', { name: 'Save project', exact: true }).click();
       await page.getByRole('heading', { name: 'Account launch', exact: true }).waitFor();
       await page.reload();
-      await page
-        .locator('.sidebar')
-        .getByRole('button', { name: 'Projects', exact: true })
-        .click();
+      await openWorkspaceView(page, 'Projects');
       await page
         .getByRole('button', {
           name: 'Edit project details for Account launch',
@@ -1135,7 +1148,7 @@ try {
       );
     });
     await calendarPage.reload();
-    await calendarPage.getByRole('button', { name: 'Calendar', exact: true }).click();
+    await openWorkspaceView(calendarPage, 'Calendar');
     await calendarPage.getByLabel('Calendar month', { exact: true }).fill('2026-10');
     await calendarPage
       .getByText('37 dated tasks in this month', { exact: true })
@@ -1242,9 +1255,7 @@ try {
     // Freeze the calendar day so attention rules do not depend on when CI runs.
     await calendarPage.clock.install({ time: new Date('2026-10-09T12:00:00') });
     await calendarPage.reload();
-    await calendarPage
-      .getByRole('button', { name: 'Action Center', exact: true })
-      .click();
+    await openWorkspaceView(calendarPage, 'Action Center');
     await calendarPage
       .getByRole('heading', { name: 'Work that needs attention', exact: true })
       .waitFor();
@@ -1343,7 +1354,7 @@ try {
       await milestonePage.getByLabel('Search tasks', { exact: true }).inputValue(),
       'Build the homepage',
     );
-    await milestonePage.getByRole('button', { name: 'Projects', exact: true }).click();
+    await openWorkspaceView(milestonePage, 'Projects');
     await milestonePage.getByRole('button', { name: 'New project', exact: true }).click();
     await milestonePage
       .getByLabel('Project name', { exact: true })
@@ -1375,7 +1386,7 @@ try {
     await milestoneCard.getByText('Milestones (0/1)', { exact: true }).click();
     await milestoneCard.getByText('Prepare launch', { exact: true }).waitFor();
     await milestonePage.reload();
-    await milestonePage.getByRole('button', { name: 'Projects', exact: true }).click();
+    await openWorkspaceView(milestonePage, 'Projects');
     await milestonePage
       .getByRole('button', {
         name: 'Edit project details for Milestone release',
@@ -1435,7 +1446,7 @@ try {
     });
     notebookPage.on('pageerror', (error) => errors.push(error.message));
     await notebookPage.goto(origin + '/app.html?demo=1');
-    await notebookPage.getByRole('button', { name: 'Projects', exact: true }).click();
+    await openWorkspaceView(notebookPage, 'Projects');
     await notebookPage.getByRole('button', { name: 'New project', exact: true }).click();
     await notebookPage
       .getByLabel('Project name', { exact: true })
@@ -1504,7 +1515,7 @@ try {
       .getByRole('button', { name: 'Close project notebook', exact: true })
       .click();
     await notebookPage.reload();
-    await notebookPage.getByRole('button', { name: 'Projects', exact: true }).click();
+    await openWorkspaceView(notebookPage, 'Projects');
     await notebookPage
       .getByRole('button', { name: 'Open notebook for Notebook launch', exact: true })
       .click();
@@ -1529,7 +1540,7 @@ try {
     await notebookPage
       .getByRole('heading', { name: 'Follow up: Release review', exact: true })
       .waitFor();
-    await notebookPage.getByRole('button', { name: 'Projects', exact: true }).click();
+    await openWorkspaceView(notebookPage, 'Projects');
     await notebookPage
       .getByRole('button', { name: 'Open notebook for Notebook launch', exact: true })
       .click();
@@ -1567,7 +1578,7 @@ try {
     });
     timePage.on('pageerror', (error) => errors.push(error.message));
     await timePage.goto(origin + '/app.html?demo=1');
-    await timePage.getByRole('button', { name: 'Work log', exact: true }).click();
+    await openWorkspaceView(timePage, 'Work log');
     await timePage
       .getByRole('heading', { name: 'Your weekly work log', exact: true })
       .waitFor();
@@ -1662,7 +1673,7 @@ try {
       fullPage: true,
     });
     await timePage.reload();
-    await timePage.getByRole('button', { name: 'Work log', exact: true }).click();
+    await openWorkspaceView(timePage, 'Work log');
     await timePage.getByLabel('Week containing', { exact: true }).fill('2026-12-29');
     await timePage.getByRole('heading', { name: 'Review notes', exact: true }).waitFor();
     timePage.once('dialog', (dialog) => dialog.dismiss());
@@ -1679,7 +1690,7 @@ try {
       .waitFor({ state: 'hidden' });
     await timePage.close();
     if (!demoOnly) {
-      await page.getByRole('button', { name: 'Work log', exact: true }).click();
+      await openWorkspaceView(page, 'Work log');
       await page.getByRole('button', { name: 'Record time', exact: true }).click();
       await page
         .getByLabel('Work activity', { exact: true })
@@ -1692,7 +1703,7 @@ try {
         .getByRole('heading', { name: 'Account work session', exact: true })
         .waitFor();
       await page.reload();
-      await page.getByRole('button', { name: 'Work log', exact: true }).click();
+      await openWorkspaceView(page, 'Work log');
       await page.getByLabel('Week containing', { exact: true }).fill('2026-12-29');
       await page
         .getByRole('heading', { name: 'Account work session', exact: true })
@@ -1711,7 +1722,7 @@ try {
     });
     referencePage.on('pageerror', (error) => errors.push(error.message));
     await referencePage.goto(origin + '/app.html?demo=1');
-    await referencePage.getByRole('button', { name: 'Projects', exact: true }).click();
+    await openWorkspaceView(referencePage, 'Projects');
     await referencePage
       .getByRole('button', {
         name: 'Add project details for Website launch',
@@ -1760,7 +1771,7 @@ try {
       .getByRole('status')
       .filter({ hasText: '0 existing tasks connected' })
       .waitFor();
-    await referencePage.getByRole('button', { name: 'Task board', exact: true }).click();
+    await openWorkspaceView(referencePage, 'Task board');
     await referencePage.getByRole('button', { name: 'New task', exact: true }).click();
     await referencePage.getByLabel('Task title', { exact: true }).fill('Stable new task');
     await referencePage.getByLabel('Project', { exact: true }).fill('New stable project');
@@ -1794,7 +1805,7 @@ try {
     });
     timelinePage.on('pageerror', (error) => errors.push(error.message));
     await timelinePage.goto(origin + '/app.html?demo=1');
-    await timelinePage.getByRole('button', { name: 'Projects', exact: true }).click();
+    await openWorkspaceView(timelinePage, 'Projects');
     await timelinePage
       .getByRole('button', {
         name: 'Add project details for Website launch',
@@ -1967,7 +1978,7 @@ try {
       .getByRole('heading', { name: 'Bring your task backup back', exact: true })
       .waitFor({ state: 'hidden' });
     await ownerPage.setViewportSize({ width: 1440, height: 1000 });
-    await ownerPage.getByRole('button', { name: 'Team projects', exact: true }).click();
+    await openWorkspaceView(ownerPage, 'Team projects');
     await ownerPage
       .getByLabel('Choose a project', { exact: true })
       .selectOption(teamProject.id);
@@ -1979,7 +1990,7 @@ try {
       .getByRole('button', { name: 'Cancel invitation', exact: true })
       .waitFor();
     await memberPage.goto(origin + '/app.html');
-    await memberPage.getByRole('button', { name: 'Team projects', exact: true }).click();
+    await openWorkspaceView(memberPage, 'Team projects');
     await memberPage.getByRole('button', { name: 'Accept', exact: true }).click();
     await memberPage
       .getByLabel('Choose a project', { exact: true })
@@ -2039,7 +2050,7 @@ try {
     // Rate-limit behavior is covered separately; start a fresh bucket for the next scenario.
     await RateBucket.deleteMany({ key: /^api:/ });
     await memberPage.reload();
-    await memberPage.getByRole('button', { name: 'Team projects', exact: true }).click();
+    await openWorkspaceView(memberPage, 'Team projects');
     await memberPage
       .getByLabel('Choose a project', { exact: true })
       .selectOption(teamProject.id);
@@ -2050,7 +2061,7 @@ try {
       memberId,
     );
 
-    await ownerPage.getByRole('button', { name: 'Portfolio', exact: true }).click();
+    await openWorkspaceView(ownerPage, 'Portfolio');
     await ownerPage
       .getByRole('heading', { name: 'Discussion notifications (1)', exact: true })
       .waitFor();
@@ -2203,7 +2214,7 @@ try {
     }
 
     await ownerPage.setViewportSize({ width: 1440, height: 1000 });
-    await memberPage.getByRole('button', { name: 'Portfolio', exact: true }).click();
+    await openWorkspaceView(memberPage, 'Portfolio');
     await memberPage
       .getByRole('heading', { name: 'Your project portfolio', exact: true })
       .waitFor();
@@ -2271,6 +2282,16 @@ try {
       fullPage: true,
     });
     await memberPage.setViewportSize({ width: 375, height: 900 });
+    await memberPage.getByRole('button', { name: 'More workspace views' }).click();
+    await memberPage
+      .getByRole('dialog')
+      .getByRole('button', { name: 'Account settings', exact: true })
+      .click();
+    await memberPage
+      .getByRole('dialog', { name: 'Keep your account in your hands' })
+      .waitFor();
+    await memberPage.keyboard.press('Escape');
+    assert.equal(await memberPage.locator('dialog').count(), 0);
     await memberPage.evaluate(() => window.scrollTo(0, 0));
     await memberPage.screenshot({
       path: 'docs/screenshots/team-mobile.png',
@@ -2293,7 +2314,7 @@ try {
     await memberPage.getByRole('button', { name: 'Request review', exact: true }).click();
     await memberPage.getByText('Review requested.', { exact: true }).waitFor();
 
-    await ownerPage.getByRole('button', { name: 'Portfolio', exact: true }).click();
+    await openWorkspaceView(ownerPage, 'Portfolio');
     await ownerPage
       .getByRole('heading', { name: 'Awaiting your review (1)', exact: true })
       .waitFor();

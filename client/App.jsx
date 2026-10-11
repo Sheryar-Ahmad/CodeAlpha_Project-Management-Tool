@@ -4,7 +4,8 @@ import Portfolio from './components/Portfolio.jsx';
 import TeamWorkspace from './components/TeamWorkspace.jsx';
 import TaskImportDialog from './components/TaskImportDialog.jsx';
 import AccountSettings, { AccountDeletionScreen } from './components/AccountSettings.jsx';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import useModal from './hooks/useModal.js';
 import {
   Users,
   Download,
@@ -28,6 +29,8 @@ import {
   ShieldCheck,
   Sparkles,
   Target,
+  Menu,
+  X,
 } from 'lucide-react';
 import AuthScreen from './components/AuthScreen.jsx';
 import TaskCard, { statuses } from './components/TaskCard.jsx';
@@ -42,6 +45,111 @@ import FocusTimer from './components/FocusTimer.jsx';
 import useWorkspace from './hooks/useWorkspace.js';
 import { request, today } from './lib/api.js';
 import { addDays, attentionReasons } from '../shared/planning.js';
+
+// One navigation list keeps the desktop sidebar and mobile menu in sync.
+const navigationItems = [
+  ['all', 'Task board', LayoutDashboard],
+  ['today', 'Today', CalendarDays],
+  ['upcoming', 'Upcoming', CalendarRange],
+  ['calendar', 'Calendar', CalendarDays],
+  ['attention', 'Action Center', Inbox],
+  ['projects', 'Projects', FolderOpen],
+  ['teams', 'Team projects', Users],
+  ['portfolio', 'Portfolio', Target],
+  ['blocked', 'Blockers', CirclePause],
+  ['focus', 'Focus timer', Clock3],
+  ['time', 'Work log', Timer],
+  ['archived', 'Archive', Archive],
+  ['trash', 'Trash', Trash2],
+];
+const mobileTabs = [
+  ['all', 'Tasks', LayoutDashboard],
+  ['today', 'Today', CalendarDays],
+  ['calendar', 'Calendar', CalendarRange],
+  ['projects', 'Projects', FolderOpen],
+];
+
+function MobileMenu({
+  view,
+  busy,
+  mode,
+  onChoose,
+  onClose,
+  onSearch,
+  onAccount,
+  onExit,
+}) {
+  const ref = useRef(null);
+  useModal(ref);
+  useEffect(() => {
+    // Avoid leaving a mobile-only dialog open when a tablet rotates to desktop width.
+    const screen = window.matchMedia('(min-width: 801px)');
+    function resized() {
+      if (screen.matches) onClose();
+    }
+    screen.addEventListener('change', resized);
+    return () => screen.removeEventListener('change', resized);
+  }, [onClose]);
+  return (
+    <dialog
+      ref={ref}
+      className="mobile-menu"
+      aria-labelledby="mobile-menu-title"
+      onCancel={onClose}
+    >
+      <div className="dialog-heading">
+        <div>
+          <p className="eyebrow">YOUR WORKSPACE</p>
+          <h2 id="mobile-menu-title">Everything, within reach.</h2>
+        </div>
+        <button
+          type="button"
+          className="icon-button"
+          aria-label="Close navigation"
+          onClick={onClose}
+        >
+          <X size={20} aria-hidden="true" />
+        </button>
+      </div>
+      <nav className="mobile-menu-grid" aria-label="All workspace views">
+        {navigationItems.map(([value, label, Icon]) => (
+          <button
+            key={value}
+            type="button"
+            aria-pressed={view === value}
+            disabled={busy}
+            onClick={() => onChoose(value)}
+          >
+            <Icon size={20} aria-hidden="true" />
+            <span>{label}</span>
+          </button>
+        ))}
+      </nav>
+      <div className="mobile-menu-actions">
+        <button type="button" disabled={busy} onClick={onSearch}>
+          <Search size={18} aria-hidden="true" />
+          Search workspace
+        </button>
+        {mode === 'account' && (
+          <button type="button" disabled={busy} onClick={onAccount}>
+            <ShieldCheck size={18} aria-hidden="true" />
+            Account settings
+          </button>
+        )}
+        <a href="/#features">
+          About Orbit <ArrowUpRight size={16} aria-hidden="true" />
+        </a>
+        <a href="/privacy.html">
+          Privacy &amp; data <ShieldCheck size={16} aria-hidden="true" />
+        </a>
+        <button type="button" disabled={busy} onClick={onExit}>
+          <LogOut size={18} aria-hidden="true" />
+          {mode === 'demo' ? 'Leave demo' : 'Sign out'}
+        </button>
+      </div>
+    </dialog>
+  );
+}
 
 const workspaceViews = {
   portfolio: {
@@ -127,6 +235,12 @@ function Workspace({ mode, user, onExit, onExpired, onDeleting }) {
   const [layout, setLayout] = useState('board');
   const [actionError, setActionError] = useState('');
   const [signingOut, setSigningOut] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  function chooseMobileView(value) {
+    setMobileMenuOpen(false);
+    workspace.setView(value);
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }
   useEffect(() => {
     function shortcut(event) {
       if (
@@ -314,21 +428,7 @@ function Workspace({ mode, user, onExit, onExpired, onDeleting }) {
           </div>
         </div>
         <nav aria-label="Workspace">
-          {[
-            ['all', 'Task board', LayoutDashboard],
-            ['today', 'Today', CalendarDays],
-            ['upcoming', 'Upcoming', CalendarRange],
-            ['calendar', 'Calendar', CalendarDays],
-            ['attention', 'Action Center', Inbox],
-            ['projects', 'Projects', FolderOpen],
-            ['teams', 'Team projects', Users],
-            ['portfolio', 'Portfolio', Target],
-            ['blocked', 'Blockers', CirclePause],
-            ['focus', 'Focus timer', Clock3],
-            ['time', 'Work log', Timer],
-            ['archived', 'Archive', Archive],
-            ['trash', 'Trash', Trash2],
-          ].map(([value, label, Icon]) => (
+          {navigationItems.map(([value, label, Icon]) => (
             <button
               type="button"
               key={value}
@@ -792,6 +892,52 @@ function Workspace({ mode, user, onExit, onExpired, onDeleting }) {
           </div>
         </footer>
       </main>
+      <nav className="mobile-tabbar" aria-label="Quick workspace navigation">
+        {mobileTabs.map(([value, label, Icon]) => (
+          <button
+            key={value}
+            type="button"
+            aria-pressed={workspace.view === value}
+            disabled={workspace.busy}
+            onClick={() => chooseMobileView(value)}
+          >
+            <Icon size={21} aria-hidden="true" />
+            <span>{label}</span>
+          </button>
+        ))}
+        <button
+          type="button"
+          aria-label="More workspace views"
+          aria-haspopup="dialog"
+          aria-expanded={mobileMenuOpen}
+          disabled={workspace.busy}
+          onClick={() => setMobileMenuOpen(true)}
+        >
+          <Menu size={21} aria-hidden="true" />
+          <span>More</span>
+        </button>
+      </nav>
+      {mobileMenuOpen && (
+        <MobileMenu
+          view={workspace.view}
+          busy={workspace.busy || signingOut}
+          mode={mode}
+          onChoose={chooseMobileView}
+          onClose={() => setMobileMenuOpen(false)}
+          onSearch={() => {
+            setMobileMenuOpen(false);
+            setCommandOpen(true);
+          }}
+          onAccount={() => {
+            setMobileMenuOpen(false);
+            setAccountOpen(true);
+          }}
+          onExit={() => {
+            setMobileMenuOpen(false);
+            exit();
+          }}
+        />
+      )}
       {notebookProject && (
         <ProjectNotebook
           project={notebookProject}

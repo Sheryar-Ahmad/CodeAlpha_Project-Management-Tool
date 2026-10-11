@@ -1,5 +1,166 @@
 /* Orbit | Copyright (c) 2026 Sheheryar Ahmad | See NOTICE. */
 /* Workspace hierarchy: keep content readable without changing the public palette. */
+.mobile-tabbar {
+  display: none;
+}
+
+/* A native dialog provides Escape handling, focus containment and an inert background. */
+.mobile-menu {
+  width: min(100% - 24px, 520px);
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 20px;
+}
+.mobile-menu .dialog-heading {
+  gap: 12px;
+  align-items: flex-start;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: white;
+  padding-bottom: 12px;
+}
+.mobile-menu .dialog-heading h2 {
+  font-size: 21px;
+}
+.mobile-menu .eyebrow {
+  font-size: 9px;
+  margin-bottom: 7px;
+}
+.mobile-menu .icon-button {
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 8px;
+  background: var(--surface);
+}
+.mobile-menu-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 22px 0;
+}
+.mobile-menu-grid button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  border: 1px solid var(--line);
+  background: white;
+  color: var(--ink);
+  border-radius: 10px;
+  padding: 10px;
+  font-size: 12px;
+  text-align: left;
+}
+.mobile-menu-grid svg {
+  flex-shrink: 0;
+  color: var(--purple);
+}
+.mobile-menu-grid button[aria-pressed='true'] {
+  background: #efedff;
+  color: var(--purple);
+  border-color: #c9bff2;
+}
+.mobile-menu-actions {
+  display: grid;
+  gap: 6px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.mobile-menu-actions button,
+.mobile-menu-actions a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  padding: 8px;
+  text-align: left;
+}
+body:has(.mobile-menu[open]) {
+  overflow: hidden;
+}
+
+@media (max-width: 800px) {
+  .workspace {
+    display: block;
+  }
+  .workspace .sidebar {
+    display: none;
+  }
+  .workspace .dashboard {
+    padding: 0 18px calc(96px + env(safe-area-inset-bottom, 0px));
+  }
+  .workspace .topbar {
+    min-height: 64px;
+  }
+  .workspace .topbar-actions .pill,
+  .workspace .workspace-search-button kbd {
+    display: none;
+  }
+  .workspace .topbar-actions {
+    flex-wrap: wrap;
+  }
+  .workspace .page-heading h1 {
+    font-size: 28px;
+  }
+  .workspace .page-heading .button,
+  .workspace .demo-exit,
+  .workspace .workspace-search-button,
+  .workspace .task-actions button,
+  .workspace .task-actions select {
+    min-height: 44px;
+  }
+  .workspace input,
+  .workspace textarea,
+  .workspace select,
+  dialog input,
+  dialog textarea,
+  dialog select {
+    font-size: 16px;
+  }
+  .mobile-tabbar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 20;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 4px;
+    padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid var(--line);
+    background: white;
+    box-shadow: 0 -4px 20px #202b4908;
+  }
+  .mobile-tabbar button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    min-height: 52px;
+    padding: 6px 2px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 600;
+  }
+  .mobile-tabbar button[aria-pressed='true'],
+  .mobile-tabbar button[aria-expanded='true'] {
+    color: var(--purple);
+    background: #efedff;
+  }
+}
+
 .workspace .sidebar {
   position: sticky;
   top: 0;
@@ -2271,5 +2432,33 @@ textarea:disabled {
 @media (max-width: 600px) {
   .task-details-content {
     padding: 16px;
+  }
+}
+
+@media (max-width: 800px) {
+  /* Keep totals nearby without making phone users scroll past four large tiles. */
+  .workspace-summary .stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .workspace-summary .stats article {
+    min-width: 0;
+    padding: 10px 8px;
+    border-radius: 10px;
+  }
+  .workspace-summary .stat-label {
+    min-height: 28px;
+  }
+  .workspace-summary .stat-label span {
+    font-size: 10px;
+    line-height: 1.35;
+  }
+  .workspace-summary .stat-label svg,
+  .workspace-summary .stats small {
+    display: none;
+  }
+  .workspace-summary .stats strong {
+    font-size: 22px;
+    margin: 4px 0 0;
   }
 }

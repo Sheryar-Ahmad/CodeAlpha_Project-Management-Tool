@@ -1,5 +1,6 @@
 import TaskDetails from './components/TaskDetails.jsx';
 import Notifications from './components/Notifications.jsx';
+import WorkspaceGuide from './components/WorkspaceGuide.jsx';
 import PublicRequest from './components/PublicRequest.jsx';
 import Portfolio from './components/Portfolio.jsx';
 import TeamWorkspace from './components/TeamWorkspace.jsx';
@@ -485,6 +486,29 @@ function Workspace({ mode, user, onExit, onExpired, onDeleting }) {
             Workspace <span className="muted">/ {pageCopy.label}</span>
           </span>
           <div className="topbar-actions">
+            {mode === 'account' && (
+              <WorkspaceGuide
+                key={user.id}
+                user={user}
+                view={workspace.view}
+                busy={workspace.busy || signingOut}
+                modalOpen={Boolean(
+                  mobileMenuOpen ||
+                  dialog ||
+                  projectDialog ||
+                  notebookProject ||
+                  accountOpen ||
+                  importOpen ||
+                  commandOpen ||
+                  detailsTask,
+                )}
+                onView={(value) => {
+                  workspace.setView(value);
+                  window.scrollTo({ top: 0, behavior: 'instant' });
+                }}
+                onAccount={() => setAccountOpen(true)}
+              />
+            )}
             {mode === 'account' && (
               <Notifications
                 onExpired={onExpired}

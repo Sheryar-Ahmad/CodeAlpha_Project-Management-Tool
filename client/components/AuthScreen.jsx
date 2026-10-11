@@ -29,7 +29,7 @@ export default function AuthScreen({
       if (recover) {
         setRecover(false);
         setNotice(result.message);
-      } else onUser(result.user);
+      } else onUser({ ...result.user, tourWelcome: register });
     } catch (failure) {
       setError(failure.message);
     } finally {

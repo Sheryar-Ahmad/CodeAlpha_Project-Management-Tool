@@ -1,5 +1,11 @@
 # Verification checklist
 
+## Optional workspace guide
+
+Run `npm run test:browser -- --guide-only` for the isolated new-account onboarding regression. It checks permission before starting, topic navigation, real task creation while minimized, progress after refresh, the Account settings handoff, completion, Escape/skip, and layouts at 320, 375, 768 and 1440px. The ordinary browser regression also skips the welcome offer before continuing its account workflows.
+
+Manually verify that **Skip for now** does not offer the tour again after reload, that existing accounts can open the book button, and that both task dialogs and notifications remain usable during a tour. Test with storage blocked: the guide should still work for that session. Preferences are local to the browser; tutorial actions must not generate sample tasks or store recovery codes.
+
 ## Automated checks
 
 - npm run test:unit: dates, field limits, injection rejection, partial updates, pagination, checklist constraints, planning boundaries, timer calculations, and password hashing.

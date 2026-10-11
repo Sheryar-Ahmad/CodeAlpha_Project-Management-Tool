@@ -39,6 +39,7 @@ async function openWorkspaceView(page, label) {
 }
 
 const teamsOnly = process.argv.includes('--teams-only');
+const guideOnly = process.argv.includes('--guide-only');
 const demoOnly = process.argv.includes('--demo-only');
 let mongo, apiServer, vite, browser;
 const errors = [];
@@ -73,7 +74,104 @@ try {
   page.setDefaultTimeout(15000);
   page.on('pageerror', (error) => errors.push(error.message));
   await mkdir('docs/screenshots', { recursive: true });
-  if (!teamsOnly) {
+  if (guideOnly) {
+    await page.goto(origin + '/app.html?auth=register');
+    await page.getByLabel('Your name', { exact: true }).fill('Guide Tester');
+    await page
+      .getByLabel('Email address', { exact: true })
+      .fill('guide-browser@example.com');
+    await page.getByLabel('Password', { exact: true }).fill('guide-test-passphrase-long');
+    await page.getByRole('button', { name: 'Create account', exact: true }).click();
+    const welcome = page.getByRole('dialog', {
+      name: 'A little guidance to get started?',
+    });
+    await welcome.waitFor();
+    for (const width of [320, 375, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      assert.ok(await welcome.isVisible());
+      assert.ok(
+        await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+      );
+    }
+    await page.screenshot({ path: 'docs/screenshots/guide-welcome-desktop.png' });
+    await welcome.getByRole('button', { name: 'Yes, show me around' }).click();
+    const guide = page.getByRole('complementary', { name: 'Your work, together' });
+    await guide.waitFor();
+    await page
+      .locator('.workspace-guide')
+      .getByRole('button', { name: 'Next', exact: true })
+      .click();
+    await page.getByRole('heading', { name: 'Break work into clear steps' }).waitFor();
+    await page.getByRole('button', { name: 'Minimize guide' }).click();
+    assert.equal(await page.locator('.workspace-guide').count(), 0);
+    await page.getByRole('button', { name: 'New task', exact: true }).click();
+    await page.getByLabel('Task title', { exact: true }).fill('My first guided task');
+    await page.getByLabel('Project', { exact: true }).fill('Learning Orbit');
+    await page.getByRole('button', { name: 'Save task', exact: true }).click();
+    await page
+      .getByRole('heading', { name: 'My first guided task', exact: true })
+      .waitFor();
+    await page.reload();
+    await page.getByRole('button', { name: 'Continue workspace guide' }).click();
+    await page.getByRole('heading', { name: 'Break work into clear steps' }).waitFor();
+    await page.getByLabel('Explore a topic').selectOption('3');
+    await page.getByRole('heading', { name: 'See your month clearly' }).waitFor();
+    for (const width of [320, 375, 768, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      assert.ok(
+        await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+      );
+      const box = await page.locator('.workspace-guide').boundingBox();
+      assert.ok(
+        box.x >= 0 &&
+          box.x + box.width <= width &&
+          box.y >= 0 &&
+          box.y + box.height <= 900,
+      );
+      assert.ok(
+        await page.getByRole('button', { name: 'Skip remaining tour' }).isVisible(),
+      );
+      if (width === 375)
+        await page.screenshot({ path: 'docs/screenshots/guide-mobile.png' });
+    }
+    await page.getByLabel('Explore a topic').selectOption('11');
+    await page
+      .getByRole('button', { name: 'Open Account settings', exact: true })
+      .click();
+    await page
+      .getByRole('heading', { name: 'Keep your account in your hands' })
+      .waitFor();
+    assert.equal(await page.locator('.workspace-guide').count(), 0);
+    await page.keyboard.press('Escape');
+    await page.getByRole('heading', { name: 'Protect your account' }).waitFor();
+    await page
+      .locator('.workspace-guide')
+      .getByRole('button', { name: 'Finish tour' })
+      .click();
+    await page.reload();
+    await page.getByRole('button', { name: 'Open workspace guide' }).waitFor();
+    assert.equal(await page.locator('.guide-welcome, .workspace-guide').count(), 0);
+    await page.getByRole('button', { name: 'Open workspace guide' }).click();
+    await page
+      .locator('.workspace-guide')
+      .getByRole('button', { name: 'Next', exact: true })
+      .click();
+    await page.keyboard.press('Escape');
+    assert.equal(await page.locator('.workspace-guide').count(), 0);
+    assert.equal(
+      await page
+        .locator('.workspace-guide-button')
+        .evaluate((el) => el === document.activeElement),
+      true,
+    );
+    await page.reload();
+    await page.getByRole('button', { name: 'Open workspace guide' }).waitFor();
+    assert.equal(await page.locator('.guide-welcome, .workspace-guide').count(), 0);
+    console.log(
+      'PASS: new-account opt-in tour, real task creation while paused, saved progress, topic navigation, recovery handoff, completion, Escape/skip and responsive layouts.',
+    );
+  }
+  if (!teamsOnly && !guideOnly) {
     await page.goto(origin + '/');
     await page.getByRole('heading', { name: /Big ideas/ }).waitFor();
     await page.screenshot({
@@ -1005,6 +1103,7 @@ try {
       await page.getByLabel('Email address', { exact: true }).fill('browser@example.com');
       await page.getByLabel('Password', { exact: true }).fill('browser-test-passphrase');
       await page.getByRole('button', { name: 'Create account', exact: true }).click();
+      await page.getByRole('button', { name: 'Skip for now', exact: true }).click();
       await page.getByRole('button', { name: 'Sign out', exact: true }).waitFor();
       await page.getByRole('button', { name: 'New task', exact: true }).click();
       await page.getByLabel('Task title', { exact: true }).fill('MongoDB saved task');
@@ -1857,7 +1956,7 @@ try {
       'PASS: recorded project timeline, date clipping, mobile layout and task navigation.',
     );
   }
-  if (!demoOnly) {
+  if (!demoOnly && !guideOnly) {
     if (mongoose.connection.readyState !== 1)
       await mongoose.connect(process.env.MONGODB_URI);
     const { RateBucket } = await import('../server/models/RateBucket.js');

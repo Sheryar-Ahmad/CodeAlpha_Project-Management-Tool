@@ -376,6 +376,12 @@ Software Engineering · COMSATS University Islamabad
 
 Copyright © 2026 Sheheryar Ahmad. [MIT License](LICENSE). Copies or substantial portions must retain the copyright and permission notice. See [NOTICE](NOTICE) for attribution.
 
+## Getting familiar with Orbit
+
+New accounts are offered an optional 12-topic workspace tour. Choose **Yes, show me around** to explore the real workspace, or **Skip for now** to begin independently. The guide covers tasks, subtasks, planning, team assignments, notifications, recovery and backups without creating sample records. Jump to a topic, go back, minimize it to work, or skip at any point. The **Guide** book button in the top bar reopens it on desktop and mobile.
+
+Tour progress and dismissal are remembered per account on the current browser when local storage is available. They are not synchronized between devices. Account recovery codes remain separate and are never saved by the tour.
+
 ## Working with a team
 
 1. Create two Orbit accounts in separate browser profiles.

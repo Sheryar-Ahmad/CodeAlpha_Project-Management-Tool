@@ -1,4 +1,5 @@
 import TaskDetails from './components/TaskDetails.jsx';
+import Notifications from './components/Notifications.jsx';
 import PublicRequest from './components/PublicRequest.jsx';
 import Portfolio from './components/Portfolio.jsx';
 import TeamWorkspace from './components/TeamWorkspace.jsx';
@@ -236,6 +237,12 @@ function Workspace({ mode, user, onExit, onExpired, onDeleting }) {
   const [actionError, setActionError] = useState('');
   const [signingOut, setSigningOut] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [inboxRevision, setInboxRevision] = useState(0);
+  function openSharedProject(id = '', task = null) {
+    setTeamSelection({ id, panel: 'tasks', task, key: crypto.randomUUID() });
+    workspace.setView('teams');
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }
   function chooseMobileView(value) {
     setMobileMenuOpen(false);
     workspace.setView(value);
@@ -477,6 +484,15 @@ function Workspace({ mode, user, onExit, onExpired, onDeleting }) {
             Workspace <span className="muted">/ {pageCopy.label}</span>
           </span>
           <div className="topbar-actions">
+            {mode === 'account' && (
+              <Notifications
+                onExpired={onExpired}
+                revision={inboxRevision}
+                onOpenTask={(task) => openSharedProject(task.projectId, task)}
+                onOpenProject={openSharedProject}
+                onTeams={() => openSharedProject()}
+              />
+            )}
             <button
               type="button"
               className="workspace-search-button"
@@ -589,11 +605,14 @@ function Workspace({ mode, user, onExit, onExpired, onDeleting }) {
           />
         ) : workspace.view === 'teams' ? (
           <TeamWorkspace
+            key={teamSelection.key ?? 'teams'}
             demo={mode === 'demo'}
             onExpired={onExpired}
             viewerId={user?.id}
             initialProjectId={teamSelection.id}
             initialPanel={teamSelection.panel}
+            initialTask={teamSelection.task}
+            onInboxChanged={() => setInboxRevision((value) => value + 1)}
           />
         ) : workspace.view === 'focus' ? (
           <FocusTimer storageScope={mode === 'demo' ? 'demo' : user.id} />

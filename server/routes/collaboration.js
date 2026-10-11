@@ -1,4 +1,5 @@
 import { taskActivity, appendActivity } from '../lib/taskActivity.js';
+import { randomUUID } from 'node:crypto';
 import { Router } from 'express';
 import mongoose from 'mongoose';
 import { z } from 'zod';
@@ -39,7 +40,7 @@ collaborationRouter.param('taskId', async (req, res, next, id) => {
     return res.status(400).json({ message: 'Invalid task ID.' });
   // Recovery records remain readable, but only active tasks accept changes.
   const task = await Task.findOne({ _id: id, ...taskScope(req) })
-    .select('title lifecycle')
+    .select('title lifecycle assignee')
     .lean();
   if (!task) return res.status(404).json({ message: 'Task not found.' });
   req.discussionTask = task;
@@ -60,20 +61,31 @@ collaborationRouter.patch('/:taskId/assignee', async (req, res) => {
     return res
       .status(400)
       .json({ message: 'Choose the owner or an accepted project member.' });
+  if (req.discussionTask.lifecycle && req.discussionTask.lifecycle !== 'active')
+    return res.status(409).json({ message: 'Only active tasks can be assigned.' });
+  const previous = req.discussionTask.assignee ?? null;
+  if ((previous ? String(previous) : null) === assignee) return res.json({ assignee });
   const task = await Task.findOneAndUpdate(
     {
       _id: req.params.taskId,
       ...taskScope(req),
+      assignee: previous,
       lifecycle: { $in: ['active', null] },
     },
     {
-      $set: { assignee },
+      $set: {
+        assignee,
+        assignmentVersion: randomUUID(),
+        assignmentSeenAt: assignee === String(req.user._id) ? new Date() : null,
+      },
       $push: appendActivity(taskActivity(req.user, 'Assigned task')),
     },
     { returnDocument: 'after', runValidators: true },
   ).lean();
   if (!task)
-    return res.status(409).json({ message: 'Only active tasks can be assigned.' });
+    return res
+      .status(409)
+      .json({ message: 'Task changed. Refresh and try assigning again.' });
   res.json({ assignee: task.assignee ? String(task.assignee) : null });
 });
 const serialize = (comment, req) => ({

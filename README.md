@@ -69,6 +69,7 @@ Screenshots are from the working local demo using illustrative sample tasks.
 | ------------------------- | ---------------------------------------------------------------------------------------------- |
 | Independent subtasks      | Break work into one-level child tasks with their own status, deadline and assignee             |
 | Recent task activity      | See up to 50 actions and changed field names without keeping duplicate private note content    |
+| In-app notifications      | Accept invitations and open assigned work from a bell on desktop and mobile                    |
 | Resource reviews          | Capture task document/design links and record a designated reviewer’s feedback                 |
 | Discussion notifications  | Flag a comment for one teammate and acknowledge it in the work digest                          |
 | Public request forms      | Optional revocable links, account-free proposals, bounded submissions and private owner triage |
@@ -378,12 +379,14 @@ Copyright © 2026 Sheheryar Ahmad. [MIT License](LICENSE). Copies or substantial
 
 1. Create two Orbit accounts in separate browser profiles.
 2. As the project owner, create a project and open **Team projects**.
-3. Select the project, invite the other account’s email, and have that person accept from their Team projects view.
-4. Add shared tasks, assign the next step, discuss it, and record team notes. Older tasks must first be connected in Projects.
+3. Select the project and invite the other account’s email. The recipient sees an unread badge on the notification bell and can accept directly there or in Team projects.
+4. Add shared tasks and select an accepted teammate under **Assigned to**. The recipient receives an unread assignment alert; **Open task** opens its shared project and task details. Assigned work stays in the inbox after reading the alert, until completion or removal. No duplicate personal task is needed. Older tasks must first be connected in Projects.
 5. Request a review from another accepted member. The reviewer approves or requests changes; a requester or owner can cancel a pending request.
 6. Remove access and verify that the other account can no longer load or update that project.
 
 The owner manages memberships, project details, legacy linking, and permanent deletion. Members can work with shared tasks and their own shared notebook entries/comments; owners can moderate team entries and comments. Directory responses expose names, not account emails or passwords. An invitation is in-app only, not an email message.
+
+The notification bell is available on desktop and mobile. It refreshes every 30 seconds while the tab is visible and when you return to Orbit; you can also refresh manually. Its unread count includes pending invitations and unseen unfinished assignments. Opening an assignment or marking it read acknowledges that assignment version without completing the task. Reassignment, removed access, archived/trash tasks, completed tasks, and deleted project owners are checked on every inbox request. The inbox shows the first 30 assigned tasks and is limited to 1,000 owned projects and memberships; use Team projects for additional work. Discussion alerts remain in the Portfolio work digest. Email and browser push notifications are not sent.
 
 Reviews store the task title and description captured at request time. They are feedback records, not file approvals, immutable compliance audit logs, or task completion gates. Later task edits leave the original brief unchanged. Review history is visible to accepted project members, even after the linked task is removed. Recurring successor tasks start unassigned; review records and discussions are not copied into successors or included in task exports.
 

@@ -1,4 +1,5 @@
 import { TaskComment } from '../models/TaskComment.js';
+import { teamInboxScope } from '../lib/teamInbox.js';
 import { Task } from '../models/Task.js';
 import { WorkRequest } from '../models/WorkRequest.js';
 import { validDate } from '../../shared/date.js';
@@ -28,6 +29,55 @@ const inviteSchema = z
 const responseSchema = z.object({ action: z.enum(['accept', 'decline']) }).strict();
 const person = (user) => ({ id: String(user._id), name: user.name });
 const projectFields = 'name description owner status';
+teamRouter.get('/inbox', async (req, res) => {
+  parse(z.object({}).strict(), req.query);
+  const scope = await teamInboxScope(req.user._id);
+  const [tasks, unreadAssignments] = await Promise.all([
+    Task.find(scope.taskFilter)
+      .select('title projectId due status assignmentVersion assignmentSeenAt')
+      .sort({ assignmentSeenAt: 1, updatedAt: -1, _id: -1 })
+      .limit(31)
+      .lean(),
+    Task.countDocuments({ ...scope.taskFilter, assignmentSeenAt: null }),
+  ]);
+  res.json({
+    invitations: scope.invitations,
+    unread: scope.invitations.length + unreadAssignments,
+    tasks: tasks.slice(0, 30).map((task) => ({
+      id: String(task._id),
+      title: task.title,
+      projectId: String(task.projectId),
+      project: scope.names.get(String(task.projectId)),
+      due: task.due,
+      status: task.status,
+      version: task.assignmentVersion ?? '',
+      unread: !task.assignmentSeenAt,
+    })),
+    truncated: scope.truncated || tasks.length > 30,
+  });
+});
+teamRouter.patch('/inbox/tasks/:taskId/read', async (req, res) => {
+  if (!mongoose.isObjectIdOrHexString(req.params.taskId))
+    return res.status(400).json({ message: 'Invalid task ID.' });
+  const { version } = parse(z.object({ version: z.string().max(36) }).strict(), req.body);
+  const scope = await teamInboxScope(req.user._id);
+  const result = await Task.updateOne(
+    {
+      ...scope.taskFilter,
+      _id: req.params.taskId,
+      // Older tasks have no assignment version; new versions prevent stale alerts
+      // from acknowledging a later reassignment.
+      assignmentVersion: version || { $in: ['', null] },
+    },
+    { $set: { assignmentSeenAt: new Date() } },
+    { timestamps: false },
+  );
+  if (!result.matchedCount)
+    return res
+      .status(404)
+      .json({ message: 'Assignment changed or is no longer available.' });
+  res.json({ message: 'Assignment notification read.' });
+});
 // Only invitations addressed to this session and accepted memberships are returned.
 teamRouter.get('/', async (req, res) => {
   const memberships = await ProjectMember.find({

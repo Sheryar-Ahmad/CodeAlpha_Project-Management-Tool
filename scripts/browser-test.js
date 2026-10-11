@@ -1990,11 +1990,15 @@ try {
       .getByRole('button', { name: 'Cancel invitation', exact: true })
       .waitFor();
     await memberPage.goto(origin + '/app.html');
-    await openWorkspaceView(memberPage, 'Team projects');
-    await memberPage.getByRole('button', { name: 'Accept', exact: true }).click();
     await memberPage
-      .getByLabel('Choose a project', { exact: true })
-      .selectOption(teamProject.id);
+      .getByRole('button', { name: 'Notifications, 1 unread', exact: true })
+      .click();
+    await memberPage
+      .getByRole('button', {
+        name: 'Accept invitation to ' + teamProject.name,
+        exact: true,
+      })
+      .click();
     await memberPage
       .getByRole('heading', { name: 'Prepare the workshop outline', exact: true })
       .waitFor();
@@ -2009,10 +2013,81 @@ try {
         .get(origin + '/api/auth/me')
         .then((response) => response.json())
     ).user.id;
-    await memberPage
+    await ownerPage.getByRole('button', { name: 'Refresh', exact: true }).click();
+    await ownerPage
       .getByLabel('Assignee for Prepare the workshop outline', { exact: true })
       .selectOption(memberId);
-    await memberPage.getByText('Task assignment saved.', { exact: true }).waitFor();
+    await ownerPage.getByText('Task assignment saved.', { exact: true }).waitFor();
+    await memberPage.evaluate(() => window.dispatchEvent(new Event('focus')));
+    await memberPage
+      .getByRole('button', { name: 'Notifications, 1 unread', exact: true })
+      .click();
+    const notificationPanel = memberPage.getByRole('dialog', {
+      name: 'Your notifications',
+      exact: true,
+    });
+    await notificationPanel.getByText('New assignment', { exact: true }).waitFor();
+    for (const width of [320, 375, 768, 1440]) {
+      await memberPage.setViewportSize({ width, height: 1000 });
+      assert.equal(
+        await memberPage.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+        true,
+        'Notification overflow at ' + width,
+      );
+      assert.equal(
+        await notificationPanel.evaluate(
+          (element) => element.scrollWidth <= element.clientWidth,
+        ),
+        true,
+        'Inbox content overflow at ' + width,
+      );
+    }
+    await memberPage.keyboard.press('Escape');
+    assert.equal(
+      await memberPage
+        .getByRole('button', { name: 'Notifications, 1 unread', exact: true })
+        .evaluate((element) => element === document.activeElement),
+      true,
+    );
+    await memberPage
+      .getByRole('button', { name: 'Notifications, 1 unread', exact: true })
+      .click();
+    await memberPage
+      .getByRole('button', {
+        name: 'Mark assignment Prepare the workshop outline as read',
+        exact: true,
+      })
+      .click();
+    await notificationPanel
+      .getByText('New assignment', { exact: true })
+      .waitFor({ state: 'hidden' });
+    await memberPage
+      .getByRole('button', {
+        name: 'Open assigned task Prepare the workshop outline',
+        exact: true,
+      })
+      .click();
+    await memberPage
+      .getByRole('dialog', { name: 'Task details', exact: true })
+      .getByRole('heading', { name: 'Prepare the workshop outline', exact: true })
+      .waitFor();
+    await memberPage
+      .getByRole('button', { name: 'Close task details', exact: true })
+      .click();
+    assert.equal(
+      await memberPage
+        .getByLabel('Only tasks assigned to me', { exact: true })
+        .isChecked(),
+      true,
+    );
+    await memberPage
+      .getByRole('button', { name: 'Notifications, 0 unread', exact: true })
+      .waitFor();
+    console.log(
+      'PASS: invitation bell, direct accept, assignment alerts, mark-read persistence, task handoff, mobile inbox and Escape focus.',
+    );
     await memberPage.getByLabel('Only tasks assigned to me', { exact: true }).check();
     await memberPage
       .getByRole('heading', { name: 'Prepare the workshop outline', exact: true })

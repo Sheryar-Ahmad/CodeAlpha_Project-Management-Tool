@@ -20,6 +20,8 @@ export default function TeamWorkspace({
   onExpired,
   initialProjectId = '',
   initialPanel = 'tasks',
+  initialTask = null,
+  onInboxChanged,
   viewerId,
 }) {
   const [projects, setProjects] = useState([]),
@@ -40,11 +42,11 @@ export default function TeamWorkspace({
     [notice, setNotice] = useState('');
   const [email, setEmail] = useState(''),
     [dialog, setDialog] = useState(null);
-  const [detailsTask, setDetailsTask] = useState(null);
+  const [detailsTask, setDetailsTask] = useState(initialTask);
   const [discussion, setDiscussion] = useState(null);
   const [reviewInbox, setReviewInbox] = useState([]),
     [inboxTruncated, setInboxTruncated] = useState(false);
-  const [mine, setMine] = useState(false);
+  const [mine, setMine] = useState(Boolean(initialTask));
   const [panel, setPanel] = useState(initialPanel);
   const [inviteRole, setInviteRole] = useState('member');
   const [notebook, setNotebook] = useState(false),
@@ -154,6 +156,7 @@ export default function TeamWorkspace({
     try {
       await request(path, { method, ...(body ? { body: JSON.stringify(body) } : {}) });
       setRevision((value) => value + 1);
+      onInboxChanged?.();
       setNotice(message || 'Project updated.');
     } catch (failure) {
       if (failure.status === 401) onExpired();
@@ -531,6 +534,10 @@ export default function TeamWorkspace({
             />{' '}
             Only tasks assigned to me
           </label>
+          <p className="small muted">
+            An assignment adds the task to your shared work automatically. Use this filter
+            to find your tasks; update their status here as you make progress.
+          </p>
           {loading ? (
             <p role="status">Loading shared tasks…</p>
           ) : (
@@ -738,7 +745,10 @@ export default function TeamWorkspace({
           projectId={project.id}
           onClose={() => setDetailsTask(null)}
           onExpired={onExpired}
-          onChanged={() => setRevision((value) => value + 1)}
+          onChanged={() => {
+            setRevision((value) => value + 1);
+            onInboxChanged?.();
+          }}
         />
       )}
       {project && dialog && (

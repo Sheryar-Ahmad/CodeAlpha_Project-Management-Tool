@@ -159,6 +159,130 @@ test('Vercel rewrite metadata does not break authenticated workspace queries', a
   // Ordinary local requests retain strict validation, including unknown path keys.
   await alice.get('/api/tasks?path=tasks').expect(400);
 });
+
+test('notification inbox scopes invitations and assignments and protects read acknowledgements', async (t) => {
+  await RateBucket.deleteMany({ key: /^(api|auth):/ });
+  t.after(() => RateBucket.deleteMany({ key: /^(api|auth):/ }));
+  const owner = request.agent(app),
+    member = request.agent(app),
+    outsider = request.agent(app);
+  const people = [];
+  for (const [agent, email] of [
+    [owner, 'inbox-owner@example.com'],
+    [member, 'inbox-member@example.com'],
+    [outsider, 'inbox-outsider@example.com'],
+  ]) {
+    const result = await agent
+      .post('/api/auth/register')
+      .set('Origin', origin)
+      .send({ name: email.split('@')[0], email, password: 'inbox-test-passphrase' })
+      .expect(201);
+    people.push(result.body.user.id);
+  }
+  const project = (
+    await owner
+      .post('/api/projects')
+      .set('Origin', origin)
+      .send({ name: 'Inbox project' })
+      .expect(201)
+  ).body.project;
+  const base = '/api/projects/' + project.id;
+  await owner
+    .post(base + '/members')
+    .set('Origin', origin)
+    .send({ email: 'inbox-member@example.com' })
+    .expect(201);
+  const inbox = async (agent) => (await agent.get('/api/teams/inbox').expect(200)).body;
+  const pending = await inbox(member);
+  assert.equal(pending.unread, 1);
+  assert.equal(pending.invitations[0].project, project.name);
+  assert.equal(pending.invitations[0].from, 'inbox-owner');
+  assert.equal((await inbox(outsider)).unread, 0);
+  await member
+    .patch('/api/teams/invitations/' + pending.invitations[0].id)
+    .set('Origin', origin)
+    .send({ action: 'accept' })
+    .expect(204);
+  const task = (
+    await owner
+      .post(base + '/tasks')
+      .set('Origin', origin)
+      .send({ title: 'Assigned inbox task', project: project.name })
+      .expect(201)
+  ).body.task;
+  const assign = (assignee) =>
+    owner
+      .patch(base + '/collaboration/' + task.id + '/assignee')
+      .set('Origin', origin)
+      .send({ assignee })
+      .expect(200);
+  await assign(people[1]);
+  const assigned = await inbox(member);
+  assert.equal(assigned.unread, 1);
+  assert.equal(assigned.tasks[0].id, task.id);
+  assert.equal(assigned.tasks[0].unread, true);
+  const read = '/api/teams/inbox/tasks/' + task.id + '/read';
+  const firstVersion = assigned.tasks[0].version;
+  await outsider
+    .patch(read)
+    .set('Origin', origin)
+    .send({ version: firstVersion })
+    .expect(404);
+  await member
+    .patch(read)
+    .set('Origin', origin)
+    .send({ version: firstVersion })
+    .expect(200);
+  assert.equal((await inbox(member)).unread, 0);
+  assert.equal((await inbox(member)).tasks.length, 1); // Still available as assigned work.
+  await assign(people[1]);
+  assert.equal((await inbox(member)).unread, 0); // Saving unchanged assignment does not alert again.
+  await assign(people[0]);
+  assert.equal((await inbox(member)).tasks.length, 0);
+  await assign(people[1]);
+  await member
+    .patch(read)
+    .set('Origin', origin)
+    .send({ version: firstVersion })
+    .expect(404);
+  assert.equal((await inbox(member)).unread, 1);
+  await Task.updateOne({ _id: task.id }, { $set: { lifecycle: 'archived' } });
+  assert.equal((await inbox(member)).tasks.length, 0);
+  await Task.updateOne(
+    { _id: task.id },
+    { $set: { lifecycle: 'active', status: 'done' } },
+  );
+  assert.equal((await inbox(member)).tasks.length, 0);
+  await Task.updateOne({ _id: task.id }, { $set: { status: 'todo' } });
+  const activeVersion = (await inbox(member)).tasks[0].version;
+  const memberRecord = await ProjectMember.findOne({
+    project: project.id,
+    user: people[1],
+  });
+  await ProjectMember.updateOne(
+    { _id: memberRecord._id },
+    { $set: { status: 'revoked' } },
+  );
+  assert.equal((await inbox(member)).tasks.length, 0);
+  await member
+    .patch(read)
+    .set('Origin', origin)
+    .send({ version: activeVersion })
+    .expect(404);
+  await ProjectMember.updateOne(
+    { _id: memberRecord._id },
+    { $set: { status: 'active', role: 'guest' } },
+  );
+  assert.equal((await inbox(member)).tasks.length, 0);
+  await ProjectMember.updateOne(
+    { _id: memberRecord._id },
+    { $set: { status: 'active', role: 'member' } },
+  );
+  await User.updateOne({ _id: people[0] }, { $set: { deleting: true } });
+  assert.equal((await inbox(member)).tasks.length, 0);
+  await request(app).get('/api/teams/inbox').expect(401);
+  await member.get('/api/teams/inbox?unexpected=1').expect(400);
+});
 test('create, list, and update tasks without losing omitted fields', async () => {
   const created = await alice
     .post('/api/tasks')

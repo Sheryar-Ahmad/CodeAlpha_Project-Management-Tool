@@ -56,6 +56,16 @@ Temporary databases and downloaded tools stay in the ignored project cache. Inte
 - Turn off the API/database and confirm clear recovery feedback.
 - Confirm account data does not enter local demo storage.
 
+## Invitations and assignment notifications
+
+- Use two accounts in separate browser profiles. Invite the recipient while they are on their personal board: the bell must show an unread invitation within 30 seconds or after returning to the tab. Open the inbox and accept directly; the shared project must open.
+- Assign a task from the owner's account. The recipient sees a new assignment with its project and deadline. Open task must load its details and select Only tasks assigned to me in the shared project.
+- Mark an assignment read, refresh, and reopen the inbox: the unread badge stays cleared but unfinished assigned work remains accessible. Reading an alert must not complete or duplicate the task. Saving the same assignee must not generate another alert.
+- Reassign to another person and back: the new assignment must be unread. An acknowledgement for the old version must fail. Completed/archived/trashed tasks and revoked or guest access must disappear; a different account cannot mark the recipient's task read.
+- Inspect inbox and bell at 320, 375, 768 and 1440 pixels. Check 44-pixel controls, scrolling, Escape, focus return and direct handoff to task details. Polling failures must show recovery feedback instead of stale previews.
+
+API regression coverage verifies scope, read persistence, stale acknowledgements and deleted-owner handling. The team browser suite covers direct invitation acceptance, owner-to-member assignment, mobile overflow, Escape focus and opening the assigned task without copying it.
+
 ## Accessibility and layout
 
 - On a phone, open Calendar directly from the fixed bottom bar. Scroll to the end of the page and confirm the bar stays visible without covering the footer. Today and Tasks must return to the top of their view.

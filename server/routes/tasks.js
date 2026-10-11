@@ -1,4 +1,5 @@
 import { subtaskRouter, taskDetails } from './subtasks.js';
+import { workspaceReadScope } from '../lib/teamInbox.js';
 import { familyFields, familyFence } from '../lib/taskFamily.js';
 import { taskActivity, appendActivity } from '../lib/taskActivity.js';
 import { serializeTask as serialize } from '../lib/serializeTask.js';
@@ -30,6 +31,10 @@ export const taskRouter = Router();
 taskRouter.use(requireAuth);
 // Missing lifecycle fields are older active records; no destructive migration is needed.
 const activeRecords = { lifecycle: { $in: ['active', null] } };
+const boardTask = (task, req) => ({
+  ...serialize(task),
+  shared: !req.sharedProject && String(task.owner) !== String(req.user._id),
+});
 const exportLimit = rateLimit({
   windowMs: 60 * 60 * 1000,
   limit: 5,
@@ -78,10 +83,10 @@ taskRouter.get('/export', exportLimit, async (req, res) => {
 
 // Fetch the full selected month, independently of the board's 30-task page.
 taskRouter.get('/calendar', async (req, res) => {
-  const { month, project } = parse(calendarQuerySchema, req.query);
+  const { month, project, scope } = parse(calendarQuerySchema, req.query);
   const { start, end } = monthBounds(month);
   const tasks = await Task.find({
-    ...taskScope(req),
+    ...(await workspaceReadScope(req, scope)),
     ...activeRecords,
     due: { $gte: start, $lte: end },
     ...(project ? { project } : {}),
@@ -90,7 +95,7 @@ taskRouter.get('/calendar', async (req, res) => {
     .limit(1001)
     .lean();
   res.json({
-    tasks: tasks.slice(0, 1000).map(serialize),
+    tasks: tasks.slice(0, 1000).map((task) => boardTask(task, req)),
     truncated: tasks.length > 1000,
   });
 });
@@ -99,7 +104,7 @@ taskRouter.get('/overview', async (req, res) => {
   const date = typeof req.query.date === 'string' ? req.query.date : '';
   if (!date || !validDate(date))
     return res.status(400).json({ message: 'A valid local date is required.' });
-  const scope = taskScope(req);
+  const scope = await workspaceReadScope(req, req.query.scope);
   const [total, active, completed, overdue, blocked, archived, trashed, projects] =
     await Promise.all([
       Task.countDocuments({ ...scope, ...activeRecords }),
@@ -112,8 +117,8 @@ taskRouter.get('/overview', async (req, res) => {
         due: { $ne: '', $lt: date },
       }),
       Task.countDocuments({ ...scope, ...activeRecords, status: 'blocked' }),
-      Task.countDocuments({ ...scope, lifecycle: 'archived' }),
-      Task.countDocuments({ ...scope, lifecycle: 'trashed' }),
+      Task.countDocuments({ ...taskScope(req), lifecycle: 'archived' }),
+      Task.countDocuments({ ...taskScope(req), lifecycle: 'trashed' }),
       Task.aggregate([
         { $match: { ...scope, ...activeRecords } },
         {
@@ -169,12 +174,15 @@ taskRouter.get('/overview', async (req, res) => {
   });
 });
 taskRouter.get('/', async (req, res) => {
-  const { page, limit, search, project, view, date, assigned } = parse(
+  const { page, limit, search, project, view, date, assigned, scope } = parse(
     querySchema,
     req.query,
   );
   const filter = {
-    ...taskScope(req),
+    ...(await workspaceReadScope(
+      req,
+      ['archived', 'trash'].includes(view) ? 'personal' : scope,
+    )),
     ...(view === 'archived'
       ? { lifecycle: 'archived' }
       : view === 'trash'
@@ -186,6 +194,7 @@ taskRouter.get('/', async (req, res) => {
   if (view === 'attention') {
     filter.status = { $ne: 'done' };
     filter.$and = [
+      ...(filter.$and ?? []),
       {
         $or: [
           { status: 'blocked' },
@@ -222,7 +231,7 @@ taskRouter.get('/', async (req, res) => {
     .limit(limit + 1)
     .lean();
   res.json({
-    tasks: tasks.slice(0, limit).map(serialize),
+    tasks: tasks.slice(0, limit).map((task) => boardTask(task, req)),
     hasMore: tasks.length > limit,
     page,
   });

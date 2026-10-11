@@ -62,6 +62,20 @@ export default function useWorkspace(mode, onExpired) {
   }, []);
   const mutationLock = useRef(false);
   useEffect(() => {
+    if (mode !== 'account') return;
+    const refresh = () => {
+      if (!document.hidden && !mutationLock.current) setRevision((value) => value + 1);
+    };
+    const timer = setInterval(refresh, 30000);
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, [mode]);
+  useEffect(() => {
     const query = search.trim();
     // An unchanged query must not reset a page selected during the debounce window.
     if (query === debounced) return;
@@ -123,7 +137,11 @@ export default function useWorkspace(mode, onExpired) {
                   hasMore: filtered.length > page * 30,
                 };
         } else {
+          const scope = ['projects', 'focus', 'time', 'archived', 'trash'].includes(view)
+            ? 'personal'
+            : 'workspace';
           const params = new URLSearchParams({
+            scope,
             search: debounced,
             project,
             page: String(page),
@@ -136,11 +154,16 @@ export default function useWorkspace(mode, onExpired) {
             ['projects', 'focus', 'time', 'teams', 'portfolio'].includes(view)
               ? Promise.resolve({ tasks: [], hasMore: false })
               : view === 'calendar'
-                ? request('/tasks/calendar?' + new URLSearchParams({ month, project }), {
-                    signal: controller.signal,
-                  })
+                ? request(
+                    '/tasks/calendar?' + new URLSearchParams({ month, project, scope }),
+                    {
+                      signal: controller.signal,
+                    },
+                  )
                 : request('/tasks?' + params, { signal: controller.signal }),
-            request('/tasks/overview?date=' + date, { signal: controller.signal }),
+            request('/tasks/overview?' + new URLSearchParams({ date, scope }), {
+              signal: controller.signal,
+            }),
             request('/projects', { signal: controller.signal }),
           ]);
           result = taskResult;
@@ -172,7 +195,11 @@ export default function useWorkspace(mode, onExpired) {
       } catch (failure) {
         if (controller.signal.aborted) return;
         if (failure.status === 401) onExpired();
-        else setError(failure.message);
+        else {
+          setError(failure.message);
+          setTasks([]);
+          setOverview(emptyOverview);
+        }
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }
@@ -180,7 +207,7 @@ export default function useWorkspace(mode, onExpired) {
     load();
     return () => controller.abort();
   }, [mode, debounced, project, view, page, revision, date, month, onExpired]);
-  async function mutate(action, id, data) {
+  async function mutate(action, id, data, sharedProjectId) {
     if (mutationLock.current) throw new Error('Please wait for the current save.');
     mutationLock.current = true;
     setBusy(true);
@@ -243,15 +270,21 @@ export default function useWorkspace(mode, onExpired) {
             ? '/permanent'
             : '';
         const body = transition ? { action } : data;
-        await request('/tasks' + (id ? '/' + id : '') + suffix, {
-          method:
-            action === 'create'
-              ? 'POST'
-              : ['delete', 'permanent'].includes(action)
-                ? 'DELETE'
-                : 'PATCH',
-          ...(body ? { body: JSON.stringify(body) } : {}),
-        });
+        await request(
+          (sharedProjectId ? '/projects/' + sharedProjectId : '') +
+            '/tasks' +
+            (id ? '/' + id : '') +
+            suffix,
+          {
+            method:
+              action === 'create'
+                ? 'POST'
+                : ['delete', 'permanent'].includes(action)
+                  ? 'DELETE'
+                  : 'PATCH',
+            ...(body ? { body: JSON.stringify(body) } : {}),
+          },
+        );
       }
       setRevision((value) => value + 1);
       setNotice(mode === 'demo' ? 'Saved in this browser.' : 'Saved to your workspace.');
@@ -422,12 +455,21 @@ export default function useWorkspace(mode, onExpired) {
     error,
     notice,
     retry: () => setRevision((value) => value + 1),
-    save: (data, id) => mutate(id ? 'update' : 'create', id, data),
+    save: (data, id, sharedProjectId) =>
+      mutate(id ? 'update' : 'create', id, data, sharedProjectId),
     updateStatus: (task, status) =>
-      mutate('update', task.id, { status, blockerReason: '' }),
-    updateChecklist: (task, checklist) => mutate('update', task.id, { checklist }),
-    remove: (task) => mutate('delete', task.id),
-    archive: (task) => mutate('archive', task.id),
+      mutate(
+        'update',
+        task.id,
+        { status, blockerReason: '' },
+        task.shared ? task.projectId : undefined,
+      ),
+    updateChecklist: (task, checklist) =>
+      mutate('update', task.id, { checklist }, task.shared ? task.projectId : undefined),
+    remove: (task) =>
+      mutate('delete', task.id, undefined, task.shared ? task.projectId : undefined),
+    archive: (task) =>
+      mutate('archive', task.id, undefined, task.shared ? task.projectId : undefined),
     restore: (task) =>
       mutate(task.lifecycle === 'archived' ? 'unarchive' : 'restore', task.id),
     purge: (task) => mutate('permanent', task.id),

@@ -2088,6 +2088,66 @@ try {
     console.log(
       'PASS: invitation bell, direct accept, assignment alerts, mark-read persistence, task handoff, mobile inbox and Escape focus.',
     );
+    await openWorkspaceView(memberPage, 'Task board');
+    const assignedCard = memberPage
+      .locator('.task-card')
+      .filter({ hasText: 'Prepare the workshop outline' });
+    await assignedCard.getByText('Shared · Assigned to you', { exact: true }).waitFor();
+    await assignedCard
+      .getByRole('button', { name: 'Edit Prepare the workshop outline', exact: true })
+      .click();
+    assert.equal(
+      await memberPage.getByLabel('Project', { exact: true }).isEditable(),
+      false,
+    );
+    await memberPage.getByLabel('Estimated work (minutes)', { exact: true }).fill('25');
+    await memberPage.getByRole('button', { name: 'Save task', exact: true }).click();
+    await memberPage.getByRole('dialog').waitFor({ state: 'hidden' });
+    await assignedCard.getByRole('combobox').selectOption('progress');
+    await memberPage.getByText('Saved to your workspace.', { exact: true }).waitFor();
+    const persistedAssigned = (
+      await ownerContext.request
+        .get(origin + '/api/projects/' + teamProject.id + '/tasks')
+        .then((response) => response.json())
+    ).tasks.find((task) => task.title === 'Prepare the workshop outline');
+    assert.equal(persistedAssigned.status, 'progress');
+    assert.equal(persistedAssigned.estimateMinutes, 25);
+    await assignedCard
+      .getByRole('button', {
+        name: 'Details for Prepare the workshop outline',
+        exact: true,
+      })
+      .click();
+    await memberPage
+      .getByRole('dialog', { name: 'Task details', exact: true })
+      .getByRole('heading', { name: 'Prepare the workshop outline', exact: true })
+      .waitFor();
+    await memberPage
+      .getByRole('button', { name: 'Close task details', exact: true })
+      .click();
+    for (const width of [320, 375, 1440]) {
+      await memberPage.setViewportSize({ width, height: 1000 });
+      assert.equal(
+        await memberPage.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+        true,
+        'Assigned board overflow at ' + width,
+      );
+      if (width !== 320)
+        await memberPage.screenshot({ path: `.cache/assigned-board-${width}.png` });
+    }
+    await memberPage.reload();
+    await memberPage.getByText('Shared · Assigned to you', { exact: true }).waitFor();
+    console.log(
+      'PASS: assigned shared work on main board, scoped status saves, shared details, refresh persistence and mobile layouts.',
+    );
+    // Separate automation bursts without relaxing production rate limits.
+    await RateBucket.deleteMany({ key: /^(api|auth):/ });
+    await openWorkspaceView(memberPage, 'Team projects');
+    await memberPage
+      .getByLabel('Choose a project', { exact: true })
+      .selectOption(teamProject.id);
     await memberPage.getByLabel('Only tasks assigned to me', { exact: true }).check();
     await memberPage
       .getByRole('heading', { name: 'Prepare the workshop outline', exact: true })

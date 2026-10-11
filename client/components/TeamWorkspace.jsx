@@ -14,7 +14,7 @@ import TaskCard from './TaskCard.jsx';
 import TaskDialog from './TaskDialog.jsx';
 import ProjectNotebook from './ProjectNotebook.jsx';
 
-// This view has its own explicit project scope. Personal task views never mix in shared work.
+// This view keeps an explicit project scope; the main board also shows assigned work.
 export default function TeamWorkspace({
   demo,
   onExpired,

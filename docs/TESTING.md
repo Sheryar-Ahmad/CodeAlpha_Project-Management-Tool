@@ -66,6 +66,13 @@ Temporary databases and downloaded tools stay in the ignored project cache. Inte
 
 API regression coverage verifies scope, read persistence, stale acknowledgements and deleted-owner handling. The team browser suite covers direct invitation acceptance, owner-to-member assignment, mobile overflow, Escape focus and opening the assigned task without copying it.
 
+## Personal and assigned work together
+
+- Assign a shared task to an accepted teammate. Their main Task board must show it with a Shared / Assigned to you label, alongside their personal tasks. Combined summary counts, search, pagination, Today, Upcoming, Calendar and Action Center include their assigned shared work.
+- Update status, edit the task or open details from the main board: requests must use the original project route and the owner must see the change on the same task. Shared edits cannot change the project, and permanent deletion remains owner-only.
+- Reassign or revoke membership and refresh (or return to the tab): the old recipient must lose the card. Pending invitees, guests, unassigned teammates, foreign private tasks and deleted-owner projects are excluded. Account exports and personal project management remain owner-scoped; Archive and Trash retain their personal scope.
+- Inspect the recipient board at 320, 375 and 1440 pixels; reload and verify assignment persistence. API tests cover the read union, literal search, combined counts, pagination, completed assignments, calendar deadlines and access removal. The team browser suite checks project-scoped status and edit saves and details from the main board.
+
 ## Accessibility and layout
 
 - On a phone, open Calendar directly from the fixed bottom bar. Scroll to the end of the page and confirm the bar stays visible without covering the footer. Today and Tasks must return to the top of their view.

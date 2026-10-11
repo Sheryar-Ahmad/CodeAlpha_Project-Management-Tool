@@ -70,6 +70,7 @@ Screenshots are from the working local demo using illustrative sample tasks.
 | Independent subtasks      | Break work into one-level child tasks with their own status, deadline and assignee             |
 | Recent task activity      | See up to 50 actions and changed field names without keeping duplicate private note content    |
 | In-app notifications      | Accept invitations and open assigned work from a bell on desktop and mobile                    |
+| Unified task board        | See personal tasks and assigned shared work together, with updates saved to the same task      |
 | Resource reviews          | Capture task document/design links and record a designated reviewer’s feedback                 |
 | Discussion notifications  | Flag a comment for one teammate and acknowledge it in the work digest                          |
 | Public request forms      | Optional revocable links, account-free proposals, bounded submissions and private owner triage |
@@ -127,7 +128,7 @@ Screenshots are from the working local demo using illustrative sample tasks.
 | Responsive layout         | Readable layouts on desktop and mobile                                                         |
 | Public pages              | Static marketing content and an honest privacy notice                                          |
 
-**Scope clarification:** private project records now hold descriptions, dates, and planning status. New tasks receive an owner-scoped project ID. Older tasks remain readable and can be connected through Projects → Connect existing tasks, including archived/trashed records. Names still stay fixed, and summaries use labels during this transition. Team projects now support explicit in-app invitations to existing accounts. Only accepted members can use shared routes, scoped by project ID. Private task views and private notebooks remain separate. Only connected tasks are shared; linking an older group is an explicit owner action.
+**Scope clarification:** private project records now hold descriptions, dates, and planning status. New tasks receive an owner-scoped project ID. Older tasks remain readable and can be connected through Projects → Connect existing tasks, including archived/trashed records. Names still stay fixed, and summaries use labels during this transition. Team projects now support explicit in-app invitations to existing accounts. Only accepted members can use shared routes, scoped by project ID. The main board and planning views combine personal tasks with shared work assigned to the signed-in user. Private notebooks, personal project management and exports remain owner-scoped. Only connected tasks are shared; linking an older group is an explicit owner action.
 
 ## Small problems, practical workflows
 
@@ -269,7 +270,7 @@ npm run build
 npm run format:check
 ```
 
-**Verified locally:** 88 API/input/planning/timer/password/template/recovery/export/recurrence/project tests and Chromium browser flows covering demo CRUD, storage persistence, search, filters, safe text rendering, mobile overflow, dialog Escape, checklists, task duplication, template previews and replacement protection, list actions and pagination, blockers, archive/trash restoration, private downloads, daily views, overnight date changes, project progress, focus pause/refresh/completion, registration, database-backed persistence, logout, and login. Expanded checks cover whole-month calendar queries, leap years, Action Center rules, milestones, health explanations, command navigation, notebook decisions/meetings, follow-up drafts, weekly time totals, private APIs, and explicit legacy linking. Team checks cover invitation state transitions, cross-project isolation, removed/pending users, role restrictions, assignment eligibility, private/team note separation, discussion moderation, review decisions and inbox access. Browser tests exercise two separate authenticated accounts and team layouts at 320–1440px.
+**Verified locally:** 91 API/input/planning/timer/password/template/recovery/export/recurrence/project tests and Chromium browser flows covering demo CRUD, storage persistence, search, filters, safe text rendering, mobile overflow, dialog Escape, checklists, task duplication, template previews and replacement protection, list actions and pagination, blockers, archive/trash restoration, private downloads, daily views, overnight date changes, project progress, focus pause/refresh/completion, registration, database-backed persistence, logout, and login. Expanded checks cover whole-month calendar queries, leap years, Action Center rules, milestones, health explanations, command navigation, notebook decisions/meetings, follow-up drafts, weekly time totals, private APIs, and explicit legacy linking. Team checks cover invitation state transitions, cross-project isolation, removed/pending users, role restrictions, assignment eligibility, private/team note separation, discussion moderation, review decisions and inbox access. Browser tests exercise two separate authenticated accounts and team layouts at 320–1440px.
 
 For browser checks:
 
@@ -380,7 +381,7 @@ Copyright © 2026 Sheheryar Ahmad. [MIT License](LICENSE). Copies or substantial
 1. Create two Orbit accounts in separate browser profiles.
 2. As the project owner, create a project and open **Team projects**.
 3. Select the project and invite the other account’s email. The recipient sees an unread badge on the notification bell and can accept directly there or in Team projects.
-4. Add shared tasks and select an accepted teammate under **Assigned to**. The recipient receives an unread assignment alert; **Open task** opens its shared project and task details. Assigned work stays in the inbox after reading the alert, until completion or removal. No duplicate personal task is needed. Older tasks must first be connected in Projects.
+4. Add shared tasks and select an accepted teammate under **Assigned to**. The task also appears on the recipient’s main board, clearly marked as shared. The recipient receives an unread assignment alert; **Open task** opens its shared project and task details. Assigned work stays in the inbox after reading the alert, until completion or removal. No duplicate personal task is needed. Older tasks must first be connected in Projects.
 5. Request a review from another accepted member. The reviewer approves or requests changes; a requester or owner can cancel a pending request.
 6. Remove access and verify that the other account can no longer load or update that project.
 

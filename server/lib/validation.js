@@ -113,6 +113,7 @@ export const taskUpdateSchema = z
   );
 export const querySchema = z
   .object({
+    scope: z.enum(['personal', 'workspace']).default('personal'),
     assigned: z.enum(['', 'me']).default(''),
     page: z.coerce.number().int().min(1).max(10000).default(1),
     limit: z.coerce.number().int().min(1).max(50).default(30),
@@ -207,6 +208,7 @@ export const projectUpdateSchema = z
 
 export const calendarQuerySchema = z
   .object({
+    scope: z.enum(['personal', 'workspace']).default('personal'),
     month: z.string().refine(validMonth, 'Choose a valid month between 2000 and 2100.'),
     project: z.string().trim().max(60).default(''),
   })

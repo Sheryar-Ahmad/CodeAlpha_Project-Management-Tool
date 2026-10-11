@@ -51,6 +51,7 @@ export default function TaskCard({
         </div>
 
         {task.parentTask && <span className="subtask-tag">Subtask</span>}
+        {task.shared && <span className="subtask-tag">Shared · Assigned to you</span>}
         {onDetails && (
           <button
             type="button"

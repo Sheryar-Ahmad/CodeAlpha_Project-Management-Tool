@@ -57,3 +57,22 @@ export async function teamInboxScope(user) {
     truncated: owned.length > 1000 || memberships.length > 1000,
   };
 }
+
+export async function workspaceReadScope(req, scope) {
+  // Shared routes keep their explicit project scope. Personal routes opt into
+  // this read-only union; mutations and exports retain their existing scopes.
+  if (req.sharedProject)
+    return { owner: req.sharedProject.owner, projectId: req.sharedProject._id };
+  if (scope !== 'workspace') return { owner: req.user._id };
+  const access = await teamInboxScope(req.user._id);
+  return {
+    $and: [
+      {
+        $or: [
+          { owner: req.user._id },
+          { assignee: req.user._id, $or: access.taskFilter.$or },
+        ],
+      },
+    ],
+  };
+}

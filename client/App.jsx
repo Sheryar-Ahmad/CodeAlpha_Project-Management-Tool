@@ -317,7 +317,7 @@ function Workspace({ mode, user, onExit, onExpired, onDeleting }) {
     });
   }
   const stats = [
-    ['Total tasks', workspace.overview.total, 'Across your projects', Target],
+    ['Total tasks', workspace.overview.total, 'Across your work', Target],
     ['In progress', workspace.overview.active, 'Keep the momentum', CircleDot],
     ['Completed', workspace.overview.completed, 'One step closer', CheckCheck],
     ['Overdue', workspace.overview.overdue, 'Needs your attention', Clock3],
@@ -350,6 +350,7 @@ function Workspace({ mode, user, onExit, onExpired, onDeleting }) {
         task={task}
         onDetails={mode === 'demo' ? undefined : setDetailsTask}
         busy={workspace.busy}
+        canPurge={!task.shared}
         attention={
           workspace.view === 'attention' ? attentionReasons(task, workspace.date) : []
         }
@@ -430,7 +431,7 @@ function Workspace({ mode, user, onExit, onExpired, onDeleting }) {
           <div>
             {mode === 'demo' ? 'Demo workspace' : user.name}
             <small>
-              {mode === 'demo' ? 'Explore at your own pace' : 'Personal workspace'}
+              {mode === 'demo' ? 'Explore at your own pace' : 'Your workspace'}
             </small>
           </div>
         </div>
@@ -510,7 +511,11 @@ function Workspace({ mode, user, onExit, onExpired, onDeleting }) {
                 ? 'LOCAL DEMO'
                 : workspace.view === 'teams'
                   ? 'TEAM PROJECTS'
-                  : 'PERSONAL WORKSPACE'}
+                  : ['projects', 'focus', 'time', 'archived', 'trash'].includes(
+                        workspace.view,
+                      )
+                    ? 'PERSONAL WORKSPACE'
+                    : 'MY WORK'}
             </span>
             {mode === 'demo' && (
               <button
@@ -849,7 +854,7 @@ function Workspace({ mode, user, onExit, onExpired, onDeleting }) {
               ? 'Demo tasks stay in this browser. No account required.'
               : ['teams', 'portfolio'].includes(workspace.view)
                 ? 'Shared project work is visible to accepted members. Exports contain only tasks owned by your account.'
-                : 'Your tasks are saved to your private account.'}
+                : 'Personal tasks and work assigned to you appear together. Exports include only tasks you own.'}
           </span>
           <div className="footer-actions">
             {!['teams', 'portfolio'].includes(workspace.view) && (
@@ -1004,6 +1009,7 @@ function Workspace({ mode, user, onExit, onExpired, onDeleting }) {
       {detailsTask && (
         <TaskDetails
           taskId={detailsTask.id}
+          projectId={detailsTask.shared ? detailsTask.projectId : undefined}
           onClose={() => setDetailsTask(null)}
           onExpired={onExpired}
           onChanged={workspace.retry}
@@ -1012,9 +1018,16 @@ function Workspace({ mode, user, onExit, onExpired, onDeleting }) {
       {dialog && (
         <TaskDialog
           task={dialog.task}
+          lockedProject={Boolean(dialog.task?.id && dialog.task?.shared)}
           projectNames={workspace.overview.projects}
           onClose={() => setDialog(null)}
-          onSave={workspace.save}
+          onSave={(data, id) =>
+            workspace.save(
+              data,
+              id,
+              id && dialog.task?.shared ? dialog.task.projectId : undefined,
+            )
+          }
         />
       )}
     </div>

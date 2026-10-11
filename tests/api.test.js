@@ -283,6 +283,144 @@ test('notification inbox scopes invitations and assignments and protects read ac
   await request(app).get('/api/teams/inbox').expect(401);
   await member.get('/api/teams/inbox?unexpected=1').expect(400);
 });
+
+test('workspace board and calendar combine owned work with currently accessible assigned work', async (t) => {
+  await RateBucket.deleteMany({ key: /^(api|auth):/ });
+  t.after(() => RateBucket.deleteMany({ key: /^(api|auth):/ }));
+  const owner = request.agent(app),
+    member = request.agent(app);
+  const ids = [];
+  for (const [agent, email] of [
+    [owner, 'board-owner@example.com'],
+    [member, 'board-member@example.com'],
+  ]) {
+    const result = await agent
+      .post('/api/auth/register')
+      .set('Origin', origin)
+      .send({ name: email, email, password: 'board-test-passphrase' })
+      .expect(201);
+    ids.push(result.body.user.id);
+  }
+  const project = (
+    await owner
+      .post('/api/projects')
+      .set('Origin', origin)
+      .send({ name: 'Shared board' })
+      .expect(201)
+  ).body.project;
+  const base = '/api/projects/' + project.id;
+  await owner
+    .post(base + '/members')
+    .set('Origin', origin)
+    .send({ email: 'board-member@example.com' })
+    .expect(201);
+  const membership = await ProjectMember.findOne({ project: project.id, user: ids[1] });
+  const assigned = await Task.create({
+    owner: ids[0],
+    projectId: project.id,
+    project: project.name,
+    title: 'Shared work',
+    assignee: ids[1],
+    due: '2026-10-11',
+    priority: 'high',
+  });
+  const privateTask = (
+    await member
+      .post('/api/tasks')
+      .set('Origin', origin)
+      .send({ title: 'Personal work', project: 'Personal', due: '2026-10-11' })
+      .expect(201)
+  ).body.task;
+  const board = async () =>
+    (await member.get('/api/tasks?scope=workspace').expect(200)).body.tasks;
+  assert.equal((await board()).length, 1); // Pending invitations do not grant previews.
+  await member
+    .patch('/api/teams/invitations/' + membership.id)
+    .set('Origin', origin)
+    .send({ action: 'accept' })
+    .expect(204);
+  const combined = await board();
+  assert.equal(combined.length, 2);
+  assert.equal(combined.find((task) => task.id === String(assigned._id)).shared, true);
+  assert.equal(combined.find((task) => task.id === privateTask.id).shared, false);
+  assert.equal((await member.get('/api/tasks').expect(200)).body.tasks.length, 1);
+  assert.equal(
+    (await member.get('/api/tasks?scope=workspace&search=Shared').expect(200)).body.tasks
+      .length,
+    1,
+  );
+  assert.equal(
+    (await member.get('/api/tasks?scope=workspace&search=missing').expect(200)).body.tasks
+      .length,
+    0,
+  );
+  for (const view of ['today', 'upcoming', 'attention']) {
+    const result = await member
+      .get(`/api/tasks?scope=workspace&view=${view}&date=2026-10-10`)
+      .expect(200);
+    assert.equal(
+      result.body.tasks.some((task) => task.id === String(assigned._id)),
+      view !== 'today',
+    );
+  }
+  const calendar = (
+    await member.get('/api/tasks/calendar?scope=workspace&month=2026-10').expect(200)
+  ).body.tasks;
+  assert.equal(calendar.length, 2);
+  const overview = (
+    await member.get('/api/tasks/overview?scope=workspace&date=2026-10-12').expect(200)
+  ).body;
+  assert.equal(overview.total, 2);
+  assert.equal(overview.overdue, 2);
+  await member
+    .patch('/api/tasks/' + assigned.id)
+    .set('Origin', origin)
+    .send({ status: 'done' })
+    .expect(404);
+  await member
+    .patch(base + '/tasks/' + assigned.id)
+    .set('Origin', origin)
+    .send({ status: 'done' })
+    .expect(200);
+  assert.equal((await board()).find((task) => task.id === assigned.id).status, 'done');
+  assert.equal((await Task.findById(assigned.id)).owner.toString(), ids[0]);
+  assert.equal((await member.get('/api/tasks/export').expect(200)).body.tasks.length, 1);
+  await Task.create({
+    owner: ids[0],
+    project: 'Secret',
+    title: 'Private foreign task',
+    assignee: ids[1],
+  });
+  assert.equal((await board()).length, 2); // Assignee alone never grants private access.
+  await Task.insertMany(
+    Array.from({ length: 31 }, (_, index) => ({
+      owner: ids[0],
+      projectId: project.id,
+      project: project.name,
+      title: `Assigned page ${index}`,
+      assignee: ids[1],
+    })),
+  );
+  const paged = (await member.get('/api/tasks?scope=workspace&limit=30').expect(200))
+    .body;
+  assert.equal(paged.tasks.length, 30);
+  assert.equal(paged.hasMore, true);
+  const next = (
+    await member.get('/api/tasks?scope=workspace&limit=30&page=2').expect(200)
+  ).body;
+  assert.equal(next.tasks.length, 3);
+  assert.equal(new Set([...paged.tasks, ...next.tasks].map((task) => task.id)).size, 33);
+  await ProjectMember.updateOne({ _id: membership.id }, { $set: { role: 'guest' } });
+  assert.equal((await board()).length, 1);
+  await ProjectMember.updateOne(
+    { _id: membership.id },
+    { $set: { role: 'member', status: 'revoked' } },
+  );
+  assert.equal((await board()).length, 1);
+  await ProjectMember.updateOne({ _id: membership.id }, { $set: { status: 'active' } });
+  await User.updateOne({ _id: ids[0] }, { $set: { deleting: true } });
+  assert.equal((await board()).length, 1);
+});
 test('create, list, and update tasks without losing omitted fields', async () => {
   const created = await alice
     .post('/api/tasks')
